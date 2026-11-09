@@ -16,9 +16,12 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # The runner image ships the Android SDK with ANDROID_HOME set; this
-      # makes sure the licences are accepted and the tools are on PATH.
+      # The runner image ships the Android SDK with ANDROID_HOME set. The
+      # action's default package list includes the long-removed 'tools'
+      # package, which current sdkmanager rejects, so list what we need.
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-36
 
       - uses: gradle/actions/setup-gradle@v4
 
