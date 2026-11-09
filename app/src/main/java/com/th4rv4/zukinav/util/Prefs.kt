@@ -51,6 +51,16 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_BOOT, true)
         set(v) = sp.edit().putBoolean(K_BOOT, v).apply()
 
+    /** Spin the compass arrow on the dash after "Welcome", when no route is active. */
+    var startupAnimation: Boolean
+        get() = sp.getBoolean(K_SPLASH, false)
+        set(v) = sp.edit().putBoolean(K_SPLASH, v).apply()
+
+    /** Short text shown on the dash after "Welcome"; empty for none. */
+    var startupGreeting: String
+        get() = sp.getString(K_GREETING, "") ?: ""
+        set(v) = sp.edit().putString(K_GREETING, v.trim()).apply()
+
     /** App colours: [THEME_SYSTEM], [THEME_LIGHT] or [THEME_DARK]. */
     var theme: Int
         get() = sp.getInt(K_THEME, THEME_SYSTEM)
@@ -128,6 +138,8 @@ class Prefs(context: Context) {
         private const val K_BIKE_AT = "last_bike_at"
         private const val K_UPDATE_AUTO = "update_check_on_launch"
         private const val K_THEME = "theme"
+        private const val K_SPLASH = "startup_animation"
+        private const val K_GREETING = "startup_greeting"
 
         const val THEME_SYSTEM = 0
         const val THEME_LIGHT = 1

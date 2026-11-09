@@ -42,6 +42,13 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             ui.switchRow("Message Alerts", "New WhatsApp and SMS messages", prefs.messageAlerts) {
                 prefs.messageAlerts = it
             },
+            ui.switchRow("Startup Animation", "Spins the arrow on the dash after Welcome. Skipped during a route.", prefs.startupAnimation) {
+                prefs.startupAnimation = it
+            },
+            ui.row("Startup Greeting", "Shown on the dash's call screen after Welcome",
+                ui.input(prefs.startupGreeting, "None") { prefs.startupGreeting = it }.apply {
+                    filters = arrayOf(android.text.InputFilter.LengthFilter(20))
+                }),
             ui.row("Traffic Side", "Decides roundabout and U-turn icons",
                 ui.segmented("Left", "Right", if (prefs.leftHandTraffic) 0 else 1) { prefs.leftHandTraffic = it == 0 }),
         )

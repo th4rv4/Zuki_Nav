@@ -128,7 +128,14 @@ This approach, and the Maps notification layouts, follow
 - **Trips**: saved rides with this month's total, and a Starred filter.
 - **Dash Test**: show any turn icon on the dash, mark it **Looks Right** or
   **Looks Wrong** (the next icon follows automatically), see progress for
-  all 64 icons, and **Share Results**.
+  all 64 icons, and **Share Results**. **Text Test** sends your own text
+  into the number spots under the arrow. Tests only run while Google Maps
+  isn't navigating.
+
+Optional extras in Settings: **Startup Animation** spins the compass arrow
+on the dash after "Welcome", and **Startup Greeting** shows a short text on
+the dash's call screen. Both are skipped when a route is already running,
+and a route starting mid-animation takes over at once.
 - **Settings**: rider name, speed alert, call and message alerts, traffic
   side, theme (System, Light or Dark), trip recording, Auto-Connect, Start
   On Boot, Change Bike, updates, and the log.

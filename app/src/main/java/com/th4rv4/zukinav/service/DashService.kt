@@ -54,6 +54,10 @@ class DashService : Service(), ClusterLink.Listener {
     /** Dash Test frame (an icon or test text) and until when to show it. */
     private var testFrame: ((ClusterModel) -> ByteArray)? = null
     private var testUntil = 0L
+    /** Startup animation: ticks to wait after the hello, then frames left to show. */
+    private var splashWait = 0
+    private var splashLeft = 0
+    private var greetingPending = false
     private var retries = 0
     private var lastNavHex: String? = null
     private var statusLogged = false
@@ -209,7 +213,10 @@ class DashService : Service(), ClusterLink.Listener {
             if (helloLeft == 4) AppLog.d("Dash", "-> ${SuzukiFrames.hex(hello)} (hello, ${model.displayName})")
             link.send(hello)
             helloLeft--
-            if (helloLeft == 0 && name != null) prefs.markPaired(name)
+            if (helloLeft == 0) {
+                if (name != null) prefs.markPaired(name)
+                startSplash()
+            }
             tick++
             return
         }
@@ -234,11 +241,17 @@ class DashService : Service(), ClusterLink.Listener {
         val test = testFrame?.takeIf { now < testUntil }
         if (test == null) testFrame = null
         val nav = NavRepository.current
-        // Navigation always wins: a route cancels any Dash Test straight away.
-        if (nav != null && testFrame != null) {
-            AppLog.d("Dash", "Route active, Dash Test stopped")
+        // Navigation always wins: a route cancels the startup animation,
+        // the greeting and any Dash Test straight away.
+        if (nav != null && (splashWait > 0 || splashLeft > 0 || greetingPending || testFrame != null)) {
+            AppLog.d("Dash", "Route active, startup animation and tests skipped")
+            splashWait = 0
+            splashLeft = 0
+            greetingPending = false
             testFrame = null
         }
+        val splash = nav == null && splashWait == 0 && splashLeft > 0
+        if (nav == null && splashWait > 0) splashWait--
 
         when {
             nav != null -> {
@@ -252,17 +265,23 @@ class DashService : Service(), ClusterLink.Listener {
                 navWasActive = true
                 endFramesLeft = 0
             }
-            test != null -> {
+            splash -> {
+                val icon = SPIN[(SPIN_FRAMES - splashLeft) % SPIN.size]
+                link.send(SuzukiFrames.navigationText(icon, "", "", "", mode), coalesceKey = "nav")
+                navWasActive = true
+                splashLeft--
+            }
+            test != null && splashWait == 0 && splashLeft == 0 -> {
                 link.send(test(model), coalesceKey = "nav")
                 navWasActive = true
             }
-            navWasActive -> {
+            navWasActive && splashWait == 0 -> {
                 navWasActive = false
                 endFramesLeft = 10
                 AppLog.d("Dash", "Navigation ended, clearing dash")
             }
         }
-        if (endFramesLeft > 0 && test == null && nav == null) {
+        if (endFramesLeft > 0 && test == null && nav == null && !splash) {
             link.send(
                 SuzukiFrames.navigation(
                     ClusterIcon.STRAIGHT.id, DashDistance.ZERO, "000000", DashDistance.ZERO,
@@ -271,7 +290,32 @@ class DashService : Service(), ClusterLink.Listener {
                 coalesceKey = "nav",
             )
             endFramesLeft--
+            if (endFramesLeft == 0 && greetingPending) showGreeting(mode)
         }
+    }
+
+    /** After the "Welcome" screen: spin the compass arrow, if turned on and no route is active. */
+    private fun startSplash() {
+        val greeting = prefs.startupGreeting.isNotBlank()
+        if (!prefs.startupAnimation && !greeting) return
+        if (NavRepository.current != null) {
+            AppLog.d("Dash", "Route active, startup animation skipped")
+            return
+        }
+        splashWait = SPLASH_WAIT_TICKS
+        splashLeft = if (prefs.startupAnimation) SPIN_FRAMES else 0
+        greetingPending = greeting
+        // Greeting without the animation: clear the (empty) screen, then greet.
+        if (splashLeft == 0) navWasActive = true
+    }
+
+    /** The greeting uses the dash's incoming-call screen, the only one with free text. */
+    private fun showGreeting(mode: SuzukiFrames.Checksum) {
+        greetingPending = false
+        if (NavRepository.current != null) return
+        val frame = SuzukiFrames.call(prefs.startupGreeting, ringing = true, mode = mode)
+        AppLog.d("Dash", "-> ${SuzukiFrames.hex(frame)} (greeting)")
+        repeat(3) { i -> main.postDelayed({ link.send(frame) }, i * 200L) }
     }
 
     /** Sends a call or message alert 3 times, 200 ms apart, as Ride Connect does. */
@@ -365,6 +409,16 @@ class DashService : Service(), ClusterLink.Listener {
         private const val NOTIF_ID = 17
         private const val CONNECT_TIMEOUT_MS = 20_000L
         private const val CLEAR_REPEATS = 3
+
+        /** Compass arrows clockwise from north: one turn of the spinning arrow. */
+        private val SPIN = listOf(
+            ClusterIcon.HEAD_NORTH, ClusterIcon.HEAD_NORTHEAST, ClusterIcon.HEAD_EAST, ClusterIcon.HEAD_SOUTHEAST,
+            ClusterIcon.HEAD_SOUTH, ClusterIcon.HEAD_SOUTHWEST, ClusterIcon.HEAD_WEST, ClusterIcon.HEAD_NORTHWEST,
+        ).map { it.id }
+        /** Two turns, one arrow every 200 ms: about 3 s. */
+        private const val SPIN_FRAMES = 16
+        /** Let the "Welcome" screen show for about 3 s before the animation. */
+        private const val SPLASH_WAIT_TICKS = 15
         const val ACTION_STOP = "com.th4rv4.zukinav.STOP"
 
         @Volatile var instance: DashService? = null
