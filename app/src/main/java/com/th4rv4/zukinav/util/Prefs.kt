@@ -109,30 +109,30 @@ class Prefs(context: Context) {
         if (set.add(clusterName)) sp.edit().putStringSet(K_SEEN, set).apply()
     }
 
-    private companion object {
-        const val K_ADDR = "cluster_address"
-        const val K_NAME = "cluster_name"
-        const val K_RIDER = "rider_name"
-        const val K_LHT = "left_hand_traffic"
-        const val K_SPEED = "speed_alert_kmh"
-        const val K_AUTO = "auto_connect"
-        const val K_SEEN = "seen_clusters"
-        const val K_BOOT = "start_on_boot"
-        const val K_MARKS = "icon_marks"
-        const val K_CALLS = "call_alerts"
-        const val K_BIKE = "last_bike"
-        const val K_TRIPS = "record_trips"
-        const val K_TRIPS_SHORT = "skip_short_trips"
-        const val K_TRIPS_PLACES = "trip_places"
-        const val K_TRIP_ACTIVE = "active_trip"
-        const val K_BIKE_AT = "last_bike_at"
-        const val K_UPDATE_AUTO = "update_check_on_launch"
-        const val K_THEME = "theme"
+    companion object {
+        private const val K_ADDR = "cluster_address"
+        private const val K_NAME = "cluster_name"
+        private const val K_RIDER = "rider_name"
+        private const val K_LHT = "left_hand_traffic"
+        private const val K_SPEED = "speed_alert_kmh"
+        private const val K_AUTO = "auto_connect"
+        private const val K_SEEN = "seen_clusters"
+        private const val K_BOOT = "start_on_boot"
+        private const val K_MARKS = "icon_marks"
+        private const val K_CALLS = "call_alerts"
+        private const val K_BIKE = "last_bike"
+        private const val K_TRIPS = "record_trips"
+        private const val K_TRIPS_SHORT = "skip_short_trips"
+        private const val K_TRIPS_PLACES = "trip_places"
+        private const val K_TRIP_ACTIVE = "active_trip"
+        private const val K_BIKE_AT = "last_bike_at"
+        private const val K_UPDATE_AUTO = "update_check_on_launch"
+        private const val K_THEME = "theme"
 
         const val THEME_SYSTEM = 0
         const val THEME_LIGHT = 1
         const val THEME_DARK = 2
-        const val K_UPDATE_LAST = "update_last_check"
-        const val K_MSGS = "message_alerts"
+        private const val K_UPDATE_LAST = "update_last_check"
+        private const val K_MSGS = "message_alerts"
     }
 }
