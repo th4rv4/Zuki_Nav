@@ -46,6 +46,19 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
                 ui.segmented("Left", "Right", if (prefs.leftHandTraffic) 0 else 1) { prefs.leftHandTraffic = it == 0 }),
         )
 
+        val look = ui.listCard(
+            ui.row("Theme", null,
+                ui.segmented(listOf("System", "Light", "Dark"), themeIndex(prefs.theme), padDp = 10) { i ->
+                    host.setThemeChoice(
+                        when (i) {
+                            1 -> com.th4rv4.zukinav.util.Prefs.THEME_LIGHT
+                            2 -> com.th4rv4.zukinav.util.Prefs.THEME_DARK
+                            else -> com.th4rv4.zukinav.util.Prefs.THEME_SYSTEM
+                        },
+                    )
+                }),
+        )
+
         val connection = ui.listCard(
             ui.switchRow("Auto-Connect", "Reconnect when the ignition turns on", prefs.autoConnect) {
                 prefs.autoConnect = it
@@ -81,6 +94,8 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             dash,
             ui.text("Right-hand traffic uses roundabout icons 47 and up, which some dashes (e.g. Gixxer SF 250) leave blank.", 12f, Palette.WARN)
                 .apply { setPadding(ui.dp(4), 0, ui.dp(4), 0) },
+            ui.sectionLabel("Appearance"),
+            look,
             ui.sectionLabel("Trips"),
             trips,
             ui.sectionLabel("Connection"),
@@ -105,6 +120,12 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
 
     override fun onHide() {
         updates.onHide()
+    }
+
+    private fun themeIndex(t: Int) = when (t) {
+        com.th4rv4.zukinav.util.Prefs.THEME_LIGHT -> 1
+        com.th4rv4.zukinav.util.Prefs.THEME_DARK -> 2
+        else -> 0
     }
 
     private fun setTripPlaces(on: Boolean) {

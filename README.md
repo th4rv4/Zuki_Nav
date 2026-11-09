@@ -130,8 +130,8 @@ This approach, and the Maps notification layouts, follow
   **Looks Wrong** (the next icon follows automatically), see progress for
   all 64 icons, and **Share Results**.
 - **Settings**: rider name, speed alert, call and message alerts, traffic
-  side, trip recording, Auto-Connect, Start On Boot, Change Bike, updates,
-  and the log.
+  side, theme (System, Light or Dark), trip recording, Auto-Connect, Start
+  On Boot, Change Bike, updates, and the log.
 
 ## Updates
 

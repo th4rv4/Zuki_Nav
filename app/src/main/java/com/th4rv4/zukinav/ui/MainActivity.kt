@@ -57,12 +57,53 @@ class MainActivity : Activity() {
     private var resumed = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
         prefs = Prefs(this)
+        val light = isLightTheme()
+        Palette.apply(light)
+        setTheme(if (light) R.style.Theme_ZukiNav_Light else R.style.Theme_ZukiNav)
+        super.onCreate(savedInstanceState)
         ui = Ui(this)
         setContentView(buildRoot())
-        if (setupComplete()) showTab(Tab.RIDE) else showSetup()
+        styleSystemBars(light)
+        // After a theme change the app reopens on the tab it was on.
+        val reopen = savedInstanceState?.getString(STATE_TAB)?.let { n -> Tab.entries.firstOrNull { it.name == n } }
+        if (setupComplete()) showTab(reopen ?: Tab.RIDE) else showSetup()
         checkForUpdateIfDue()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        currentTab?.let { outState.putString(STATE_TAB, it.name) }
+    }
+
+    private fun isLightTheme(): Boolean = when (prefs.theme) {
+        Prefs.THEME_LIGHT -> true
+        Prefs.THEME_DARK -> false
+        else -> (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) !=
+            android.content.res.Configuration.UI_MODE_NIGHT_YES
+    }
+
+    /** Switches between System, Light and Dark; the screen is rebuilt in the new colours. */
+    fun setThemeChoice(choice: Int) {
+        if (prefs.theme == choice) return
+        prefs.theme = choice
+        if (isLightTheme() != Palette.isLight) recreate()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun styleSystemBars(light: Boolean) {
+        window.decorView.setBackgroundColor(Palette.BG)
+        window.statusBarColor = Palette.BG
+        window.navigationBarColor = Palette.NAV_BG
+        if (Build.VERSION.SDK_INT >= 30) {
+            val mask = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            window.insetsController?.setSystemBarsAppearance(if (light) mask else 0, mask)
+        } else {
+            window.decorView.systemUiVisibility = if (light) {
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+            } else 0
+        }
     }
 
     override fun onDestroy() {
@@ -156,7 +197,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Palette.BG)
             addView(content, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-            addView(View(this@MainActivity).apply { setBackgroundColor(0xFF1C222C.toInt()) },
+            addView(View(this@MainActivity).apply { setBackgroundColor(Palette.DIVIDER) },
                 LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ui.dp(1)))
             addView(tabBar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         }
@@ -222,7 +263,9 @@ class MainActivity : Activity() {
     }
 
     /** Dialog style that matches the app. */
-    val dialogTheme: Int get() = android.R.style.Theme_DeviceDefault_Dialog_Alert
+    val dialogTheme: Int
+        get() = if (Palette.isLight) android.R.style.Theme_DeviceDefault_Light_Dialog_Alert
+        else android.R.style.Theme_DeviceDefault_Dialog_Alert
 
     fun showSetup() {
         currentTab = null
@@ -382,7 +425,7 @@ class MainActivity : Activity() {
             setPadding(ui.dp(16), ui.dp(8), ui.dp(16), ui.dp(8))
         }
         val scroll = ScrollView(this).apply { addView(body) }
-        AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        AlertDialog.Builder(this, dialogTheme)
             .setTitle("Log")
             .setView(scroll)
             .setPositiveButton("Close", null)
@@ -396,6 +439,7 @@ class MainActivity : Activity() {
     private companion object {
         const val REQ_LOCATION = 2
         const val REQ_LOCATION_BG = 3
+        const val STATE_TAB = "tab"
     }
 }
 

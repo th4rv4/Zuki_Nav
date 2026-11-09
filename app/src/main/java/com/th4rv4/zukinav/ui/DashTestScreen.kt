@@ -95,8 +95,8 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
         val legend = ui.hstack(
             14,
             legendItem("Right", Palette.OK_BORDER, null),
-            legendItem("Wrong", 0xFF5A4416.toInt(), null),
-            legendItem("Untested", Palette.INSET, 0xFF3A4352.toInt()),
+            legendItem("Wrong", Palette.MARK_WRONG_BG, null),
+            legendItem("Untested", Palette.INSET, Palette.UNTESTED_BORDER),
         )
         val allCard = ui.card(
             LinearLayout(ui.ctx).apply {
@@ -178,9 +178,9 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
             val id = i + 1
             val (fill, stroke, fg) = when {
                 id == current -> Triple(Palette.ACCENT, null, android.graphics.Color.WHITE)
-                marks[id] == IconMarks.Mark.RIGHT -> Triple(Palette.OK_BORDER, null, 0xFFBFF3D4.toInt())
-                marks[id] == IconMarks.Mark.WRONG -> Triple(0xFF5A4416.toInt(), null, 0xFFFFE1A3.toInt())
-                else -> Triple(Palette.INSET, 0xFF3A4352.toInt(), Palette.MUTED)
+                marks[id] == IconMarks.Mark.RIGHT -> Triple(Palette.OK_BORDER, null, Palette.MARK_RIGHT_FG)
+                marks[id] == IconMarks.Mark.WRONG -> Triple(Palette.MARK_WRONG_BG, null, Palette.MARK_WRONG_FG)
+                else -> Triple(Palette.INSET, Palette.UNTESTED_BORDER, Palette.MUTED)
             }
             cell.background = ui.pressable(fill, 8, stroke)
             cell.setTextColor(fg)

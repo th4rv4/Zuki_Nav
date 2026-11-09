@@ -7,4 +7,12 @@
         <item name="android:navigationBarColor">#FF0E1116</item>
         <item name="android:windowBackground">@android:color/black</item>
     </style>
+
+    <style name="Theme.ZukiNav.Light" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorAccent">#FF2D6BFF</item>
+        <item name="android:colorPrimary">#FFF3F5F8</item>
+        <item name="android:statusBarColor">#FFF3F5F8</item>
+        <item name="android:navigationBarColor">#FFFFFFFF</item>
+        <item name="android:windowBackground">@android:color/white</item>
+    </style>
 </resources>

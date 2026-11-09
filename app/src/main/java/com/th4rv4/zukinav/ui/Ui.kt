@@ -20,28 +20,65 @@ import android.widget.Switch
 import android.widget.TextView
 
 /** Zuki Nav colours (dark theme). */
+/**
+ * The app's colours. Dark is the default; [apply] switches every colour to
+ * the light set before the screens are built.
+ */
 object Palette {
-    const val BG = 0xFF0B0E13.toInt()
-    const val SURFACE = 0xFF141922.toInt()
-    const val BORDER = 0xFF222937.toInt()
-    const val INSET = 0xFF0F141C.toInt()
-    const val INPUT_BORDER = 0xFF2B3342.toInt()
-    const val NAV_BG = 0xFF0E1218.toInt()
-    const val TEXT = 0xFFF2F4F8.toInt()
-    const val TEXT_SOFT = 0xFFC9D0DC.toInt()
-    const val MUTED = 0xFF9AA3B5.toInt()
-    const val ACCENT = 0xFF2D6BFF.toInt()
-    const val ACCENT_SOFT = 0xFF6FA0FF.toInt()
-    const val ACCENT_BG = 0xFF121C30.toInt()
-    const val OK = 0xFF7CE3A6.toInt()
-    const val OK_BG = 0xFF12291D.toInt()
-    const val OK_BORDER = 0xFF1F4A31.toInt()
-    const val WARN = 0xFFFFC966.toInt()
-    const val WARN_BG = 0xFF2A2312.toInt()
-    const val WARN_BORDER = 0xFF4A3A1A.toInt()
-    const val DANGER = 0xFFFF9B9B.toInt()
-    const val DANGER_BG = 0xFF1C1416.toInt()
-    const val DANGER_BORDER = 0xFF3A2A2A.toInt()
+    var isLight = false
+        private set
+
+    var BG = 0; var SURFACE = 0; var BORDER = 0; var INSET = 0; var INPUT_BORDER = 0; var NAV_BG = 0
+    var TEXT = 0; var TEXT_SOFT = 0; var MUTED = 0
+    var ACCENT = 0; var ACCENT_SOFT = 0; var ACCENT_BG = 0
+    var OK = 0; var OK_BG = 0; var OK_BORDER = 0
+    var WARN = 0; var WARN_BG = 0; var WARN_BORDER = 0
+    var DANGER = 0; var DANGER_BG = 0; var DANGER_BORDER = 0
+    /** Icon tile behind the bike, step badges. */
+    var TILE = 0
+    /** Line above the tab bar. */
+    var DIVIDER = 0
+    /** Touch feedback over surfaces. */
+    var RIPPLE = 0
+    var SWITCH_THUMB_OFF = 0
+    // Dash Test marks.
+    var MARK_RIGHT_FG = 0; var MARK_WRONG_BG = 0; var MARK_WRONG_FG = 0; var UNTESTED_BORDER = 0
+
+    init { apply(false) }
+
+    fun apply(light: Boolean) {
+        isLight = light
+        fun c(dark: Long, lightColor: Long) = (if (light) lightColor else dark).toInt()
+        BG = c(0xFF0B0E13, 0xFFF3F5F8)
+        SURFACE = c(0xFF141922, 0xFFFFFFFF)
+        BORDER = c(0xFF222937, 0xFFE1E5EB)
+        INSET = c(0xFF0F141C, 0xFFEEF1F5)
+        INPUT_BORDER = c(0xFF2B3342, 0xFFCDD3DC)
+        NAV_BG = c(0xFF0E1218, 0xFFFFFFFF)
+        TEXT = c(0xFFF2F4F8, 0xFF111723)
+        TEXT_SOFT = c(0xFFC9D0DC, 0xFF2E3746)
+        MUTED = c(0xFF9AA3B5, 0xFF5E6878)
+        ACCENT = c(0xFF2D6BFF, 0xFF2D6BFF)
+        ACCENT_SOFT = c(0xFF6FA0FF, 0xFF1F57E0)
+        ACCENT_BG = c(0xFF121C30, 0xFFE7EEFF)
+        OK = c(0xFF7CE3A6, 0xFF16884A)
+        OK_BG = c(0xFF12291D, 0xFFE3F6EA)
+        OK_BORDER = c(0xFF1F4A31, 0xFFA9DEBE)
+        WARN = c(0xFFFFC966, 0xFF8F5D00)
+        WARN_BG = c(0xFF2A2312, 0xFFFFF3D6)
+        WARN_BORDER = c(0xFF4A3A1A, 0xFFEBCB86)
+        DANGER = c(0xFFFF9B9B, 0xFFC62F2F)
+        DANGER_BG = c(0xFF1C1416, 0xFFFDECEC)
+        DANGER_BORDER = c(0xFF3A2A2A, 0xFFF2B8B8)
+        TILE = c(0xFF1B2433, 0xFFE7EEFF)
+        DIVIDER = c(0xFF1C222C, 0xFFE1E5EB)
+        RIPPLE = c(0x22FFFFFF, 0x1A000000)
+        SWITCH_THUMB_OFF = c(0xFFC9D0DC, 0xFFFFFFFF)
+        MARK_RIGHT_FG = c(0xFFBFF3D4, 0xFF0E5A30)
+        MARK_WRONG_BG = c(0xFF5A4416, 0xFFFBE7B5)
+        MARK_WRONG_FG = c(0xFFFFE1A3, 0xFF6B4A00)
+        UNTESTED_BORDER = c(0xFF3A4352, 0xFFCDD3DC)
+    }
 }
 
 /** Small view factory so every screen shares one look. Built in code; no AndroidX. */
@@ -65,7 +102,7 @@ class Ui(val ctx: Context) {
     /** Background with touch ripple. */
     fun pressable(color: Int, radiusDp: Int, stroke: Int? = null): Drawable =
         RippleDrawable(
-            ColorStateList.valueOf(0x33FFFFFF),
+            ColorStateList.valueOf(Palette.RIPPLE),
             rounded(color, radiusDp, stroke),
             rounded(Color.WHITE, radiusDp),
         )
@@ -173,7 +210,7 @@ class Ui(val ctx: Context) {
         row(title, trailing = text(value ?: "›", if (value == null) 20f else 13f, Palette.MUTED)).apply {
             isClickable = true
             isFocusable = true
-            background = RippleDrawable(ColorStateList.valueOf(0x22FFFFFF), null, rounded(Color.WHITE, 8))
+            background = RippleDrawable(ColorStateList.valueOf(Palette.RIPPLE), null, rounded(Color.WHITE, 8))
             setOnClickListener { onClick() }
         }
 
@@ -183,7 +220,7 @@ class Ui(val ctx: Context) {
             contentDescription = title
             thumbTintList = ColorStateList(
                 arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
-                intArrayOf(Color.WHITE, Palette.TEXT_SOFT),
+                intArrayOf(Color.WHITE, Palette.SWITCH_THUMB_OFF),
             )
             trackTintList = ColorStateList(
                 arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
@@ -231,7 +268,7 @@ class Ui(val ctx: Context) {
         when (kind) {
             is Badge.Done -> { text = "✓"; setTextColor(Palette.OK); background = rounded(Palette.OK_BG, 14) }
             is Badge.Todo -> { text = "!"; setTextColor(Palette.WARN); background = rounded(Palette.WARN_BG, 14) }
-            is Badge.Step -> { text = kind.n.toString(); setTextColor(Palette.MUTED); background = rounded(0xFF1B2433.toInt(), 14) }
+            is Badge.Step -> { text = kind.n.toString(); setTextColor(Palette.MUTED); background = rounded(Palette.TILE, 14) }
         }
     }
 
@@ -289,16 +326,20 @@ class Ui(val ctx: Context) {
         }
 
     /** Two-option segmented control. Returns the view; [onPick] gets 0 or 1. */
-    fun segmented(left: String, right: String, selected: Int, onPick: (Int) -> Unit): LinearLayout {
+    fun segmented(left: String, right: String, selected: Int, onPick: (Int) -> Unit): LinearLayout =
+        segmented(listOf(left, right), selected, onPick = onPick)
+
+    /** Segmented control; [onPick] gets the index of the chosen option. */
+    fun segmented(labels: List<String>, selected: Int, padDp: Int = 14, onPick: (Int) -> Unit): LinearLayout {
         val box = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             background = rounded(Palette.INSET, 12, Palette.INPUT_BORDER)
             setPadding(dp(4), dp(4), dp(4), dp(4))
         }
-        val buttons = listOf(left, right).mapIndexed { i, label ->
+        val buttons = labels.map { label ->
             text(label, 13f, Palette.MUTED, Weight.BOLD).apply {
                 gravity = Gravity.CENTER
-                setPadding(dp(14), dp(7), dp(14), dp(7))
+                setPadding(dp(padDp), dp(7), dp(padDp), dp(7))
                 isClickable = true
                 isFocusable = true
                 contentDescription = label

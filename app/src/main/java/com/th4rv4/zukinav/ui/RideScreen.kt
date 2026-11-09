@@ -87,7 +87,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
         val bikeRow = LinearLayout(ui.ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            addView(ui.iconTile(R.drawable.ic_bike, 48, 26, Palette.ACCENT_SOFT, 0xFF1B2433.toInt(), 14),
+            addView(ui.iconTile(R.drawable.ic_bike, 48, 26, Palette.ACCENT_SOFT, Palette.TILE, 14),
                 LinearLayout.LayoutParams(ui.dp(48), ui.dp(48)).apply { marginEnd = ui.dp(14) })
             addView(ui.vstack(3, bikeName, bikeDetail), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             addView(statusSlot, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = ui.dp(8) })

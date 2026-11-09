@@ -51,6 +51,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_BOOT, true)
         set(v) = sp.edit().putBoolean(K_BOOT, v).apply()
 
+    /** App colours: [THEME_SYSTEM], [THEME_LIGHT] or [THEME_DARK]. */
+    var theme: Int
+        get() = sp.getInt(K_THEME, THEME_SYSTEM)
+        set(v) = sp.edit().putInt(K_THEME, v).apply()
+
     /** Look for a new release when the app opens, at most once a day. */
     var checkUpdatesOnLaunch: Boolean
         get() = sp.getBoolean(K_UPDATE_AUTO, true)
@@ -122,6 +127,11 @@ class Prefs(context: Context) {
         const val K_TRIP_ACTIVE = "active_trip"
         const val K_BIKE_AT = "last_bike_at"
         const val K_UPDATE_AUTO = "update_check_on_launch"
+        const val K_THEME = "theme"
+
+        const val THEME_SYSTEM = 0
+        const val THEME_LIGHT = 1
+        const val THEME_DARK = 2
         const val K_UPDATE_LAST = "update_last_check"
         const val K_MSGS = "message_alerts"
     }
