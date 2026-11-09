@@ -90,6 +90,9 @@ object SuzukiFrames {
      *   [23]     [NavStatus]
      *   [24]     '1' while navigating, '0' to tell the cluster navigation ended
      *   [25..27] 0xFF
+     *
+     * @param etaLeadingSpace C-series (TFT) clusters get a space instead of a
+     *   leading '0' in the ETA, see [ClusterModel.etaLeadingSpace].
      */
     fun navigation(
         iconId: Int,
@@ -99,6 +102,7 @@ object SuzukiFrames {
         status: NavStatus = NavStatus.OK,
         active: Boolean = true,
         mode: Checksum = Checksum.SUM,
+        etaLeadingSpace: Boolean = false,
     ): ByteArray {
         require(eta.length == 6) { "eta must be 6 chars: '$eta'" }
         val f = newFrame('1')
@@ -107,6 +111,7 @@ object SuzukiFrames {
         f.putAscii(4, toTurn.digits)
         f[8] = toTurn.unit.code.toByte()
         f.putAscii(9, eta)
+        if (etaLeadingSpace && eta[0] == '0') f[9] = ' '.code.toByte()
         f.fill(15, 17, FF)
         f.putAscii(18, remaining.digits)
         f[22] = remaining.unit.code.toByte()
@@ -154,8 +159,8 @@ object SuzukiFrames {
     }
 
     /**
-     * Status / clock frame ("?3"), B-series layout (Gixxer family). The Suzuki
-     * app sends it about every 2 s while connected.
+     * Status / clock frame ("?3"). The Suzuki app sends it about every 2 s
+     * while connected. B-series layout:
      *
      *   [2..3]   "1N"
      *   [4..6]   speed-alert limit "080", or FF FF FF when off
@@ -168,6 +173,10 @@ object SuzukiFrames {
      *   [22]     temperature as 115 + degrees Fahrenheit (0 = none)
      *   [23]     1
      *   [24..27] 0xFF
+     *
+     * The A-series layout (Access 125, Burgman Street) is the same up to byte
+     * 15, except that byte 7 is always an ASCII digit ('0' for no signal),
+     * and bytes 16..27 are all 0xFF: no weather or temperature.
      */
     fun status(
         clock: LocalTime?,
@@ -178,11 +187,15 @@ object SuzukiFrames {
         weather: Weather = Weather.NONE,
         tempCelsius: Double? = null,
         mode: Checksum = Checksum.SUM,
+        layout: ClusterModel.StatusLayout = ClusterModel.StatusLayout.B,
     ): ByteArray {
+        require(layout != ClusterModel.StatusLayout.NONE) { "this cluster takes no status frame" }
+        val a = layout == ClusterModel.StatusLayout.A
         val f = newFrame('3')
         f.putAscii(2, "1N")
         if (speedAlertKmh in 1..999) f.putAscii(4, "%03d".format(speedAlertKmh)) else f.fill(4, 6, FF)
-        f[7] = if (signalBars <= 0) 0 else ('0' + signalBars.coerceAtMost(3)).code.toByte()
+        val bars = signalBars.coerceIn(0, 3)
+        f[7] = if (bars == 0 && !a) 0 else ('0' + bars).code.toByte()
         if (clock == null) {
             f.fill(8, 13, FF)
         } else {
@@ -191,6 +204,10 @@ object SuzukiFrames {
         }
         f[14] = (if (clearSms) 'Y' else 'N').code.toByte()
         f[15] = (if (clearMissedCall) 'Y' else 'N').code.toByte()
+        if (a) {
+            f.fill(16, 27, FF)
+            return seal(f, mode)
+        }
         f.fill(16, 20, FF)
         f[21] = weather.code.toByte()
         f[22] = if (tempCelsius == null) 0 else
@@ -216,34 +233,6 @@ object SuzukiFrames {
         f.fill(24, 27, FF)
         return seal(f, mode)
     }
-
-    /**
-     * Picks the checksum flavour from the cluster's BLE name, the way the
-     * Suzuki app does: names look like "SBM21xxxxxxx", and an 'A' in the
-     * second position means an A-series scooter cluster.
-     */
-    fun checksumFor(clusterName: String?): Checksum =
-        if (clusterName != null && clusterName.length > 1 && clusterName[1] == 'A') Checksum.INVERTED else Checksum.SUM
-
-    /** Human-readable model guess from the BLE name, same table as the Suzuki app. */
-    fun modelFor(clusterName: String?): String {
-        val n = clusterName ?: return "Unknown"
-        if (n.length < 5) return "Unknown"
-        return when (n.substring(1, 5)) {
-            "AS01", "AS02" -> "Access 125"
-            "AS11", "AS12" -> "Burgman Street"
-            "BS21" -> "Avenis"
-            "BS31" -> "Burgman Street EX"
-            "BM01" -> "V-Strom SX"
-            "BM11" -> "Gixxer / Gixxer SF"
-            "BM21" -> "Gixxer 250 / SF 250 / FFV"
-            else -> "Suzuki ($n)"
-        }
-    }
-
-    /** True for names the Suzuki app lists as clusters. */
-    fun looksLikeCluster(name: String?): Boolean =
-        name != null && name.length == 12 && (name.contains("SA") || name.contains("SB") || name.contains("SC"))
 
     fun hex(frame: ByteArray): String = frame.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) }
 }

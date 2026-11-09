@@ -9,7 +9,7 @@ that build, so they will change in later releases.
 | Step | Detail | Source |
 |---|---|---|
 | Discover | Device name is 12 characters and contains `SA`, `SB` or `SC` | `adapter/j.a()` |
-| Model | Characters 1–4 of the name: `BM21` = Gixxer 250 / SF 250 / FFV, `BM11` = Gixxer / SF, `BM01` = V-Strom SX, `BS21` = Avenis, `BS31` = Burgman EX, `AS01/02` = Access 125, `AS11/12` = Burgman Street | `activity/q1.b()` |
+| Model | Character 1 is the family (`A`, `B`, `C`), the next 2–3 the model; full table under *Models* below | `DeviceListingScanActivity.i()` |
 | Connect | FastBLE, MTU 250 requested | `com/clj/fastble/b.j()` |
 | Service | `gatt.getServices().get(3)`: the UUIDs are not hard-coded | `MyBleService.a()` |
 | Write | characteristic `[0]` of that service | `MyBleService.f()` |
@@ -29,9 +29,9 @@ Every frame is 30 bytes:
 [29]     0x7F
 ```
 
-Checksum = sum of bytes 1..27, mod 256. A-series clusters (name char 1 = `A`:
-Access, Burgman Street) use `255 - sum` instead (`SuzukiApplication.a()`, flag
-`k0.g` set in `q1.b()`).
+Checksum = sum of bytes 1..27, mod 256. A-series clusters (name char 1 = `A`)
+use `255 - sum` instead (`SuzukiApplication.a()`, flag `k0.g` set in
+`DeviceListingScanActivity.i()`).
 
 | Type | Meaning | Built in |
 |---|---|---|
@@ -72,7 +72,7 @@ handling:
 | 12.34 km | `12.3` | K |
 | 123.4 km | `0123` | K |
 
-### `'3'` status (B-series layout)
+### `'3'` status
 
 ```
 [2..3]   "1N"
@@ -87,6 +87,15 @@ handling:
 [23]     1
 [24..27] 0xFF
 ```
+
+That is the B-series layout. The A-series layout matches it up to byte 15,
+except that byte 7 is always an ASCII digit. Bytes 16..27 are all 0xFF and
+the checksum is inverted.
+
+For C-series clusters the Suzuki app first does
+`Integer.parseInt(f0.H.substring(2), 16)`, but nothing ever sets `f0.H`. The
+exception is caught and an all-zero 30-byte frame goes out instead. Suzuki
+Nav sends no status frame to them.
 
 ### `'6'` hello
 
@@ -139,7 +148,7 @@ right-hand traffic.
 | 32 | 16, 30, 31 | Continue slight right / merge right |
 | 33 | 21 | Continue straight |
 | 34–37 | 22–25 | unverified |
-| 38 | 73 | Take the ramp (A-series: also 74) |
+| 38 | 73 | Take the ramp (Access-type clusters: also 74) |
 | 39 | 41 | U-turn (left-hand traffic) |
 | 40–42 | 50–52 | unverified |
 | 43 | 36 | Ferry |
@@ -149,3 +158,31 @@ right-hand traffic.
 
 Also used: 46 as the "no GPS / no network" placeholder, and 61, flashed
 alternately with the arrow for alerts.
+
+## Models
+
+From `DeviceListingScanActivity.i()`. "Name" is the BLE name from character 1.
+
+| Name | Model | Family | Checksum | Status layout |
+|---|---|---|---|---|
+| `CE…` | e-ACCESS | C | sum | none (see above) |
+| `CS0…` | Access TFT Edition | C | sum | none |
+| `CS1…` | Burgman Street TFT Edition | C | sum | none |
+| `BS4…` | Access | B | sum | B |
+| `AS21` | Access | A | 255 − sum | A |
+| `AS01`, `AS02` | Access 125 | A | 255 − sum | A |
+| `AS11`, `AS12` | Burgman Street | A | 255 − sum | A |
+| `BS11`, `BS12`, `BS51` | Burgman Street | B | sum | B |
+| `BS21`, `BS22` | Avenis | B | sum | B |
+| `BS31`, `BS32` | Burgman Street EX | B | sum | B |
+| `BM01` | V-Strom SX | B | sum | B |
+| `BM11` | Gixxer / Gixxer SF | B | sum | B |
+| `BM21`, `BM22` | Gixxer 250 / SF 250 / FFV | B | sum | B |
+
+Other per-model rules in `d2`:
+
+- e-ACCESS, Access TFT and Burgman Street TFT: if the ETA starts with `'0'`,
+  byte 9 of the nav frame becomes a space (`d2.D()`).
+- e-ACCESS, Access TFT, Burgman Street TFT, Access, and any `SBS51` cluster:
+  Mappls 74 (off-ramp left) maps to cluster 38 instead of 44, and Mappls 58
+  (first right-hand-traffic roundabout exit) to 44 instead of 46 (`d2.C()`).

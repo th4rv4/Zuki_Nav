@@ -20,6 +20,8 @@ import com.th4rv4.suzukinav.ble.ClusterLink
 import com.th4rv4.suzukinav.nav.NavRepository
 import com.th4rv4.suzukinav.nav.NavSnapshot
 import com.th4rv4.suzukinav.protocol.ClusterIcon
+import com.th4rv4.suzukinav.protocol.ClusterModel
+import com.th4rv4.suzukinav.protocol.ClusterModels
 import com.th4rv4.suzukinav.protocol.DashDistance
 import com.th4rv4.suzukinav.protocol.SuzukiFrames
 import com.th4rv4.suzukinav.ui.MainActivity
@@ -137,7 +139,8 @@ class DashService : Service(), ClusterLink.Listener {
 
     private fun step() {
         val name = link.deviceName ?: prefs.clusterName
-        val mode = SuzukiFrames.checksumFor(name)
+        val model = ClusterModels.fromBleName(name)
+        val mode = model.checksum
 
         if (helloLeft > 0) {
             val first = name != null && prefs.isFirstPairing(name)
@@ -148,9 +151,11 @@ class DashService : Service(), ClusterLink.Listener {
             return
         }
 
-        if (tick % 10 == 0) {
+        if (tick % 10 == 0 && model.statusLayout != ClusterModel.StatusLayout.NONE) {
             link.send(
-                SuzukiFrames.status(LocalTime.now(), speedAlertKmh = prefs.speedAlertKmh, mode = mode),
+                SuzukiFrames.status(
+                    LocalTime.now(), speedAlertKmh = prefs.speedAlertKmh, mode = mode, layout = model.statusLayout,
+                ),
                 coalesceKey = "status",
             )
         }
@@ -163,11 +168,11 @@ class DashService : Service(), ClusterLink.Listener {
 
         when {
             test != null -> {
-                link.send(testFrame(test, mode), coalesceKey = "nav")
+                link.send(testFrame(test, model), coalesceKey = "nav")
                 navWasActive = true
             }
             nav != null -> {
-                link.send(navFrame(nav, mode), coalesceKey = "nav")
+                link.send(navFrame(nav, model), coalesceKey = "nav")
                 navWasActive = true
                 endFramesLeft = 0
             }
@@ -181,7 +186,7 @@ class DashService : Service(), ClusterLink.Listener {
             link.send(
                 SuzukiFrames.navigation(
                     ClusterIcon.STRAIGHT.id, DashDistance.ZERO, "000000", DashDistance.ZERO,
-                    active = false, mode = mode,
+                    active = false, mode = mode, etaLeadingSpace = model.etaLeadingSpace,
                 ),
                 coalesceKey = "nav",
             )
@@ -189,22 +194,25 @@ class DashService : Service(), ClusterLink.Listener {
         }
     }
 
-    private fun navFrame(nav: NavSnapshot, mode: SuzukiFrames.Checksum): ByteArray =
+    private fun navFrame(nav: NavSnapshot, model: ClusterModel): ByteArray =
         SuzukiFrames.navigation(
-            iconId = (nav.icon ?: ClusterIcon.STRAIGHT).id,
+            iconId = model.adjustIcon((nav.icon ?: ClusterIcon.STRAIGHT).id),
             toTurn = nav.metersToTurn?.let { DashDistance.fromMeters(it, roundDownTo10 = true) } ?: DashDistance.ZERO,
             eta = SuzukiFrames.etaField(nav.eta, DateFormat.is24HourFormat(this)),
             remaining = nav.remainingMeters?.let { DashDistance.fromMeters(it) } ?: DashDistance.ZERO,
-            mode = mode,
+            mode = model.checksum,
+            etaLeadingSpace = model.etaLeadingSpace,
         )
 
-    private fun testFrame(iconId: Int, mode: SuzukiFrames.Checksum): ByteArray =
+    /** Raw icon ID, deliberately not passed through [ClusterModel.adjustIcon]. */
+    private fun testFrame(iconId: Int, model: ClusterModel): ByteArray =
         SuzukiFrames.navigation(
             iconId = iconId,
             toTurn = DashDistance.fromMeters(350.0, roundDownTo10 = true),
             eta = SuzukiFrames.etaField(LocalTime.now().plusMinutes(12), DateFormat.is24HourFormat(this)),
             remaining = DashDistance.fromMeters(12_300.0),
-            mode = mode,
+            mode = model.checksum,
+            etaLeadingSpace = model.etaLeadingSpace,
         )
 
     // ---- notification -----------------------------------------------------

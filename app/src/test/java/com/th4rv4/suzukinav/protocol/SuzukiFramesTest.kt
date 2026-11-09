@@ -73,11 +73,25 @@ class SuzukiFramesTest {
         assertEquals("001942", SuzukiFrames.etaField(LocalTime.of(19, 42), true))
     }
 
-    @Test fun clusterNames() {
-        assertEquals("Gixxer 250 / SF 250 / FFV", SuzukiFrames.modelFor("SBM21A1B2C3D"))
-        assertEquals(SuzukiFrames.Checksum.SUM, SuzukiFrames.checksumFor("SBM21A1B2C3D"))
-        assertEquals(SuzukiFrames.Checksum.INVERTED, SuzukiFrames.checksumFor("SAS01A1B2C3D"))
-        assertEquals(true, SuzukiFrames.looksLikeCluster("SBM21A1B2C3D"))
-        assertEquals(false, SuzukiFrames.looksLikeCluster("Galaxy Buds"))
+    @Test fun aSeriesStatusFrame() {
+        val f = SuzukiFrames.status(
+            LocalTime.of(13, 7, 59), signalBars = 0,
+            mode = SuzukiFrames.Checksum.INVERTED, layout = ClusterModel.StatusLayout.A,
+        )
+        assertEquals(
+            "A5 33 31 4E FF FF FF 30 30 31 30 37 35 39 4E 4E FF FF FF FF FF FF FF FF FF FF FF FF 5A 7F",
+            SuzukiFrames.hex(f),
+        )
+    }
+
+    @Test fun cSeriesEtaLeadingSpace() {
+        val f = SuzukiFrames.navigation(
+            ClusterIcon.TURN_RIGHT.id, DashDistance.fromMeters(356.0, true), "0742PM", DashDistance.fromMeters(2_345.0),
+            etaLeadingSpace = true,
+        )
+        assertEquals(
+            "A5 31 04 FF 30 33 35 30 4D 20 37 34 32 50 4D FF FF FF 30 32 2E 33 4B 31 31 FF FF FF 0D 7F",
+            SuzukiFrames.hex(f),
+        )
     }
 }

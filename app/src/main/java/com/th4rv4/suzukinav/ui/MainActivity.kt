@@ -39,8 +39,8 @@ import com.th4rv4.suzukinav.nav.MapsNavListener
 import com.th4rv4.suzukinav.nav.NavRepository
 import com.th4rv4.suzukinav.nav.NavSnapshot
 import com.th4rv4.suzukinav.protocol.ClusterIcon
+import com.th4rv4.suzukinav.protocol.ClusterModels
 import com.th4rv4.suzukinav.protocol.DashDistance
-import com.th4rv4.suzukinav.protocol.SuzukiFrames
 import com.th4rv4.suzukinav.service.DashService
 import com.th4rv4.suzukinav.util.AppLog
 import com.th4rv4.suzukinav.util.Prefs
@@ -213,7 +213,7 @@ class MainActivity : Activity() {
         val running = DashService.instance != null
         val name = prefs.clusterName
         statusText.text = when (state) {
-            ClusterLink.State.READY -> "Connected · ${SuzukiFrames.modelFor(name)}"
+            ClusterLink.State.READY -> "Connected · ${ClusterModels.fromBleName(name).displayName}"
             ClusterLink.State.CONNECTING -> "Waiting For ${name ?: "Bike"}"
             ClusterLink.State.DISCONNECTED -> if (running) "Not Connected" else "Stopped"
         }
@@ -224,7 +224,7 @@ class MainActivity : Activity() {
             "Google Maps Installed" to mapsInstalled(),
         )
         setupText.text = checks.joinToString("\n") { (label, ok) -> (if (ok) "✓ " else "✗ ") + label } +
-            (name?.let { "\nBike: $it (${prefs.clusterAddress})" } ?: "")
+            (name?.let { "\nBike: ${ClusterModels.fromBleName(it).displayName} · $it (${prefs.clusterAddress})" } ?: "")
         startButton.text = if (running) "Stop" else "Start"
     }
 
@@ -360,7 +360,7 @@ class MainActivity : Activity() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
             val name = result.scanRecord?.deviceName ?: result.device.name ?: return
             val addr = result.device.address
-            if (!SuzukiFrames.looksLikeCluster(name) || found.containsKey(addr)) return
+            if (!ClusterModels.looksLikeCluster(name) || found.containsKey(addr)) return
             found[addr] = name
             main.post { addDeviceButton(addr, name) }
         }
@@ -405,7 +405,7 @@ class MainActivity : Activity() {
         if (deviceList.childCount == 1 && deviceList.getChildAt(0) is TextView && deviceList.getChildAt(0) !is Button) {
             deviceList.removeAllViews()
         }
-        deviceList.addView(button("$name · ${SuzukiFrames.modelFor(name)}") {
+        deviceList.addView(button("$name · ${ClusterModels.fromBleName(name).displayName}") {
             prefs.clusterAddress = addr
             prefs.clusterName = name
             AppLog.d("Scan", "Chose $name ($addr)")
