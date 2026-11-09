@@ -67,8 +67,10 @@ enum class ClusterIcon(val id: Int, val label: String) {
     OFF_RAMP_LEFT(44, "Take Left Ramp"),
     ENTER_ROUNDABOUT(45, "Enter Roundabout"),
 
-    // Roundabout exits, right-hand traffic (counter-clockwise).
-    RAB_CCW_45(46, "Roundabout (RHT) Exit 45°"),
+    // Roundabout exits, right-hand traffic (counter-clockwise). Sent as
+    // selected by the Traffic Side setting. Not every dash draws them: on
+    // the Gixxer SF 250, 46 is a "!" warning and 47 to 64 are blank.
+    RAB_CCW_45(46, "Roundabout (RHT) Exit 45° / Warning (!)"),
     RAB_CCW_90(47, "Roundabout (RHT) Exit 90° (Right)"),
     RAB_CCW_135(48, "Roundabout (RHT) Exit 135°"),
     RAB_CCW_180(49, "Roundabout (RHT) Exit 180° (Straight)"),
@@ -82,7 +84,8 @@ enum class ClusterIcon(val id: Int, val label: String) {
 
         /**
          * Shown by the Suzuki app instead of the turn arrow whenever the nav
-         * status is not 1, 3 or 5 (GPS lost, no network, ...).
+         * status is not 1, 3 or 5 (GPS lost, no network, ...). Drawn as a
+         * "!" on the Gixxer SF 250.
          */
         const val STATUS_PLACEHOLDER = 46
 

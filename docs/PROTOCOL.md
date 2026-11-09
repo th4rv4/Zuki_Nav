@@ -186,3 +186,21 @@ Other per-model rules in `d2`:
 - e-ACCESS, Access TFT, Burgman Street TFT, Access, and any `SBS51` cluster:
   Mappls 74 (off-ramp left) maps to cluster 38 instead of 44, and Mappls 58
   (first right-hand-traffic roundabout exit) to 44 instead of 46 (`d2.C()`).
+
+## Verified behaviour: Gixxer SF 250
+
+Cluster `SBM21`:
+
+- Service `fff0`; write `fff1` (write with response); notify `fff2`.
+  Negotiated MTU 65.
+- A nav frame with 350 m, ETA 09:00 PM and 12.3 km shows on the bottom
+  line as `350m ETA 9:00Pm 12.3K`, and the dash adds the colon to the ETA
+  itself.
+- The status frame lights the signal-bar, Bluetooth and navigation icons
+  and sets the clock.
+- Icon 43 is a ferry. Icon 46 is a "!" (the warning placeholder).
+  Icons 47 to 64 are not drawn, including the right-hand-traffic
+  roundabouts (47–52).
+- Switching the ignition off ends the link with status 19.
+- The cluster sends a `'7'` frame every 5 s; bytes 2–4 are the road speed
+  in km/h as three ASCII digits. The remaining fields are not decoded.

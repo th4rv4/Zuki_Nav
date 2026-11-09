@@ -65,4 +65,12 @@ class ClusterModelTest {
         assertEquals(SuzukiFrames.Checksum.SUM, m(null).checksum)
         assertFalse(ClusterModels.looksLikeCluster("Galaxy Buds"))
     }
+
+    /** Icon IDs pass through unchanged; whether a dash draws them is model-specific. */
+    @Test fun rightHandTrafficIconsAreSentAsIs() {
+        val sf = m("SBM21ABCDEFG")
+        assertEquals(ClusterIcon.RAB_CCW_90.id, sf.adjustIcon(ClusterIcon.RAB_CCW_90.id))
+        assertEquals(ClusterIcon.RAB_CCW_45.id, sf.adjustIcon(ClusterIcon.RAB_CCW_45.id))
+        assertEquals(ClusterIcon.FERRY.id, sf.adjustIcon(ClusterIcon.FERRY.id))
+    }
 }

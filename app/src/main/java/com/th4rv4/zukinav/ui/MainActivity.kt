@@ -189,8 +189,11 @@ class MainActivity : Activity() {
             addView(card("ICON TEST", testLabel,
                 row(button("Prev") { stepTest(-1) }, button("Send") { DashService.testIcon(testId) }, button("Next") { stepTest(1) }),
                 row(button("Cycle All") { cycleAll() }, button("Stop Cycle") { cycling = false }),
-                text("Shows an icon on the dash for 8 s with 350 m / 12.3 km. Use it to check what each icon ID looks like on your bike.", 12f, 0xFF8A93A6.toInt())))
-            addView(card("SETTINGS", riderName, speed, lht, auto))
+                text("Shows an icon on the dash for 8 s with 350 m / 12.3 km. Use it to check what each icon ID looks like on your bike.", 12f, 0xFF8A93A6.toInt()),
+                text(ICON_WARNING, 12f, 0xFFFFC966.toInt())))
+            addView(card("SETTINGS", riderName, speed, lht,
+                text("Right-hand traffic uses roundabout icons 47 and up, which some dashes (e.g. Gixxer SF 250) leave blank.", 12f, 0xFFFFC966.toInt()),
+                auto))
             addView(card("LOG", row(button("Copy Log") { copyLog() }, button("Reload Maps Arrows") { reloadArrows() }), logText))
         }
         updateTestLabel()
@@ -198,6 +201,15 @@ class MainActivity : Activity() {
             setBackgroundColor(0xFF0E1116.toInt())
             addView(content)
         }
+    }
+
+    private companion object {
+        /** Highest ID the Icon Test cycles to. */
+        const val LAST_TEST_ICON = 64
+
+        const val ICON_WARNING =
+            "Some icons may not show on your dash. Icons 47 to 64 differ between left- and right-hand " +
+                "traffic and between Suzuki models: on a Gixxer SF 250, 46 is a \"!\" and 47 to 64 are blank."
     }
 
     private fun simpleWatcher(onChange: (String) -> Unit) = object : TextWatcher {
@@ -251,7 +263,7 @@ class MainActivity : Activity() {
     }
 
     private fun stepTest(d: Int) {
-        testId = ((testId - 1 + d + 64) % 64) + 1
+        testId = ((testId - 1 + d + LAST_TEST_ICON) % LAST_TEST_ICON) + 1
         updateTestLabel()
     }
 
@@ -264,7 +276,7 @@ class MainActivity : Activity() {
         testId = 1
         val r = object : Runnable {
             override fun run() {
-                if (!cycling || testId > 63) { cycling = false; return }
+                if (!cycling || testId > LAST_TEST_ICON) { cycling = false; return }
                 updateTestLabel()
                 DashService.testIcon(testId)
                 testId++

@@ -81,6 +81,11 @@ This approach, and the Maps notification layouts, follow
 5. Start a route in Google Maps.
 
 Use **Icon Test → Cycle All** once to check every icon ID on your dash.
+
+> **Some icons may not show.** Icons 47 to 64 depend on the traffic side
+> (right-hand-traffic roundabouts are 47–52) and on the Suzuki model. On a
+> Gixxer SF 250, icon 46 is a "!" and 47 to 64 are blank. The app sends the
+> icon the Traffic Side setting asks for either way.
 Some IDs in `ClusterIcon` are marked unverified because nothing in the Suzuki
 app uses them.
 
