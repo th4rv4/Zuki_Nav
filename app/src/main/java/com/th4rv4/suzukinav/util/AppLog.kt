@@ -1,4 +1,4 @@
-package com.th4rv4.gixxernav.util
+package com.th4rv4.suzukinav.util
 
 import android.os.Handler
 import android.os.Looper
@@ -8,7 +8,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
 
-/** In-memory log shown on the main screen, mirrored to logcat under "GixxerNav". */
+/** In-memory log shown on the main screen, mirrored to logcat under "SuzukiNav". */
 object AppLog {
 
     private const val MAX = 400
@@ -18,7 +18,7 @@ object AppLog {
     private val fmt = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
 
     fun d(tag: String, msg: String) {
-        Log.d("GixxerNav", "[$tag] $msg")
+        Log.d("SuzukiNav", "[$tag] $msg")
         val line = "${synchronized(fmt) { fmt.format(Date()) }} [$tag] $msg"
         synchronized(lines) {
             lines.addLast(line)

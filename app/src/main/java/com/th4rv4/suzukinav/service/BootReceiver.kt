@@ -1,9 +1,9 @@
-package com.th4rv4.gixxernav.service
+package com.th4rv4.suzukinav.service
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.th4rv4.gixxernav.util.Prefs
+import com.th4rv4.suzukinav.util.Prefs
 
 /** Restarts the dash link after a reboot if a cluster is paired and auto-connect is on. */
 class BootReceiver : BroadcastReceiver() {

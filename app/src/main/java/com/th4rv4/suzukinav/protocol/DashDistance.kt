@@ -1,4 +1,4 @@
-package com.th4rv4.gixxernav.protocol
+package com.th4rv4.suzukinav.protocol
 
 import java.math.BigDecimal
 import java.math.RoundingMode

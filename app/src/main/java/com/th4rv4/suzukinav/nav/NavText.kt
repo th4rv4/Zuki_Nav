@@ -1,6 +1,6 @@
-package com.th4rv4.gixxernav.nav
+package com.th4rv4.suzukinav.nav
 
-import com.th4rv4.gixxernav.protocol.ClusterIcon
+import com.th4rv4.suzukinav.protocol.ClusterIcon
 import java.time.LocalTime
 
 /**

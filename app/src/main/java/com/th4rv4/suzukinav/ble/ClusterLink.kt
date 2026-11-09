@@ -1,4 +1,4 @@
-package com.th4rv4.gixxernav.ble
+package com.th4rv4.suzukinav.ble
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
@@ -13,8 +13,8 @@ import android.content.Context
 import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
-import com.th4rv4.gixxernav.protocol.SuzukiFrames
-import com.th4rv4.gixxernav.util.AppLog
+import com.th4rv4.suzukinav.protocol.SuzukiFrames
+import com.th4rv4.suzukinav.util.AppLog
 import java.util.UUID
 
 /**

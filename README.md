@@ -1,4 +1,4 @@
-# Gixxer Nav
+# Suzuki Nav
 
 Google Maps turn-by-turn directions on the Suzuki Ride Connect dash
 (Gixxer 250 / SF 250 and other Suzuki Ride Connect clusters), over Bluetooth LE.
@@ -33,7 +33,7 @@ This approach, and the Maps notification layouts, follow
 ## Setup
 
 1. Build and install (below).
-2. Open Gixxer Nav, tap **Permissions**, then **Notification Access** and enable it.
+2. Open Suzuki Nav, tap **Permissions**, then **Notification Access** and enable it.
 3. Force-stop Suzuki Ride Connect. The cluster accepts one phone at a time.
 4. Ignition on, tap **Scan For Bike**, pick the `SBM21…` entry.
 5. Start a route in Google Maps.

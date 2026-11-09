@@ -16,11 +16,11 @@ val localProps = Properties().apply {
 }
 
 android {
-    namespace = "com.th4rv4.gixxernav"
+    namespace = "com.th4rv4.suzukinav"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.th4rv4.gixxernav"
+        applicationId = "com.th4rv4.suzukinav"
         minSdk = 29
         targetSdk = 35
         versionCode = 1

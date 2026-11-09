@@ -1,4 +1,4 @@
-package com.th4rv4.gixxernav.service
+package com.th4rv4.suzukinav.service
 
 import android.Manifest
 import android.app.Notification
@@ -15,16 +15,16 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.text.format.DateFormat
-import com.th4rv4.gixxernav.R
-import com.th4rv4.gixxernav.ble.ClusterLink
-import com.th4rv4.gixxernav.nav.NavRepository
-import com.th4rv4.gixxernav.nav.NavSnapshot
-import com.th4rv4.gixxernav.protocol.ClusterIcon
-import com.th4rv4.gixxernav.protocol.DashDistance
-import com.th4rv4.gixxernav.protocol.SuzukiFrames
-import com.th4rv4.gixxernav.ui.MainActivity
-import com.th4rv4.gixxernav.util.AppLog
-import com.th4rv4.gixxernav.util.Prefs
+import com.th4rv4.suzukinav.R
+import com.th4rv4.suzukinav.ble.ClusterLink
+import com.th4rv4.suzukinav.nav.NavRepository
+import com.th4rv4.suzukinav.nav.NavSnapshot
+import com.th4rv4.suzukinav.protocol.ClusterIcon
+import com.th4rv4.suzukinav.protocol.DashDistance
+import com.th4rv4.suzukinav.protocol.SuzukiFrames
+import com.th4rv4.suzukinav.ui.MainActivity
+import com.th4rv4.suzukinav.util.AppLog
+import com.th4rv4.suzukinav.util.Prefs
 import java.time.LocalTime
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -256,7 +256,7 @@ class DashService : Service(), ClusterLink.Listener {
     companion object {
         private const val CHANNEL = "dash_link"
         private const val NOTIF_ID = 17
-        const val ACTION_STOP = "com.th4rv4.gixxernav.STOP"
+        const val ACTION_STOP = "com.th4rv4.suzukinav.STOP"
 
         @Volatile var instance: DashService? = null
             private set
