@@ -16,6 +16,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.text.format.DateFormat
 import com.th4rv4.zukinav.R
+import com.th4rv4.zukinav.alerts.Alert
 import com.th4rv4.zukinav.ble.ClusterLink
 import com.th4rv4.zukinav.nav.NavRepository
 import com.th4rv4.zukinav.nav.NavSnapshot
@@ -53,6 +54,9 @@ class DashService : Service(), ClusterLink.Listener {
     private var retries = 0
     private var lastNavHex: String? = null
     private var statusLogged = false
+    /** Status frames still to send with the "clear" flags set. */
+    private var clearSmsLeft = 0
+    private var clearMissedLeft = 0
 
     /** A direct connect that hangs is abandoned after this and retried. */
     private val connectTimeout = Runnable {
@@ -182,8 +186,12 @@ class DashService : Service(), ClusterLink.Listener {
 
         if (tick % 10 == 0 && model.statusLayout != ClusterModel.StatusLayout.NONE) {
             val status = SuzukiFrames.status(
-                LocalTime.now(), speedAlertKmh = prefs.speedAlertKmh, mode = mode, layout = model.statusLayout,
+                LocalTime.now(), speedAlertKmh = prefs.speedAlertKmh,
+                clearSms = clearSmsLeft > 0, clearMissedCall = clearMissedLeft > 0,
+                mode = mode, layout = model.statusLayout,
             )
+            if (clearSmsLeft > 0) clearSmsLeft--
+            if (clearMissedLeft > 0) clearMissedLeft--
             if (!statusLogged) {
                 AppLog.d("Dash", "-> ${SuzukiFrames.hex(status)} (status, every 2 s)")
                 statusLogged = true
@@ -229,6 +237,25 @@ class DashService : Service(), ClusterLink.Listener {
             )
             endFramesLeft--
         }
+    }
+
+    /** Sends a call or message alert 3 times, 200 ms apart, as Ride Connect does. */
+    private fun showAlert(alert: Alert) {
+        if (link.state != ClusterLink.State.READY) {
+            AppLog.d("Dash", "Not connected, alert dropped")
+            return
+        }
+        val mode = ClusterModels.fromBleName(link.deviceName ?: prefs.clusterName).checksum
+        val frame = when (alert) {
+            is Alert.Ringing -> SuzukiFrames.call(alert.caller, ringing = true, whatsapp = alert.whatsapp, mode = mode)
+            is Alert.Answered -> SuzukiFrames.call(alert.caller, ringing = false, whatsapp = alert.whatsapp, mode = mode)
+            is Alert.Missed -> SuzukiFrames.missedCall(alert.caller, alert.count, alert.whatsapp, mode)
+            is Alert.Message -> SuzukiFrames.message(alert.sender, alert.count, alert.whatsapp, mode)
+            Alert.ClearMissed -> { clearMissedLeft = CLEAR_REPEATS; null }
+            Alert.ClearMessages -> { clearSmsLeft = CLEAR_REPEATS; null }
+        } ?: return
+        AppLog.d("Dash", "-> ${SuzukiFrames.hex(frame)} (alert)")
+        repeat(3) { i -> main.postDelayed({ link.send(frame) }, i * 200L) }
     }
 
     private fun navFrame(nav: NavSnapshot, model: ClusterModel): ByteArray =
@@ -302,6 +329,7 @@ class DashService : Service(), ClusterLink.Listener {
         private const val CHANNEL = "dash_link"
         private const val NOTIF_ID = 17
         private const val CONNECT_TIMEOUT_MS = 20_000L
+        private const val CLEAR_REPEATS = 3
         const val ACTION_STOP = "com.th4rv4.zukinav.STOP"
 
         @Volatile var instance: DashService? = null
@@ -325,6 +353,12 @@ class DashService : Service(), ClusterLink.Listener {
 
         fun stop(ctx: Context) {
             ctx.startService(Intent(ctx, DashService::class.java).setAction(ACTION_STOP))
+        }
+
+        /** Shows a call or message alert on the dash, if it is connected. */
+        fun sendAlert(alert: Alert) {
+            val s = instance ?: return
+            s.main.post { s.showAlert(alert) }
         }
 
         /** Shows [iconId] on the dash for 8 s with dummy distances, to check the icon table. */

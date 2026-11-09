@@ -94,4 +94,20 @@ class SuzukiFramesTest {
             SuzukiFrames.hex(f),
         )
     }
+
+    // Expected bytes from Suzuki Ride Connect's own frame code.
+    @Test fun callFrames() {
+        assertEquals(
+            "A5 32 4D 6F 6D 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 4E 31 FF FF FF FF D6 7F",
+            SuzukiFrames.hex(SuzukiFrames.call("Mom", ringing = true)),
+        )
+        assertEquals(
+            "A5 34 FF 02 4D 6F 6D 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 4E FF FF FF A9 7F",
+            SuzukiFrames.hex(SuzukiFrames.missedCall("Mom", 2)),
+        )
+        assertEquals(
+            "A5 35 FF 4E 03 4D 6F 6D 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 57 FF FF 03 7F",
+            SuzukiFrames.hex(SuzukiFrames.message("Mom", 3, whatsapp = true)),
+        )
+    }
 }

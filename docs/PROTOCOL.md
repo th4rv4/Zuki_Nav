@@ -110,9 +110,39 @@ Nav sends no status frame to them.
 ```
 [2..21]  caller name/number, NUL padded, '+' removed
 [22]     'N' phone, 'W' WhatsApp
-[23]     '1' ringing, '2' ended
+[23]     '1' ringing, '2' answered
 [24..27] 0xFF
 ```
+
+Sent when the phone starts ringing ('1') and again when the call is
+answered ('2').
+
+### `'4'` missed call
+
+```
+[2]      0xFF
+[3]      number of missed calls
+[4..23]  caller name/number, NUL padded, '+' removed
+[24]     'N' phone, 'W' WhatsApp
+[25..27] 0xFF
+```
+
+Sent when a call stops ringing without being answered.
+
+### `'5'` message
+
+```
+[2]      0xFF
+[3]      'N'
+[4]      number of unread messages
+[5..24]  sender name/number, NUL padded, '+' removed
+[25]     'N' SMS, 'W' WhatsApp
+[26..27] 0xFF
+```
+
+Call and message frames are each sent 3 times, 200 ms apart. The dash
+keeps a missed-call and a message indicator lit until a status frame
+arrives with byte 14 (messages) or 15 (missed calls) set to `'Y'`.
 
 ## Turn icons
 

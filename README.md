@@ -57,6 +57,15 @@ especially results from **Icon Test → Cycle All**.
 - Turn arrow, distance to the turn, ETA and remaining distance, every 200 ms
 - Clock (and optional speed-alert limit) every 2 s, where the model takes it
 - Rider name on connect
+- Incoming, answered and missed calls (phone and WhatsApp), with the
+  caller's name
+- New WhatsApp and SMS messages, with the sender's name and unread count
+
+Calls and messages are read from the phone's notifications, through the
+same Notification Access that reads Google Maps; no extra permission is
+needed. When you clear the missed-call or message notifications on the
+phone, the dash clears its indicators too. Both can be turned off in
+Settings.
 
 ## How the turn arrow is chosen
 
@@ -94,8 +103,8 @@ This approach, and the Maps notification layouts, follow
 - **Dash Test**: show any turn icon on the dash, mark it **Looks Right** or
   **Looks Wrong** (the next icon follows automatically), see progress for
   all 64 icons, and **Share Results**.
-- **Settings**: rider name, speed alert, traffic side, Auto-Connect, Start
-  On Boot, Change Bike, and the log.
+- **Settings**: rider name, speed alert, call and message alerts, traffic
+  side, Auto-Connect, Start On Boot, Change Bike, and the log.
 
 Run **Dash Test → Cycle All** once to check every icon on your dash.
 

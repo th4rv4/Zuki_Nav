@@ -234,5 +234,46 @@ object SuzukiFrames {
         return seal(f, mode)
     }
 
+    /**
+     * Missed call frame ("?4").
+     *
+     *   [2]      0xFF
+     *   [3]      number of missed calls (raw byte)
+     *   [4..23]  caller name or number, ASCII, NUL padded ('+' removed)
+     *   [24]     'N' phone call, 'W' WhatsApp call
+     *   [25..27] 0xFF
+     */
+    fun missedCall(caller: String, count: Int, whatsapp: Boolean = false, mode: Checksum = Checksum.SUM): ByteArray {
+        val f = newFrame('4')
+        f[2] = FF
+        f[3] = count.coerceIn(0, 255).toByte()
+        f.putAscii(4, asciiOnly(caller.replace("+", "")).take(20))
+        f[24] = (if (whatsapp) 'W' else 'N').code.toByte()
+        f.fill(25, 27, FF)
+        return seal(f, mode)
+    }
+
+    /**
+     * Message frame ("?5"): SMS or WhatsApp.
+     *
+     *   [2]      0xFF
+     *   [3]      'N' for a new message
+     *   [4]      number of unread messages of this kind (raw byte)
+     *   [5..24]  sender, ASCII, NUL padded
+     *   [25]     'N' SMS, 'W' WhatsApp
+     *   [26..27] 0xFF
+     */
+    fun message(sender: String, count: Int, whatsapp: Boolean = false, mode: Checksum = Checksum.SUM): ByteArray {
+        val f = newFrame('5')
+        f[2] = FF
+        f[3] = 'N'.code.toByte()
+        f[4] = count.coerceIn(0, 255).toByte()
+        f.putAscii(5, asciiOnly(sender.replace("+", "")).take(20))
+        f[25] = (if (whatsapp) 'W' else 'N').code.toByte()
+        f[26] = FF
+        f[27] = FF
+        return seal(f, mode)
+    }
+
     fun hex(frame: ByteArray): String = frame.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) }
 }

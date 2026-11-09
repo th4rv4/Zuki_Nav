@@ -1,18 +1,27 @@
 package com.th4rv4.zukinav.nav
 
 import android.app.Notification
+import android.app.Person
+import android.os.Handler
+import android.os.Looper
+import android.provider.Telephony
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import com.th4rv4.zukinav.alerts.Alert
+import com.th4rv4.zukinav.alerts.AlertTracker
+import com.th4rv4.zukinav.alerts.Notice
 import com.th4rv4.zukinav.protocol.ClusterIcon
+import com.th4rv4.zukinav.service.DashService
 import com.th4rv4.zukinav.util.AppLog
 import com.th4rv4.zukinav.util.Prefs
 import java.time.LocalTime
 
 /**
  * Reads Google Maps' turn-by-turn notification and publishes it to
- * [NavRepository]. The user grants access once under
+ * [NavRepository], and passes call and message notifications on to the dash
+ * as alerts. The user grants access once under
  * Settings > Notifications > Device & app notifications / Notification access.
  */
 class MapsNavListener : NotificationListenerService() {
@@ -25,6 +34,17 @@ class MapsNavListener : NotificationListenerService() {
     private var lastRemaining: Double? = null
     /** Same arrow bitmap -> same answer; Maps reposts the notification every second or so. */
     private val arrowCache = HashMap<Int, ClusterIcon>()
+
+    private val main = Handler(Looper.getMainLooper())
+    private val alerts = AlertTracker(defaultSmsPackage = {
+        try { Telephony.Sms.getDefaultSmsPackage(this) } catch (_: Exception) { null }
+    })
+    private val alertTick = object : Runnable {
+        override fun run() {
+            deliver(alerts.tick(System.currentTimeMillis()))
+            if (alerts.hasPending) main.postDelayed(this, 500)
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -41,7 +61,9 @@ class MapsNavListener : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        if (isMapsGuidance(sbn)) handle(sbn)
+        if (isMapsGuidance(sbn)) handle(sbn) else if (sbn.packageName != packageName) {
+            deliver(alerts.posted(notice(sbn), System.currentTimeMillis()))
+        }
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
@@ -50,6 +72,54 @@ class MapsNavListener : NotificationListenerService() {
             lastEta = null
             lastRemaining = null
             NavRepository.scheduleEnd()
+        } else if (sbn.packageName != packageName) {
+            deliver(alerts.removed(notice(sbn), System.currentTimeMillis()))
+        }
+    }
+
+    override fun onDestroy() {
+        main.removeCallbacksAndMessages(null)
+        super.onDestroy()
+    }
+
+    // ---- calls and messages ----------------------------------------------
+
+    private fun notice(sbn: StatusBarNotification): Notice {
+        val n = sbn.notification
+        val e = n.extras
+        val person = callPerson(e)
+        return Notice(
+            key = sbn.key,
+            pkg = sbn.packageName,
+            category = n.category,
+            callType = e.getInt(EXTRA_CALL_TYPE, 0),
+            callPerson = person?.name?.toString(),
+            title = e.getCharSequence(Notification.EXTRA_TITLE)?.toString(),
+            text = e.getCharSequence(Notification.EXTRA_TEXT)?.toString(),
+            ongoing = sbn.isOngoing,
+            groupSummary = (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0,
+        )
+    }
+
+    @Suppress("DEPRECATION")
+    private fun callPerson(e: android.os.Bundle): Person? = try {
+        if (android.os.Build.VERSION.SDK_INT >= 33) e.getParcelable(EXTRA_CALL_PERSON, Person::class.java)
+        else e.getParcelable(EXTRA_CALL_PERSON) as? Person
+    } catch (_: Exception) { null }
+
+    private fun deliver(list: List<Alert>) {
+        if (alerts.hasPending) {
+            main.removeCallbacks(alertTick)
+            main.postDelayed(alertTick, 500)
+        }
+        for (a in list) {
+            val wanted = when (a) {
+                is Alert.Ringing, is Alert.Answered, is Alert.Missed, Alert.ClearMissed -> prefs.callAlerts
+                is Alert.Message, Alert.ClearMessages -> prefs.messageAlerts
+            }
+            if (!wanted) continue
+            AppLog.d("Alert", a.toString())
+            DashService.sendAlert(a)
         }
     }
 
@@ -202,5 +272,9 @@ class MapsNavListener : NotificationListenerService() {
 
         /** Notification.ProgressStyle points (Android 16). */
         const val EXTRA_PROGRESS_POINTS = "android.progressPoints"
+
+        /** Notification.CallStyle (Android 12). */
+        const val EXTRA_CALL_TYPE = "android.callType"
+        const val EXTRA_CALL_PERSON = "android.callPerson"
     }
 }

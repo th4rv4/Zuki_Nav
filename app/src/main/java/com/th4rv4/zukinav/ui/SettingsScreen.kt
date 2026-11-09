@@ -24,6 +24,12 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
                 ui.input(prefs.speedAlertKmh.takeIf { it > 0 }?.toString() ?: "", "Off", numeric = true) {
                     prefs.speedAlertKmh = it.toIntOrNull()?.coerceIn(0, 999) ?: 0
                 }),
+            ui.switchRow("Call Alerts", "Incoming and missed calls, phone and WhatsApp", prefs.callAlerts) {
+                prefs.callAlerts = it
+            },
+            ui.switchRow("Message Alerts", "New WhatsApp and SMS messages", prefs.messageAlerts) {
+                prefs.messageAlerts = it
+            },
             ui.row("Traffic Side", "Decides roundabout and U-turn icons",
                 ui.segmented("Left", "Right", if (prefs.leftHandTraffic) 0 else 1) { prefs.leftHandTraffic = it == 0 }),
         )

@@ -35,6 +35,16 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_AUTO, true)
         set(v) = sp.edit().putBoolean(K_AUTO, v).apply()
 
+    /** Show incoming and missed calls on the dash. */
+    var callAlerts: Boolean
+        get() = sp.getBoolean(K_CALLS, true)
+        set(v) = sp.edit().putBoolean(K_CALLS, v).apply()
+
+    /** Show new WhatsApp and SMS messages on the dash. */
+    var messageAlerts: Boolean
+        get() = sp.getBoolean(K_MSGS, true)
+        set(v) = sp.edit().putBoolean(K_MSGS, v).apply()
+
     /** Start the dash link when the phone boots. */
     var startOnBoot: Boolean
         get() = sp.getBoolean(K_BOOT, true)
@@ -64,5 +74,7 @@ class Prefs(context: Context) {
         const val K_SEEN = "seen_clusters"
         const val K_BOOT = "start_on_boot"
         const val K_MARKS = "icon_marks"
+        const val K_CALLS = "call_alerts"
+        const val K_MSGS = "message_alerts"
     }
 }
