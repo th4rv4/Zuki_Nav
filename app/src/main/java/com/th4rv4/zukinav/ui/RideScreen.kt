@@ -13,6 +13,7 @@ import com.th4rv4.zukinav.R
 import com.th4rv4.zukinav.ble.ClusterLink
 import com.th4rv4.zukinav.nav.NavRepository
 import com.th4rv4.zukinav.nav.NavSnapshot
+import com.th4rv4.zukinav.protocol.BikeData
 import com.th4rv4.zukinav.protocol.ClusterModels
 import com.th4rv4.zukinav.service.DashService
 import java.time.LocalTime
@@ -25,6 +26,16 @@ class RideScreen(host: MainActivity) : Screen(host) {
     private val bikeName = ui.text("", 16f, Palette.TEXT, Ui.Weight.MEDIUM)
     private val bikeDetail = ui.text("", 12f, Palette.MUTED)
     private val statusSlot = FrameLayout(host.ui.ctx)
+
+    private val fuelLabel = ui.text("FUEL", 11f, Palette.MUTED, Ui.Weight.BOLD).apply { letterSpacing = 0.08f }
+    private val fuelBars = LinearLayout(host.ui.ctx).apply { orientation = LinearLayout.HORIZONTAL }
+    private val fuelText = ui.text("", 12f, Palette.MUTED)
+    private val odoValue = statValue()
+    private val tripAValue = statValue()
+    private val tripBValue = statValue()
+    private val syncText = ui.text("", 12f, Palette.MUTED)
+    private val bikeData: LinearLayout
+    private val bikeDataHint = ui.text("Turn the ignition on once to see fuel, ODO and trip meters here.", 13f, Palette.MUTED)
 
     private val arrowImage: ImageView = ui.icon(R.drawable.ic_turn_straight, 56, android.graphics.Color.WHITE, "Next Turn")
     private val distance = ui.text("", 40f, Palette.TEXT, Ui.Weight.BOLD)
@@ -67,16 +78,28 @@ class RideScreen(host: MainActivity) : Screen(host) {
             addView(settingsButton, LinearLayout.LayoutParams(ui.dp(44), ui.dp(44)))
         }
 
-        val bikeCard = LinearLayout(ui.ctx).apply {
+        val bikeRow = LinearLayout(ui.ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            background = ui.rounded(Palette.SURFACE, 20, Palette.BORDER)
-            setPadding(ui.dp(16), ui.dp(16), ui.dp(16), ui.dp(16))
             addView(ui.iconTile(R.drawable.ic_bike, 48, 26, Palette.ACCENT_SOFT, 0xFF1B2433.toInt(), 14),
                 LinearLayout.LayoutParams(ui.dp(48), ui.dp(48)).apply { marginEnd = ui.dp(14) })
             addView(ui.vstack(3, bikeName, bikeDetail), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             addView(statusSlot, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = ui.dp(8) })
         }
+        for (i in 0 until BikeData.MAX_FUEL_BARS) {
+            fuelBars.addView(View(ui.ctx), LinearLayout.LayoutParams(0, ui.dp(10), 1f).apply {
+                if (i > 0) marginStart = ui.dp(4)
+            })
+        }
+        bikeData = ui.vstack(
+            8,
+            fuelLabel,
+            fuelBars,
+            fuelText,
+            ui.hstack(8, stat("ODO", odoValue), stat("Trip A", tripAValue), stat("Trip B", tripBValue), weighted = true),
+            syncText,
+        )
+        val bikeCard = ui.card(bikeRow, bikeData, bikeDataHint, gapDp = 14)
 
         val arrowTile = LinearLayout(ui.ctx).apply {
             gravity = Gravity.CENTER
@@ -193,6 +216,8 @@ class RideScreen(host: MainActivity) : Screen(host) {
         }
         modelValue.text = if (name == null) "-" else model.displayName
 
+        renderBikeData(name != null)
+
         if (running) {
             linkButton.text = "Disconnect"
             linkButton.background = ui.pressable(Palette.DANGER_BG, 16, Palette.DANGER_BORDER)
@@ -201,6 +226,58 @@ class RideScreen(host: MainActivity) : Screen(host) {
             linkButton.text = "Connect"
             linkButton.background = ui.pressable(Palette.ACCENT, 16)
             linkButton.setTextColor(android.graphics.Color.WHITE)
+        }
+    }
+
+    /** Live readings while connected, otherwise the last ones received. */
+    private fun renderBikeData(paired: Boolean) {
+        val live = DashService.liveBike
+        val data = live ?: prefs.lastBike
+        bikeData.visibility = if (data != null) View.VISIBLE else View.GONE
+        bikeDataHint.visibility = if (data == null && paired) View.VISIBLE else View.GONE
+        if (data == null) return
+
+        val battery = data.batteryPercent
+        val filled = if (battery != null) {
+            (battery * BikeData.MAX_FUEL_BARS + 50) / 100
+        } else {
+            data.fuelBars ?: 0
+        }
+        fuelLabel.text = if (battery != null) "BATTERY" else "FUEL"
+        val low = filled <= 1
+        for (i in 0 until fuelBars.childCount) {
+            fuelBars.getChildAt(i).background = ui.rounded(
+                when {
+                    i >= filled -> Palette.INSET
+                    low -> Palette.WARN
+                    else -> Palette.ACCENT
+                },
+                3,
+                if (i >= filled) Palette.BORDER else null,
+            )
+        }
+        fuelText.text = when {
+            battery != null -> "$battery%"
+            filled == 0 -> "Empty, refuel soon"
+            else -> "$filled of ${BikeData.MAX_FUEL_BARS} bars" + if (low) ", refuel soon" else ""
+        }
+        fuelText.setTextColor(if (low) Palette.WARN else Palette.MUTED)
+        odoValue.text = String.format(Locale.US, "%,d km", data.odoKm)
+        tripAValue.text = String.format(Locale.US, "%.1f km", data.tripAKm)
+        tripBValue.text = String.format(Locale.US, "%.1f km", data.tripBKm)
+        syncText.text = if (live != null) "Live from the dash" else "Last synced ${formatWhen(prefs.lastBikeAt)}"
+        syncText.setTextColor(if (live != null) Palette.OK else Palette.MUTED)
+    }
+
+    private fun formatWhen(ms: Long): String {
+        if (ms <= 0) return "-"
+        val t = java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.systemDefault())
+        val today = java.time.LocalDate.now()
+        val time = formatTime(t.toLocalTime())
+        return when (t.toLocalDate()) {
+            today -> "today, $time"
+            today.minusDays(1) -> "yesterday, $time"
+            else -> t.format(DateTimeFormatter.ofPattern("d MMM", Locale.US)) + ", $time"
         }
     }
 

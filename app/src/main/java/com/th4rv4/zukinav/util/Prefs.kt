@@ -2,6 +2,7 @@ package com.th4rv4.zukinav.util
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.th4rv4.zukinav.protocol.BikeData
 
 /** All user settings, in one SharedPreferences file. */
 class Prefs(context: Context) {
@@ -59,6 +60,16 @@ class Prefs(context: Context) {
         get() = sp.getLong(K_UPDATE_LAST, 0)
         set(v) = sp.edit().putLong(K_UPDATE_LAST, v).apply()
 
+    /** Last fuel, ODO and trip readings from the dash, kept after the ignition is off. */
+    var lastBike: BikeData?
+        get() = BikeData.decode(sp.getString(K_BIKE, null))
+        set(v) = sp.edit().putString(K_BIKE, v?.encode()).apply()
+
+    /** When [lastBike] was received, in ms. */
+    var lastBikeAt: Long
+        get() = sp.getLong(K_BIKE_AT, 0)
+        set(v) = sp.edit().putLong(K_BIKE_AT, v).apply()
+
     /** Dash Test results. */
     var iconMarks: IconMarks
         get() = IconMarks.decode(sp.getString(K_MARKS, null))
@@ -84,6 +95,8 @@ class Prefs(context: Context) {
         const val K_BOOT = "start_on_boot"
         const val K_MARKS = "icon_marks"
         const val K_CALLS = "call_alerts"
+        const val K_BIKE = "last_bike"
+        const val K_BIKE_AT = "last_bike_at"
         const val K_UPDATE_AUTO = "update_check_on_launch"
         const val K_UPDATE_LAST = "update_last_check"
         const val K_MSGS = "message_alerts"

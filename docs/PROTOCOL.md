@@ -144,6 +144,22 @@ Call and message frames are each sent 3 times, 200 ms apart. The dash
 keeps a missed-call and a message indicator lit until a status frame
 arrives with byte 14 (messages) or 15 (missed calls) set to `'Y'`.
 
+### `'7'` bike data (from the dash)
+
+The dash sends this on its own every 5 s while connected.
+
+```
+[2..4]   road speed, km/h, ASCII digits
+[5..10]  odometer, km, ASCII digits
+[11..16] Trip A, 0.1 km, ASCII digits ("000748" = 74.8 km)
+[17..22] Trip B, 0.1 km, ASCII digits
+[23]     'N' (unknown)
+[24]     fuel gauge bars '0'..'6'; e-ACCESS: battery % + 64
+[25..27] fuel economy, a 24-bit value (decoded differently per model)
+```
+
+Checked against the usual sum checksum.
+
 ## Turn icons
 
 `d2.C()` turns Mappls maneuver IDs into cluster IDs. The meaning of each
@@ -235,5 +251,6 @@ Cluster `SBM21`:
   Icons 47 to 64 are not drawn, including the right-hand-traffic
   roundabouts (47–52).
 - Switching the ignition off ends the link with status 19.
-- The cluster sends a `'7'` frame every 5 s; bytes 2–4 are the road speed
-  in km/h as three ASCII digits. The remaining fields are not decoded.
+- The cluster sends a `'7'` frame every 5 s (see above). ODO, both trip
+  meters and the fuel bars match the dash. Bytes 26 and 27 of the fuel
+  economy field stay `FF FF` on this model.

@@ -67,6 +67,12 @@ needed. When you clear the missed-call or message notifications on the
 phone, the dash clears its indicators too. Both can be turned off in
 Settings.
 
+## What it shows from the bike
+
+The dash reports its fuel gauge, ODO and both trip meters every few
+seconds. The Ride tab shows them live, and keeps the last readings (with
+when they were received) after the ignition is off.
+
 ## How the turn arrow is chosen
 
 1. **The Maps arrow itself.** Google Maps ships its arrows as named drawables

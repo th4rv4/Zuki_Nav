@@ -20,6 +20,7 @@ import com.th4rv4.zukinav.alerts.Alert
 import com.th4rv4.zukinav.ble.ClusterLink
 import com.th4rv4.zukinav.nav.NavRepository
 import com.th4rv4.zukinav.nav.NavSnapshot
+import com.th4rv4.zukinav.protocol.BikeData
 import com.th4rv4.zukinav.protocol.ClusterIcon
 import com.th4rv4.zukinav.protocol.ClusterModel
 import com.th4rv4.zukinav.protocol.ClusterModels
@@ -73,6 +74,9 @@ class DashService : Service(), ClusterLink.Listener {
     }
 
     private val navListener: (NavSnapshot?) -> Unit = { updateNotification() }
+
+    /** Latest fuel, ODO and trip readings from the dash, while connected. */
+    @Volatile private var bike: BikeData? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -141,6 +145,7 @@ class DashService : Service(), ClusterLink.Listener {
                     main.post(loop)
                 }
                 ClusterLink.State.DISCONNECTED -> {
+                    bike = null
                     main.removeCallbacks(loop)
                     main.removeCallbacks(connectTimeout)
                     if (prefs.autoConnect && instance != null) {
@@ -154,6 +159,25 @@ class DashService : Service(), ClusterLink.Listener {
                 ClusterLink.State.CONNECTING -> Unit
             }
             updateNotification()
+            notifyState()
+        }
+    }
+
+    // ---- from the dash ------------------------------------------------------
+
+    override fun onNotification(value: ByteArray) {
+        val data = BikeData.parse(value) ?: return
+        main.post { onBikeData(data) }
+    }
+
+    private fun onBikeData(data: BikeData) {
+        val changed = data.copy(speedKmh = 0) != bike?.copy(speedKmh = 0)
+        bike = data
+        prefs.lastBikeAt = System.currentTimeMillis()
+        if (changed) {
+            prefs.lastBike = data
+            AppLog.d("Bike", "ODO ${data.odoKm} km, Trip A ${data.tripAKm}, Trip B ${data.tripBKm}, " +
+                (data.fuelBars?.let { "fuel $it/${BikeData.MAX_FUEL_BARS}" } ?: "battery ${data.batteryPercent}%"))
             notifyState()
         }
     }
@@ -342,6 +366,10 @@ class DashService : Service(), ClusterLink.Listener {
 
         val linkState: ClusterLink.State
             get() = instance?.link?.state ?: ClusterLink.State.DISCONNECTED
+
+        /** Live readings from the dash, or null when not connected or none yet. */
+        val liveBike: BikeData?
+            get() = instance?.bike
 
         fun hasConnectPermission(ctx: Context): Boolean =
             Build.VERSION.SDK_INT < 31 ||
