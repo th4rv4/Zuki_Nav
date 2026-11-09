@@ -51,7 +51,8 @@ class DashService : Service(), ClusterLink.Listener {
     private var helloLeft = 0
     private var endFramesLeft = 0
     private var navWasActive = false
-    private var testIconId: Int? = null
+    /** Dash Test frame (an icon or test text) and until when to show it. */
+    private var testFrame: ((ClusterModel) -> ByteArray)? = null
     private var testUntil = 0L
     private var retries = 0
     private var lastNavHex: String? = null
@@ -230,15 +231,16 @@ class DashService : Service(), ClusterLink.Listener {
         tick++
 
         val now = System.currentTimeMillis()
-        val test = testIconId?.takeIf { now < testUntil }
-        if (test == null) testIconId = null
+        val test = testFrame?.takeIf { now < testUntil }
+        if (test == null) testFrame = null
         val nav = NavRepository.current
+        // Navigation always wins: a route cancels any Dash Test straight away.
+        if (nav != null && testFrame != null) {
+            AppLog.d("Dash", "Route active, Dash Test stopped")
+            testFrame = null
+        }
 
         when {
-            test != null -> {
-                link.send(testFrame(test, model), coalesceKey = "nav")
-                navWasActive = true
-            }
             nav != null -> {
                 val frame = navFrame(nav, model)
                 val hex = SuzukiFrames.hex(frame)
@@ -249,6 +251,10 @@ class DashService : Service(), ClusterLink.Listener {
                 link.send(frame, coalesceKey = "nav")
                 navWasActive = true
                 endFramesLeft = 0
+            }
+            test != null -> {
+                link.send(test(model), coalesceKey = "nav")
+                navWasActive = true
             }
             navWasActive -> {
                 navWasActive = false
@@ -298,7 +304,7 @@ class DashService : Service(), ClusterLink.Listener {
         )
 
     /** Raw icon ID, deliberately not passed through [ClusterModel.adjustIcon]. */
-    private fun testFrame(iconId: Int, model: ClusterModel): ByteArray =
+    private fun iconTestFrame(iconId: Int, model: ClusterModel): ByteArray =
         SuzukiFrames.navigation(
             iconId = iconId,
             toTurn = DashDistance.fromMeters(350.0, roundDownTo10 = true),
@@ -394,14 +400,37 @@ class DashService : Service(), ClusterLink.Listener {
             s.main.post { s.showAlert(alert) }
         }
 
-        /** Shows [iconId] on the dash for 8 s with dummy distances, to check the icon table. */
-        fun testIcon(iconId: Int) {
-            val s = instance ?: return
+        /**
+         * Shows [iconId] on the dash for 8 s with dummy distances, to check the
+         * icon table. False while a route is active: navigation comes first.
+         */
+        fun testIcon(iconId: Int): Boolean {
+            val s = instance ?: return false
+            if (NavRepository.current != null) return false
             s.main.post {
-                s.testIconId = iconId
+                s.testFrame = { m -> s.iconTestFrame(iconId, m) }
                 s.testUntil = System.currentTimeMillis() + 8_000
                 AppLog.d("Dash", "Testing icon $iconId (${ClusterIcon.fromId(iconId)?.label ?: "unlisted"})")
             }
+            return true
+        }
+
+        /**
+         * Puts free text in the distance, ETA and remaining spots for 15 s, to
+         * see what the dash can show there. False while a route is active.
+         */
+        fun testText(toTurn: String, eta: String, remaining: String): Boolean {
+            val s = instance ?: return false
+            if (NavRepository.current != null) return false
+            s.main.post {
+                s.testFrame = { m ->
+                    SuzukiFrames.navigationText(ClusterIcon.STRAIGHT.id, toTurn, eta, remaining, m.checksum)
+                }
+                s.testUntil = System.currentTimeMillis() + 15_000
+                val f = SuzukiFrames.navigationText(ClusterIcon.STRAIGHT.id, toTurn, eta, remaining)
+                AppLog.d("Dash", "Testing text \"$toTurn\" \"$eta\" \"$remaining\": ${SuzukiFrames.hex(f)}")
+            }
+            return true
         }
     }
 }

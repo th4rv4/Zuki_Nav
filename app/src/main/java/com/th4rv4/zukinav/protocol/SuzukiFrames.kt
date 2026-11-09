@@ -122,6 +122,35 @@ object SuzukiFrames {
     }
 
     /**
+     * A navigation frame with free text in the three number fields, for
+     * finding out what the dash can show there (Dash Test > Text Test).
+     * Text is upper-cased, cut or padded with spaces to 4 / 6 / 4 characters;
+     * the unit bytes stay 'M'. Not used while navigating.
+     */
+    fun navigationText(
+        iconId: Int,
+        toTurn: String,
+        eta: String,
+        remaining: String,
+        mode: Checksum = Checksum.SUM,
+    ): ByteArray {
+        fun field(s: String, n: Int) = asciiOnly(s.uppercase()).take(n).padEnd(n, ' ')
+        val f = newFrame('1')
+        f[2] = iconId.toByte()
+        f[3] = FF
+        f.putAscii(4, field(toTurn, 4))
+        f[8] = 'M'.code.toByte()
+        f.putAscii(9, field(eta, 6))
+        f.fill(15, 17, FF)
+        f.putAscii(18, field(remaining, 4))
+        f[22] = 'M'.code.toByte()
+        f[23] = NavStatus.OK.code.code.toByte()
+        f[24] = '1'.code.toByte()
+        f.fill(25, 27, FF)
+        return seal(f, mode)
+    }
+
+    /**
      * ETA field. In 12-hour mode the Suzuki app sends "hhmma" ("0742PM"). In
      * 24-hour mode it strips the colon from "HH:mm" and left-pads to six
      * characters ("001942"), which is reproduced here as-is.

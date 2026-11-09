@@ -110,4 +110,15 @@ class SuzukiFramesTest {
             SuzukiFrames.hex(SuzukiFrames.message("Mom", 3, whatsapp = true)),
         )
     }
+
+    @Test fun textFrameKeepsTheNavLayout() {
+        val real = SuzukiFrames.navigation(40, DashDistance("0150", 'M'), "0742PM", DashDistance("12.3", 'K'))
+        val text = SuzukiFrames.navigationText(40, "0150", "0742pm", "12.3")
+        // Same bytes except the second unit ('M' instead of 'K') and the checksum.
+        for (i in 0 until 30) if (i != 22 && i != 28) assertEquals("byte $i", real[i], text[i])
+        val hi = SuzukiFrames.navigationText(40, "Hi", "Rider!", "Zuki Nav")
+        assertEquals("HI  ", String(hi, 4, 4, Charsets.US_ASCII))
+        assertEquals("RIDER!", String(hi, 9, 6, Charsets.US_ASCII))
+        assertEquals("ZUKI", String(hi, 18, 4, Charsets.US_ASCII))
+    }
 }

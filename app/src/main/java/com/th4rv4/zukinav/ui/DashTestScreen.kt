@@ -28,6 +28,10 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
     private val cells = ArrayList<TextView>()
     private val cycleButton: Button = ui.button("Cycle All", Ui.Btn.SECONDARY) { toggleCycle() }
 
+    private val textTurn = ui.input("HI", "4 chars") {}.apply { filters = arrayOf(android.text.InputFilter.LengthFilter(4)) }
+    private val textEta = ui.input("RIDER", "6 chars") {}.apply { filters = arrayOf(android.text.InputFilter.LengthFilter(6)) }
+    private val textLeft = ui.input("ABC1", "4 chars") {}.apply { filters = arrayOf(android.text.InputFilter.LengthFilter(4)) }
+
     override val view: View
 
     private val stepper = object : Runnable {
@@ -110,10 +114,30 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
             legend,
         )
 
+        val textCard = ui.card(
+            LinearLayout(ui.ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(ui.sectionLabel("Text Test").apply { setPadding(0, 0, 0, 0) },
+                    LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                addView(ui.text("Shown for 15 s", 12f, Palette.MUTED))
+            },
+            ui.text("Sends your text into the three number spots under the arrow. Note what each one shows: letters, digits only, or blank.", 13f, Palette.MUTED),
+            ui.listCard(
+                ui.row("Distance Spot", "Up to 4 characters", textTurn),
+                ui.row("ETA Spot", "Up to 6 characters", textEta),
+                ui.row("Remaining Spot", "Up to 4 characters", textLeft),
+            ),
+            ui.button("Send Text", Ui.Btn.PRIMARY, 48) { sendText() },
+            gapDp = 12,
+            radiusDp = 24,
+        )
+
         view = host.page(
             ui.vstack(2, ui.title("Dash Test"), ui.text("Check each turn icon on your dash", 13f, Palette.MUTED)),
             currentCard,
             allCard,
+            textCard,
             ui.text(ICON_WARNING, 12f, Palette.WARN),
             ui.hstack(8, cycleButton, ui.button("Share Results", Ui.Btn.SECONDARY) { share() }, weighted = true),
         )
@@ -147,7 +171,20 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
             stopCycle()
             return
         }
-        DashService.testIcon(current)
+        if (!DashService.testIcon(current)) {
+            host.toast(NAVIGATING)
+            stopCycle()
+        }
+    }
+
+    private fun sendText() {
+        if (DashService.linkState != ClusterLink.State.READY) {
+            host.toast("Connect to the bike first")
+            return
+        }
+        if (!DashService.testText(textTurn.text.toString(), textEta.text.toString(), textLeft.text.toString())) {
+            host.toast(NAVIGATING)
+        }
     }
 
     /** Saves the verdict for the selected icon, then moves on and shows the next one. */
@@ -215,6 +252,8 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
 
     companion object {
         const val LAST_ICON = 64
+        const val NAVIGATING = "A route is active. Dash Test works when Google Maps isn't navigating."
+
 
         const val ICON_WARNING =
             "Some icons may not show on your dash. Icons 47 to 64 differ between left- and right-hand " +
