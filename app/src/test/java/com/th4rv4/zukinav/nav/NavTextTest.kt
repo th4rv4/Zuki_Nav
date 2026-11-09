@@ -60,4 +60,12 @@ class NavTextTest {
         assertEquals(152.4, NavText.toMeters("500 ft")!!, 0.01)
         assertEquals(2500.0, NavText.toMeters("2,5 km")!!, 0.01)
     }
+
+    /** ProgressStyle guidance whose text carries no distance. */
+    @Test fun progressBarDistances() {
+        assertEquals(null to 9732.0, NavText.fromProgress(0, 9732, emptyList()))
+        assertEquals(350.0 to 9232.0, NavText.fromProgress(500, 9732, listOf(200, 850, 4000)))
+        assertEquals(null to 0.0, NavText.fromProgress(9800, 9732, listOf(9732)))
+        assertEquals(null to null, NavText.fromProgress(0, 0, listOf(10)))
+    }
 }

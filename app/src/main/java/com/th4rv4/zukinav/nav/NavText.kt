@@ -52,6 +52,23 @@ object NavText {
         )
     }
 
+    /**
+     * Distances from the progress bar of a ProgressStyle notification
+     * (Android 16), which Google Maps uses for guidance: `progressMax` is
+     * the route length and `progress` the distance covered, both in metres,
+     * and the progress points mark the maneuver positions.
+     *
+     * @return (metres to the next point ahead, metres remaining), each null
+     *   when the bar does not give it.
+     */
+    fun fromProgress(progress: Int, progressMax: Int, points: List<Int>): Pair<Double?, Double?> {
+        if (progressMax <= 0) return null to null
+        val done = progress.coerceIn(0, progressMax)
+        val remaining = (progressMax - done).toDouble()
+        val next = points.filter { it in (done + 1)..progressMax }.minOrNull()
+        return next?.let { (it - done).toDouble() } to remaining
+    }
+
     /** Returns (distance string, road/instruction line). */
     fun splitTitle(title: String?, text: String?, shortCriticalText: String?): Pair<String?, String?> {
         val t = title?.trim().orEmpty()

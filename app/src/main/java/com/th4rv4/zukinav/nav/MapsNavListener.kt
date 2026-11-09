@@ -69,6 +69,15 @@ class MapsNavListener : NotificationListenerService() {
         val parsed = NavText.parse(title, text, sub, critical, LocalTime.now(), lht)
         logExtrasIfNew(e)
 
+        // The text wins when it has a distance; otherwise use the progress bar.
+        val (barToTurn, barRemaining) = NavText.fromProgress(
+            e.getInt(Notification.EXTRA_PROGRESS, 0),
+            e.getInt(Notification.EXTRA_PROGRESS_MAX, 0),
+            progressPoints(e),
+        )
+        val toTurn = parsed.metersToTurn ?: barToTurn
+        val remaining = parsed.remainingMeters ?: barRemaining
+
         var source = "none"
         var icon: ClusterIcon? = null
 
@@ -107,15 +116,42 @@ class MapsNavListener : NotificationListenerService() {
             NavSnapshot(
                 icon = icon,
                 iconSource = source,
-                metersToTurn = parsed.metersToTurn,
+                metersToTurn = toTurn,
                 instruction = parsed.instruction,
-                remainingMeters = (parsed.remainingMeters ?: lastRemaining).also { lastRemaining = it },
+                remainingMeters = (remaining ?: lastRemaining).also { lastRemaining = it },
                 eta = (parsed.eta ?: lastEta).also { lastEta = it },
             ),
         )
     }
 
     private var lastExtrasKeys: Set<String> = emptySet()
+    private var pointsLogged = false
+
+    /**
+     * Positions of the ProgressStyle points (one per maneuver). Stored by
+     * the framework as a list of Bundles under "android.progressPoints",
+     * each with an int "position". Read defensively; the first point is
+     * logged for diagnostics.
+     */
+    @Suppress("DEPRECATION")
+    private fun progressPoints(e: android.os.Bundle): List<Int> = try {
+        val raw = e.get(EXTRA_PROGRESS_POINTS)
+        val bundles: List<android.os.Bundle> = when (raw) {
+            is List<*> -> raw.filterIsInstance<android.os.Bundle>()
+            is Array<*> -> raw.filterIsInstance<android.os.Bundle>()
+            else -> emptyList()
+        }
+        if (!pointsLogged && bundles.isNotEmpty()) {
+            pointsLogged = true
+            val first = bundles.first()
+            AppLog.d("Maps", "progress points: ${bundles.size}, first: " +
+                first.keySet().joinToString(", ") { k -> "$k=${first.get(k)}" })
+        }
+        bundles.mapNotNull { b -> b.get("position") as? Int }
+    } catch (ex: Exception) {
+        AppLog.d("Maps", "Could not read progress points: $ex")
+        emptyList()
+    }
 
     /**
      * Logs every text field of the Maps notification whenever a key appears
@@ -124,10 +160,18 @@ class MapsNavListener : NotificationListenerService() {
      */
     @Suppress("DEPRECATION") // Bundle.get: we want every value, whatever its type.
     private fun logExtrasIfNew(e: android.os.Bundle) {
-        val keys = e.keySet().filter { e.get(it) is CharSequence || e.get(it) is Number || e.get(it) is Boolean }.toSet()
+        val keys = e.keySet().toSet()
         if (keys == lastExtrasKeys) return
         lastExtrasKeys = keys
-        val dump = keys.sorted().joinToString("; ") { k -> "$k=${e.get(k)}" }
+        val dump = keys.sorted().joinToString("; ") { k ->
+            when (val v = e.get(k)) {
+                is CharSequence, is Number, is Boolean -> "$k=$v"
+                is List<*> -> "$k=[${v.size} x ${v.firstOrNull()?.javaClass?.simpleName}]"
+                is Array<*> -> "$k=[${v.size} x ${v.firstOrNull()?.javaClass?.simpleName}]"
+                null -> "$k=null"
+                else -> "$k=<${v.javaClass.simpleName}>"
+            }
+        }
         AppLog.d("Maps", "extras: $dump")
     }
 
@@ -149,5 +193,8 @@ class MapsNavListener : NotificationListenerService() {
     companion object {
         /** Notification.Builder.setShortCriticalText (Android 16). */
         const val EXTRA_SHORT_CRITICAL_TEXT = "android.shortCriticalText"
+
+        /** Notification.ProgressStyle points (Android 16). */
+        const val EXTRA_PROGRESS_POINTS = "android.progressPoints"
     }
 }
