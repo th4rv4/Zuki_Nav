@@ -86,8 +86,15 @@ app uses them.
 
 ## Build
 
-Every push is built by GitHub Actions (`.github/workflows/build.yml`): unit
-tests run and the debug APK is attached to the run as an artifact.
+GitHub Actions (`.github/workflows/build.yml`) builds when a version tag
+is pushed, or when started by hand (Actions → Build → Run workflow). Plain
+commits don't trigger it. Unit tests run and the debug APK is attached to
+the run as an artifact.
+
+```
+git tag v0.2.0
+git push origin v0.2.0
+```
 
 To build locally:
 

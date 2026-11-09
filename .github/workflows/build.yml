@@ -1,8 +1,11 @@
 name: Build
 
+# Builds only when a version tag is pushed (e.g. v0.2.0) or when started by
+# hand from the Actions tab. Ordinary commits and pushes do not trigger it.
 on:
   push:
-  pull_request:
+    tags:
+      - "v*"
   workflow_dispatch:
 
 jobs:
@@ -33,13 +36,13 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: suzuki-nav-debug-${{ github.sha }}
+          name: suzuki-nav-debug-${{ github.ref_name }}
           path: app/build/outputs/apk/debug/*.apk
 
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports-${{ github.sha }}
+          name: test-reports-${{ github.ref_name }}
           path: app/build/reports/tests/
           if-no-files-found: ignore
