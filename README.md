@@ -75,19 +75,35 @@ This approach, and the Maps notification layouts, follow
 ## Setup
 
 1. Build and install (below).
-2. Open Zuki Nav, tap **Permissions**, then **Notification Access** and enable it.
-3. Force-stop Suzuki Ride Connect. The cluster accepts one phone at a time.
-4. Ignition on, tap **Scan For Bike**, pick your vehicle (it is listed with its model name).
-5. Start a route in Google Maps.
+2. Open Zuki Nav. The **Set Up Zuki Nav** screen lists what is needed:
+   - **Nearby Devices**: tap **Grant**.
+   - **Notification Access**: tap **Grant** and switch Zuki Nav on.
+   - **Close Suzuki Ride Connect**: tap **Force Stop**. The dash accepts
+     one phone at a time.
+3. Turn the ignition on. Under **Find Your Bike**, tap your bike (it is
+   listed with its model name), then **Finish Setup**.
+4. Start a route in Google Maps. The **Ride** tab shows the next turn and
+   what is being sent to the dash.
 
-Use **Icon Test → Cycle All** once to check every icon ID on your dash.
+## App layout
+
+- **Ride**: the bike and its connection, live guidance (arrow, distance,
+  ETA, remaining distance, dash icon number) and a Connect/Disconnect button.
+- **Dash Test**: show any turn icon on the dash, mark it **Looks Right** or
+  **Looks Wrong** (the next icon follows automatically), see progress for
+  all 64 icons, and **Share Results**.
+- **Settings**: rider name, speed alert, traffic side, Auto-Connect, Start
+  On Boot, Change Bike, and the log.
+
+Run **Dash Test → Cycle All** once to check every icon on your dash.
 
 > **Some icons may not show.** Icons 47 to 64 depend on the traffic side
 > (right-hand-traffic roundabouts are 47–52) and on the Suzuki model. On a
 > Gixxer SF 250, icon 46 is a "!" and 47 to 64 are blank. The app sends the
 > icon the Traffic Side setting asks for either way.
-Some IDs in `ClusterIcon` are marked unverified because nothing in the Suzuki
-app uses them.
+
+Some icons in `ClusterIcon` are marked unverified because nothing in the
+Suzuki app uses them.
 
 ## Build
 
@@ -129,7 +145,7 @@ protocol/   frame builder, checksum, distance format, icon table, model table (p
 nav/        Maps notification parsing, arrow fingerprinting, listener
 ble/        GATT client
 service/    foreground service, boot receiver
-ui/         main screen
+ui/         screens (Ride, Dash Test, Settings, Setup) and shared components
 ```
 
 ## License

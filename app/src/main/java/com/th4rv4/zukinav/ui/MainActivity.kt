@@ -1,305 +1,216 @@
 package com.th4rv4.zukinav.ui
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.app.Activity
-import android.bluetooth.BluetoothManager
-import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanResult
-import android.bluetooth.le.ScanSettings
-import android.content.ClipData
-import android.content.ClipboardManager
+import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Color
 import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.provider.Settings
-import android.text.Editable
-import android.text.InputType
-import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.EditText
+import android.view.WindowInsets
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
-import com.th4rv4.zukinav.ble.ClusterLink
+import com.th4rv4.zukinav.R
 import com.th4rv4.zukinav.nav.MapsIconTemplates
 import com.th4rv4.zukinav.nav.MapsNavListener
-import com.th4rv4.zukinav.nav.NavRepository
-import com.th4rv4.zukinav.nav.NavSnapshot
-import com.th4rv4.zukinav.protocol.ClusterIcon
-import com.th4rv4.zukinav.protocol.ClusterModels
-import com.th4rv4.zukinav.protocol.DashDistance
 import com.th4rv4.zukinav.service.DashService
 import com.th4rv4.zukinav.util.AppLog
 import com.th4rv4.zukinav.util.Prefs
 
 /**
- * One functional screen: setup, live guidance preview, icon test panel,
- * settings and the log. Built in code to keep the app dependency-free.
+ * Hosts the three tabs (Ride, Dash Test, Settings) and the first-run Setup
+ * screen. Owns everything that needs the Activity: permissions, system
+ * settings screens, sharing and dialogs.
  */
-@SuppressLint("MissingPermission", "SetTextI18n", "UseSwitchCompatOrMaterialCode")
 class MainActivity : Activity() {
 
-    private lateinit var prefs: Prefs
-    private val main = Handler(Looper.getMainLooper())
+    lateinit var prefs: Prefs
+        private set
+    lateinit var ui: Ui
+        private set
 
-    private lateinit var statusText: TextView
-    private lateinit var setupText: TextView
-    private lateinit var navText: TextView
-    private lateinit var deviceList: LinearLayout
-    private lateinit var scanButton: Button
-    private lateinit var startButton: Button
-    private lateinit var testLabel: TextView
-    private lateinit var logText: TextView
+    private lateinit var content: FrameLayout
+    private lateinit var tabBar: LinearLayout
+    private val tabViews = ArrayList<Pair<Tab, LinearLayout>>()
 
-    private var testId = 1
-    private var cycling = false
-    private var scanning = false
-    private val found = LinkedHashMap<String, String>() // address -> name
+    enum class Tab(val label: String, val icon: Int) {
+        RIDE("Ride", R.drawable.ic_tab_ride),
+        DASH_TEST("Dash Test", R.drawable.ic_tab_dash),
+        SETTINGS("Settings", R.drawable.ic_tab_settings),
+    }
 
-    private val logListener: () -> Unit = { refreshLog() }
-    private val stateListener: () -> Unit = { main.post { refreshStatus() } }
-    private val navListener: (NavSnapshot?) -> Unit = { refreshNav(it) }
+    private val screens = HashMap<String, Screen>()
+    private var current: Screen? = null
+    private var currentTab: Tab? = null
+    private var resumed = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
-        setContentView(buildUi())
+        ui = Ui(this)
+        setContentView(buildRoot())
+        if (setupComplete()) showTab(Tab.RIDE) else showSetup()
     }
 
     override fun onResume() {
         super.onResume()
-        AppLog.addListener(logListener)
-        DashService.addStateListener(stateListener)
-        NavRepository.addListener(navListener)
-        refreshStatus()
-        refreshNav(NavRepository.current)
-        refreshLog()
+        resumed = true
+        current?.onShow()
     }
 
     override fun onPause() {
-        AppLog.removeListener(logListener)
-        DashService.removeStateListener(stateListener)
-        NavRepository.removeListener(navListener)
-        stopScan()
-        cycling = false
+        resumed = false
+        current?.onHide()
         super.onPause()
     }
 
-    // ---- UI ---------------------------------------------------------------
-
-    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
-
-    private fun card(title: String, vararg children: View): LinearLayout =
-        LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(14), dp(16), dp(14))
-            background = GradientDrawable().apply { cornerRadius = dp(16).toFloat(); setColor(0xFF161A22.toInt()) }
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                .apply { bottomMargin = dp(12) }
-            addView(text(title, 13f, 0xFF8A93A6.toInt(), bold = true).apply { letterSpacing = 0.08f })
-            children.forEach { addView(it) }
+    @Deprecated("Back from Setup returns to the tabs")
+    override fun onBackPressed() {
+        if (current is SetupScreen && setupComplete()) showTab(Tab.RIDE) else {
+            @Suppress("DEPRECATION")
+            super.onBackPressed()
         }
+    }
 
-    private fun text(s: String, size: Float = 15f, color: Int = Color.WHITE, bold: Boolean = false) =
-        TextView(this).apply {
-            text = s
-            textSize = size
-            setTextColor(color)
-            if (bold) typeface = Typeface.DEFAULT_BOLD
-            setPadding(0, dp(4), 0, dp(4))
-        }
+    // ---- layout -------------------------------------------------------------
 
-    private fun button(label: String, onClick: () -> Unit) =
-        Button(this).apply {
-            text = label
-            isAllCaps = false
-            setOnClickListener { onClick() }
-        }
-
-    private fun row(vararg views: View) =
-        LinearLayout(this).apply {
+    private fun buildRoot(): View {
+        content = FrameLayout(this)
+        tabBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            views.forEach { addView(it, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)) }
+            setBackgroundColor(Palette.NAV_BG)
+            setPadding(ui.dp(12), ui.dp(6), ui.dp(12), ui.dp(6))
         }
-
-    private fun buildUi(): View {
-        statusText = text("", 17f, bold = true)
-        setupText = text("", 14f, 0xFFB8C0D0.toInt())
-        navText = text("", 16f)
-        deviceList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        scanButton = button("Scan For Bike") { if (scanning) stopScan() else startScan() }
-        startButton = button("Start") { toggleService() }
-        testLabel = text("", 15f)
-        logText = text("", 11f, 0xFF9AA3B5.toInt()).apply { typeface = Typeface.MONOSPACE }
-
-        val riderName = EditText(this).apply {
-            hint = "Rider Name (Shown On Dash)"
-            setText(prefs.riderName)
-            setTextColor(Color.WHITE)
-            setHintTextColor(0xFF6B7385.toInt())
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS
-            addTextChangedListener(simpleWatcher { prefs.riderName = it })
+        for (tab in Tab.entries) {
+            val item = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                setPadding(0, ui.dp(6), 0, ui.dp(6))
+                isClickable = true
+                isFocusable = true
+                contentDescription = tab.label
+                background = ui.pressable(Palette.NAV_BG, 12)
+                addView(ui.icon(tab.icon, 22, Palette.MUTED), LinearLayout.LayoutParams(ui.dp(22), ui.dp(22)))
+                addView(ui.text(tab.label, 12f, Palette.MUTED, Ui.Weight.MEDIUM).apply { gravity = Gravity.CENTER })
+                setOnClickListener { showTab(tab) }
+            }
+            tabBar.addView(item, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            tabViews += tab to item
         }
-        val speed = EditText(this).apply {
-            hint = "Speed Alert km/h (0 = Off)"
-            setText(prefs.speedAlertKmh.takeIf { it > 0 }?.toString() ?: "")
-            setTextColor(Color.WHITE)
-            setHintTextColor(0xFF6B7385.toInt())
-            inputType = InputType.TYPE_CLASS_NUMBER
-            addTextChangedListener(simpleWatcher { prefs.speedAlertKmh = it.toIntOrNull()?.coerceIn(0, 999) ?: 0 })
-        }
-        val lht = Switch(this).apply {
-            text = "Left-Hand Traffic (India)"
-            setTextColor(Color.WHITE)
-            isChecked = prefs.leftHandTraffic
-            setOnCheckedChangeListener { _, c -> prefs.leftHandTraffic = c }
-        }
-        val auto = Switch(this).apply {
-            text = "Auto-Connect"
-            setTextColor(Color.WHITE)
-            isChecked = prefs.autoConnect
-            setOnCheckedChangeListener { _, c -> prefs.autoConnect = c }
-        }
-
-        val content = LinearLayout(this).apply {
+        val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(24), dp(16), dp(24))
-            addView(text("Zuki Nav", 26f, bold = true))
-            addView(text("Google Maps Directions On Your Suzuki Dash", 14f, 0xFF8A93A6.toInt()))
-            addView(View(this@MainActivity), LinearLayout.LayoutParams(1, dp(12)))
-            addView(card("STATUS", statusText, setupText,
-                row(button("Permissions") { requestPermissions() }, button("Notification Access") { openListenerSettings() }),
-                row(scanButton, startButton),
-                deviceList))
-            addView(card("LIVE GUIDANCE", navText))
-            addView(card("ICON TEST", testLabel,
-                row(button("Prev") { stepTest(-1) }, button("Send") { DashService.testIcon(testId) }, button("Next") { stepTest(1) }),
-                row(button("Cycle All") { cycleAll() }, button("Stop Cycle") { cycling = false }),
-                text("Shows an icon on the dash for 8 s with 350 m / 12.3 km. Use it to check what each icon ID looks like on your bike.", 12f, 0xFF8A93A6.toInt()),
-                text(ICON_WARNING, 12f, 0xFFFFC966.toInt())))
-            addView(card("SETTINGS", riderName, speed, lht,
-                text("Right-hand traffic uses roundabout icons 47 and up, which some dashes (e.g. Gixxer SF 250) leave blank.", 12f, 0xFFFFC966.toInt()),
-                auto))
-            addView(card("LOG", row(button("Copy Log") { copyLog() }, button("Reload Maps Arrows") { reloadArrows() }), logText))
+            setBackgroundColor(Palette.BG)
+            addView(content, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+            addView(View(this@MainActivity).apply { setBackgroundColor(0xFF1C222C.toInt()) },
+                LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ui.dp(1)))
+            addView(tabBar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         }
-        updateTestLabel()
+        // Android 15 draws apps edge to edge: keep content clear of the system bars.
+        if (Build.VERSION.SDK_INT >= 30) {
+            root.setOnApplyWindowInsetsListener { v, insets ->
+                val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.ime())
+                v.setPadding(bars.left, bars.top, bars.right, 0)
+                tabBar.setPadding(ui.dp(12), ui.dp(6), ui.dp(12), ui.dp(6) + bars.bottom)
+                insets
+            }
+        }
+        return root
+    }
+
+    /** Wraps a screen's content in a padded, scrolling page. */
+    fun page(vararg views: View): ScrollView {
+        val column = ui.vstack(14, *views).apply {
+            setPadding(ui.dp(16), ui.dp(20), ui.dp(16), ui.dp(24))
+        }
         return ScrollView(this).apply {
-            setBackgroundColor(0xFF0E1116.toInt())
-            addView(content)
+            isFillViewport = true
+            addView(column)
         }
     }
 
-    private companion object {
-        /** Highest ID the Icon Test cycles to. */
-        const val LAST_TEST_ICON = 64
+    private fun screen(key: String, make: () -> Screen): Screen = screens.getOrPut(key, make)
 
-        const val ICON_WARNING =
-            "Some icons may not show on your dash. Icons 47 to 64 differ between left- and right-hand " +
-                "traffic and between Suzuki models: on a Gixxer SF 250, 46 is a \"!\" and 47 to 64 are blank."
+    private fun swapTo(next: Screen) {
+        if (current === next) { next.onShow(); return }
+        if (resumed) current?.onHide()
+        current = next
+        content.removeAllViews()
+        content.addView(next.view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        if (resumed) next.onShow()
     }
 
-    private fun simpleWatcher(onChange: (String) -> Unit) = object : TextWatcher {
-        override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-        override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
-        override fun afterTextChanged(s: Editable?) { onChange(s?.toString()?.trim().orEmpty()) }
-    }
-
-    // ---- state --------------------------------------------------------------
-
-    private fun refreshStatus() {
-        val state = DashService.linkState
-        val running = DashService.instance != null
-        val name = prefs.clusterName
-        statusText.text = when (state) {
-            ClusterLink.State.READY -> "Connected · ${ClusterModels.fromBleName(name).displayName}"
-            ClusterLink.State.CONNECTING -> "Waiting For ${name ?: "Bike"}"
-            ClusterLink.State.DISCONNECTED -> if (running) "Not Connected" else "Stopped"
+    fun showTab(tab: Tab) {
+        currentTab = tab
+        tabBar.visibility = View.VISIBLE
+        for ((t, item) in tabViews) {
+            val color = if (t == tab) Palette.ACCENT else Palette.MUTED
+            (item.getChildAt(0) as android.widget.ImageView).imageTintList = android.content.res.ColorStateList.valueOf(color)
+            (item.getChildAt(1) as TextView).apply {
+                setTextColor(color)
+                typeface = if (t == tab) Typeface.DEFAULT_BOLD else Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            }
+            item.isSelected = t == tab
         }
-        val checks = listOf(
-            "Bluetooth Permission" to hasBlePermissions(),
-            "Notification Access" to hasListenerAccess(),
-            "Bike Chosen" to (prefs.clusterAddress != null),
-            "Google Maps Installed" to mapsInstalled(),
+        swapTo(
+            when (tab) {
+                Tab.RIDE -> screen("ride") { RideScreen(this) }
+                Tab.DASH_TEST -> screen("dash") { DashTestScreen(this) }
+                Tab.SETTINGS -> screen("settings") { SettingsScreen(this) }
+            },
         )
-        setupText.text = checks.joinToString("\n") { (label, ok) -> (if (ok) "✓ " else "✗ ") + label } +
-            (name?.let { "\nBike: ${ClusterModels.fromBleName(it).displayName} · $it (${prefs.clusterAddress})" } ?: "")
-        startButton.text = if (running) "Stop" else "Start"
     }
 
-    private fun refreshNav(s: NavSnapshot?) {
-        navText.text = if (s == null) {
-            "No active navigation. Start a route in Google Maps."
+    fun showSetup() {
+        currentTab = null
+        tabBar.visibility = View.GONE
+        swapTo(screen("setup") { SetupScreen(this) })
+    }
+
+    // ---- checks -------------------------------------------------------------
+
+    fun hasBlePermissions(): Boolean =
+        if (Build.VERSION.SDK_INT >= 31) {
+            granted(Manifest.permission.BLUETOOTH_SCAN) && granted(Manifest.permission.BLUETOOTH_CONNECT)
         } else {
-            val toTurn = s.metersToTurn?.let { DashDistance.fromMeters(it, true) }
-            val rem = s.remainingMeters?.let { DashDistance.fromMeters(it) }
-            buildString {
-                append(s.icon?.let { "${it.label} (#${it.id})" } ?: "No Arrow").append("  [${s.iconSource}]\n")
-                append("In ${toTurn?.let { "${it.digits} ${it.unit}" } ?: "-"}   ·   ${s.instruction ?: ""}\n")
-                append("ETA ${s.eta ?: "-"}   ·   Remaining ${rem?.let { "${it.digits} ${it.unit}" } ?: "-"}")
-            }
+            granted(Manifest.permission.ACCESS_FINE_LOCATION)
         }
+
+    private fun granted(p: String) = checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED
+
+    fun hasListenerAccess(): Boolean {
+        val flat = Settings.Secure.getString(contentResolver, "enabled_notification_listeners") ?: return false
+        val me = ComponentName(this, MapsNavListener::class.java)
+        return flat.split(':').any { ComponentName.unflattenFromString(it) == me }
     }
 
-    private fun refreshLog() {
-        logText.text = AppLog.snapshot().takeLast(80).joinToString("\n")
+    fun isInstalled(pkg: String): Boolean = try {
+        packageManager.getPackageInfo(pkg, 0); true
+    } catch (e: PackageManager.NameNotFoundException) {
+        false
     }
 
-    private fun updateTestLabel() {
-        testLabel.text = "Icon #$testId · ${ClusterIcon.fromId(testId)?.label ?: "Unlisted"}"
-    }
+    fun mapsInstalled(): Boolean = isInstalled(MapsIconTemplates.MAPS_PKG)
 
-    private fun stepTest(d: Int) {
-        testId = ((testId - 1 + d + LAST_TEST_ICON) % LAST_TEST_ICON) + 1
-        updateTestLabel()
-    }
+    fun setupComplete(): Boolean = hasBlePermissions() && hasListenerAccess() && prefs.clusterAddress != null
 
-    private fun cycleAll() {
-        if (DashService.linkState != ClusterLink.State.READY) {
-            toast("Connect to the bike first")
-            return
-        }
-        cycling = true
-        testId = 1
-        val r = object : Runnable {
-            override fun run() {
-                if (!cycling || testId > LAST_TEST_ICON) { cycling = false; return }
-                updateTestLabel()
-                DashService.testIcon(testId)
-                testId++
-                main.postDelayed(this, 2_500)
-            }
-        }
-        main.post(r)
+    fun versionName(): String = try {
+        packageManager.getPackageInfo(packageName, 0).versionName ?: "?"
+    } catch (e: Exception) {
+        "?"
     }
 
     // ---- actions ------------------------------------------------------------
 
-    private fun toggleService() {
-        if (DashService.instance != null) {
-            DashService.stop(this)
-        } else {
-            if (!hasBlePermissions()) { requestPermissions(); return }
-            if (prefs.clusterAddress == null) { toast("Scan and pick your bike first"); return }
-            DashService.start(this)
-        }
-        main.postDelayed({ refreshStatus() }, 400)
-    }
-
-    private fun requestPermissions() {
+    fun requestBlePermissions() {
         val perms = ArrayList<String>()
         if (Build.VERSION.SDK_INT >= 31) {
             perms += Manifest.permission.BLUETOOTH_SCAN
@@ -313,118 +224,79 @@ class MainActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        refreshStatus()
+        current?.onShow()
     }
 
-    private fun hasBlePermissions(): Boolean =
-        if (Build.VERSION.SDK_INT >= 31) {
-            granted(Manifest.permission.BLUETOOTH_SCAN) && granted(Manifest.permission.BLUETOOTH_CONNECT)
-        } else {
-            granted(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
-
-    private fun granted(p: String) = checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED
-
-    private fun hasListenerAccess(): Boolean {
-        val flat = Settings.Secure.getString(contentResolver, "enabled_notification_listeners") ?: return false
-        val me = ComponentName(this, MapsNavListener::class.java)
-        return flat.split(':').any { ComponentName.unflattenFromString(it) == me }
-    }
-
-    private fun openListenerSettings() {
-        val i = if (Build.VERSION.SDK_INT >= 30) {
-            Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
-                .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, ComponentName(this, MapsNavListener::class.java).flattenToString())
-        } else {
-            Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-        }
+    fun openListenerSettings() {
+        val detail = Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS).putExtra(
+            Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
+            ComponentName(this, MapsNavListener::class.java).flattenToString(),
+        )
         try {
-            startActivity(i)
+            startActivity(detail)
         } catch (e: Exception) {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }
     }
 
-    private fun mapsInstalled(): Boolean = try {
-        packageManager.getPackageInfo(MapsIconTemplates.MAPS_PKG, 0); true
-    } catch (e: PackageManager.NameNotFoundException) {
-        false
-    }
-
-    private fun reloadArrows() {
-        Thread {
-            val n = MapsIconTemplates.matcher(this).size
-            main.post { toast("$n Maps arrow templates loaded") }
-        }.start()
-    }
-
-    private fun copyLog() {
-        val cm = getSystemService(ClipboardManager::class.java)
-        cm.setPrimaryClip(ClipData.newPlainText("Zuki Nav log", AppLog.snapshot().joinToString("\n")))
-        toast("Log copied")
-    }
-
-    private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
-
-    // ---- scanning -----------------------------------------------------------
-
-    private val scanCallback = object : ScanCallback() {
-        override fun onScanResult(callbackType: Int, result: ScanResult) {
-            val name = result.scanRecord?.deviceName ?: result.device.name ?: return
-            val addr = result.device.address
-            if (!ClusterModels.looksLikeCluster(name) || found.containsKey(addr)) return
-            found[addr] = name
-            main.post { addDeviceButton(addr, name) }
-        }
-
-        override fun onScanFailed(errorCode: Int) {
-            AppLog.d("Scan", "Scan failed: $errorCode")
-            main.post { stopScan() }
-        }
-    }
-
-    private fun startScan() {
-        if (!hasBlePermissions()) { requestPermissions(); return }
-        val adapter = getSystemService(BluetoothManager::class.java).adapter
-        if (adapter == null || !adapter.isEnabled) { toast("Turn Bluetooth on"); return }
-        // The cluster only allows one phone; free it from this app's own link first.
-        if (DashService.instance != null) DashService.stop(this)
-        found.clear()
-        deviceList.removeAllViews()
-        deviceList.addView(text("Searching… turn the ignition on and close Suzuki Ride Connect.", 13f, 0xFF8A93A6.toInt()))
-        val settings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
-        adapter.bluetoothLeScanner?.startScan(null, settings, scanCallback)
-        scanning = true
-        scanButton.text = "Stop Scan"
-        AppLog.d("Scan", "Scanning for Suzuki clusters")
-        main.postDelayed({ stopScan() }, 15_000)
-    }
-
-    private fun stopScan() {
-        if (!scanning) return
-        scanning = false
-        scanButton.text = "Scan For Bike"
+    /** Opens a package's App Info page, e.g. to force-stop Suzuki Ride Connect. */
+    fun openAppInfo(pkg: String) {
         try {
-            getSystemService(BluetoothManager::class.java).adapter?.bluetoothLeScanner?.stopScan(scanCallback)
-        } catch (_: Exception) {}
-        if (found.isEmpty()) {
-            deviceList.removeAllViews()
-            deviceList.addView(text("No Suzuki cluster found.", 13f, 0xFF8A93A6.toInt()))
+            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:$pkg")))
+        } catch (e: Exception) {
+            toast("Could not open App Info")
         }
     }
 
-    private fun addDeviceButton(addr: String, name: String) {
-        if (deviceList.childCount == 1 && deviceList.getChildAt(0) is TextView && deviceList.getChildAt(0) !is Button) {
-            deviceList.removeAllViews()
-        }
-        deviceList.addView(button("$name · ${ClusterModels.fromBleName(name).displayName}") {
-            prefs.clusterAddress = addr
-            prefs.clusterName = name
-            AppLog.d("Scan", "Chose $name ($addr)")
-            stopScan()
-            deviceList.removeAllViews()
-            refreshStatus()
-            DashService.start(this)
-        })
+    /** Starts the dash link if everything it needs is in place. */
+    fun startLink(): Boolean {
+        if (!hasBlePermissions()) { requestBlePermissions(); return false }
+        if (prefs.clusterAddress == null) { showSetup(); return false }
+        DashService.start(this)
+        return true
     }
+
+    fun shareText(subject: String, body: String) {
+        val send = Intent(Intent.ACTION_SEND)
+            .setType("text/plain")
+            .putExtra(Intent.EXTRA_SUBJECT, subject)
+            .putExtra(Intent.EXTRA_TEXT, body)
+        startActivity(Intent.createChooser(send, subject))
+    }
+
+    fun shareLog() = shareText("Zuki Nav log", AppLog.snapshot().joinToString("\n"))
+
+    fun showLogDialog() {
+        val body = TextView(this).apply {
+            text = AppLog.snapshot().takeLast(300).joinToString("\n")
+            textSize = 11f
+            typeface = Typeface.MONOSPACE
+            setTextColor(Palette.TEXT_SOFT)
+            setTextIsSelectable(true)
+            setPadding(ui.dp(16), ui.dp(8), ui.dp(16), ui.dp(8))
+        }
+        val scroll = ScrollView(this).apply { addView(body) }
+        AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+            .setTitle("Log")
+            .setView(scroll)
+            .setPositiveButton("Close", null)
+            .setNeutralButton("Share") { _, _ -> shareLog() }
+            .show()
+        scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+    }
+
+    fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
+}
+
+/** One page of the app. */
+abstract class Screen(protected val host: MainActivity) {
+    protected val ui: Ui get() = host.ui
+    protected val prefs: Prefs get() = host.prefs
+    abstract val view: View
+
+    /** Called when the page becomes visible (and on every resume). */
+    open fun onShow() {}
+
+    /** Called when the page is hidden or the app goes to the background. */
+    open fun onHide() {}
 }
