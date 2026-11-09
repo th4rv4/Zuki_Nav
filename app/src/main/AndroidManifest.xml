@@ -18,6 +18,10 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- Checking GitHub for new releases and installing them. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <!-- Lets the app read Google Maps' drawables to build its arrow templates. -->
     <queries>
         <package android:name="com.google.android.apps.maps" />
@@ -56,10 +60,15 @@
         </service>
 
         <receiver
+            android:name=".update.InstallReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".service.BootReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
     </application>

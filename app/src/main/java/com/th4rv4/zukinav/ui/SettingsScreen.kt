@@ -10,6 +10,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
 
     private val subtitle = ui.text("", 13f, Palette.MUTED)
     private var arrowsRow: TextView? = null
+    private val updates = UpdatesSection(host)
     private val riderInput = ui.input(prefs.riderName, "Your Name") { prefs.riderName = it }.apply {
         filters = arrayOf(android.text.InputFilter.LengthFilter(20))
     }
@@ -60,6 +61,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
                 .apply { setPadding(ui.dp(4), 0, ui.dp(4), 0) },
             ui.sectionLabel("Connection"),
             connection,
+            *updates.views.toTypedArray(),
             ui.sectionLabel("Troubleshooting"),
             troubleshooting,
             ui.text("Zuki Nav ${host.versionName()} · Unofficial, not affiliated with Suzuki", 12f, Palette.MUTED)
@@ -71,7 +73,12 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         // Setup may have changed it since this screen was built.
         if (riderInput.text.toString().trim() != prefs.riderName) riderInput.setText(prefs.riderName)
         val name = prefs.clusterName
+        updates.onShow()
         subtitle.text = if (name == null) "No bike chosen" else "${ClusterModels.fromBleName(name).displayName} · $name"
+    }
+
+    override fun onHide() {
+        updates.onHide()
     }
 
     private fun reloadArrows() {

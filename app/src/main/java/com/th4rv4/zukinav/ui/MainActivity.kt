@@ -23,6 +23,7 @@ import com.th4rv4.zukinav.R
 import com.th4rv4.zukinav.nav.MapsIconTemplates
 import com.th4rv4.zukinav.nav.MapsNavListener
 import com.th4rv4.zukinav.service.DashService
+import com.th4rv4.zukinav.update.Updater
 import com.th4rv4.zukinav.util.AppLog
 import com.th4rv4.zukinav.util.Prefs
 
@@ -59,6 +60,48 @@ class MainActivity : Activity() {
         ui = Ui(this)
         setContentView(buildRoot())
         if (setupComplete()) showTab(Tab.RIDE) else showSetup()
+        checkForUpdateIfDue()
+    }
+
+    override fun onDestroy() {
+        Updater.removeListener(launchCheckListener)
+        super.onDestroy()
+    }
+
+    private var launchCheckPending = false
+
+    // ---- updates ------------------------------------------------------------
+
+    /** Tells the rider when the once-a-day check on launch finds a new release. */
+    private val launchCheckListener: (Updater.State) -> Unit = { s ->
+        if (launchCheckPending) {
+            when (s) {
+                is Updater.State.Available -> {
+                    launchCheckPending = false
+                    toast("Zuki Nav v${s.release.version} is available. See Settings > Updates.")
+                }
+                is Updater.State.UpToDate, is Updater.State.Failed -> launchCheckPending = false
+                else -> Unit
+            }
+        }
+    }
+
+    private fun checkForUpdateIfDue() {
+        if (!prefs.checkUpdatesOnLaunch) return
+        val now = System.currentTimeMillis()
+        if (now - prefs.lastUpdateCheck < 24 * 60 * 60 * 1000L) return
+        prefs.lastUpdateCheck = now
+        launchCheckPending = true
+        Updater.addListener(launchCheckListener)
+        Updater.check(versionName())
+    }
+
+    fun openUrl(url: String) {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+        } catch (e: Exception) {
+            toast("No browser found")
+        }
     }
 
     override fun onResume() {

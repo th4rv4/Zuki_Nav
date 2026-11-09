@@ -50,6 +50,15 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_BOOT, true)
         set(v) = sp.edit().putBoolean(K_BOOT, v).apply()
 
+    /** Look for a new release when the app opens, at most once a day. */
+    var checkUpdatesOnLaunch: Boolean
+        get() = sp.getBoolean(K_UPDATE_AUTO, true)
+        set(v) = sp.edit().putBoolean(K_UPDATE_AUTO, v).apply()
+
+    var lastUpdateCheck: Long
+        get() = sp.getLong(K_UPDATE_LAST, 0)
+        set(v) = sp.edit().putLong(K_UPDATE_LAST, v).apply()
+
     /** Dash Test results. */
     var iconMarks: IconMarks
         get() = IconMarks.decode(sp.getString(K_MARKS, null))
@@ -75,6 +84,8 @@ class Prefs(context: Context) {
         const val K_BOOT = "start_on_boot"
         const val K_MARKS = "icon_marks"
         const val K_CALLS = "call_alerts"
+        const val K_UPDATE_AUTO = "update_check_on_launch"
+        const val K_UPDATE_LAST = "update_last_check"
         const val K_MSGS = "message_alerts"
     }
 }

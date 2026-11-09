@@ -104,7 +104,19 @@ This approach, and the Maps notification layouts, follow
   **Looks Wrong** (the next icon follows automatically), see progress for
   all 64 icons, and **Share Results**.
 - **Settings**: rider name, speed alert, call and message alerts, traffic
-  side, Auto-Connect, Start On Boot, Change Bike, and the log.
+  side, Auto-Connect, Start On Boot, Change Bike, updates, and the log.
+
+## Updates
+
+**Settings → Updates → Check For Updates** looks at this repository's
+latest GitHub release. If it is newer than the installed app, it shows
+what changed and a **Download And Install** button; Android then asks to
+confirm the update. Settings are kept. The first time, Android asks to
+allow Zuki Nav to install apps.
+
+With **Check On Launch** on, the app checks at most once a day when it
+opens and shows a message if a new version is out. The app only goes
+online to talk to GitHub.
 
 Run **Dash Test → Cycle All** once to check every icon on your dash.
 
