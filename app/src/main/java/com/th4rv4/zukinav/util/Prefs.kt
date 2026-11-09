@@ -35,6 +35,16 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_AUTO, true)
         set(v) = sp.edit().putBoolean(K_AUTO, v).apply()
 
+    /** Start the dash link when the phone boots. */
+    var startOnBoot: Boolean
+        get() = sp.getBoolean(K_BOOT, true)
+        set(v) = sp.edit().putBoolean(K_BOOT, v).apply()
+
+    /** Dash Test results. */
+    var iconMarks: IconMarks
+        get() = IconMarks.decode(sp.getString(K_MARKS, null))
+        set(v) = sp.edit().putString(K_MARKS, v.encode()).apply()
+
     /** Clusters this phone has already said hello to (decides 'F' vs 'R'). */
     fun isFirstPairing(clusterName: String): Boolean =
         !(sp.getStringSet(K_SEEN, emptySet()) ?: emptySet()).contains(clusterName)
@@ -52,5 +62,7 @@ class Prefs(context: Context) {
         const val K_SPEED = "speed_alert_kmh"
         const val K_AUTO = "auto_connect"
         const val K_SEEN = "seen_clusters"
+        const val K_BOOT = "start_on_boot"
+        const val K_MARKS = "icon_marks"
     }
 }
