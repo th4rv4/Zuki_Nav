@@ -1,9 +1,12 @@
 package com.th4rv4.zukinav.ui
 
 import android.view.View
+import android.widget.Switch
 import android.widget.TextView
 import com.th4rv4.zukinav.nav.MapsIconTemplates
 import com.th4rv4.zukinav.protocol.ClusterModels
+import com.th4rv4.zukinav.trips.TripLog
+import com.th4rv4.zukinav.util.Places
 
 /** Dash, connection and troubleshooting settings. */
 class SettingsScreen(host: MainActivity) : Screen(host) {
@@ -14,6 +17,14 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
     private val riderInput = ui.input(prefs.riderName, "Your Name") { prefs.riderName = it }.apply {
         filters = arrayOf(android.text.InputFilter.LengthFilter(20))
     }
+
+    private val placesRow = ui.switchRow(
+        "Start And End Places",
+        "Names where each ride starts and ends. Needs location, allowed all the time.",
+        prefs.tripPlaces && Places.hasPermission(host),
+    ) { on -> setTripPlaces(on) }
+    private val placesSwitch = placesRow.getChildAt(placesRow.childCount - 1) as Switch
+    private var syncingPlaces = false
 
     override val view: View
 
@@ -45,6 +56,17 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             ui.navRow("Change Bike") { host.showSetup() },
         )
 
+        val trips = ui.listCard(
+            ui.switchRow("Record Trips", "Save each ride, ignition on to ignition off", prefs.recordTrips) {
+                prefs.recordTrips = it
+                if (!it) TripLog.stopRecording(host)
+            },
+            ui.switchRow("Skip Short Rides", "Don't save rides under ${(TripLog.SHORT_RIDE_KM * 1000).toInt()} m", prefs.skipShortTrips) {
+                prefs.skipShortTrips = it
+            },
+            placesRow,
+        )
+
         val reload = ui.navRow("Reload Maps Arrows", "Tap To Load") { reloadArrows() }
         arrowsRow = reload.getChildAt(reload.childCount - 1) as? TextView
         val troubleshooting = ui.listCard(
@@ -59,6 +81,8 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             dash,
             ui.text("Right-hand traffic uses roundabout icons 47 and up, which some dashes (e.g. Gixxer SF 250) leave blank.", 12f, Palette.WARN)
                 .apply { setPadding(ui.dp(4), 0, ui.dp(4), 0) },
+            ui.sectionLabel("Trips"),
+            trips,
             ui.sectionLabel("Connection"),
             connection,
             *updates.views.toTypedArray(),
@@ -74,11 +98,30 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         if (riderInput.text.toString().trim() != prefs.riderName) riderInput.setText(prefs.riderName)
         val name = prefs.clusterName
         updates.onShow()
+        // Location may have been taken away in Android's settings.
+        if (!host.askingLocation) showPlaces(prefs.tripPlaces && Places.hasPermission(host))
         subtitle.text = if (name == null) "No bike chosen" else "${ClusterModels.fromBleName(name).displayName} · $name"
     }
 
     override fun onHide() {
         updates.onHide()
+    }
+
+    private fun setTripPlaces(on: Boolean) {
+        if (syncingPlaces) return
+        if (!on) { prefs.tripPlaces = false; return }
+        host.requestTripLocation { granted ->
+            prefs.tripPlaces = granted
+            showPlaces(granted)
+            if (!granted) host.toast("Start And End Places needs location allowed all the time")
+        }
+    }
+
+    private fun showPlaces(on: Boolean) {
+        if (placesSwitch.isChecked == on) return
+        syncingPlaces = true
+        placesSwitch.isChecked = on
+        syncingPlaces = false
     }
 
     private fun reloadArrows() {

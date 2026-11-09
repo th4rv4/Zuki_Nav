@@ -26,6 +26,7 @@ import com.th4rv4.zukinav.protocol.ClusterModel
 import com.th4rv4.zukinav.protocol.ClusterModels
 import com.th4rv4.zukinav.protocol.DashDistance
 import com.th4rv4.zukinav.protocol.SuzukiFrames
+import com.th4rv4.zukinav.trips.TripLog
 import com.th4rv4.zukinav.ui.MainActivity
 import com.th4rv4.zukinav.util.AppLog
 import com.th4rv4.zukinav.util.Prefs
@@ -86,6 +87,7 @@ class DashService : Service(), ClusterLink.Listener {
         link = ClusterLink(this, this)
         instance = this
         NavRepository.addListener(navListener)
+        TripLog.finishIfIdle(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -101,6 +103,7 @@ class DashService : Service(), ClusterLink.Listener {
     }
 
     override fun onDestroy() {
+        if (bike != null) TripLog.onDisconnected(this)
         instance = null
         main.removeCallbacksAndMessages(null)
         NavRepository.removeListener(navListener)
@@ -145,6 +148,7 @@ class DashService : Service(), ClusterLink.Listener {
                     main.post(loop)
                 }
                 ClusterLink.State.DISCONNECTED -> {
+                    if (bike != null) TripLog.onDisconnected(this)
                     bike = null
                     main.removeCallbacks(loop)
                     main.removeCallbacks(connectTimeout)
@@ -171,6 +175,7 @@ class DashService : Service(), ClusterLink.Listener {
     }
 
     private fun onBikeData(data: BikeData) {
+        TripLog.onReading(this, data)
         val changed = data.copy(speedKmh = 0) != bike?.copy(speedKmh = 0)
         bike = data
         prefs.lastBikeAt = System.currentTimeMillis()

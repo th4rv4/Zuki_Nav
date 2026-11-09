@@ -25,6 +25,7 @@ import com.th4rv4.zukinav.nav.MapsNavListener
 import com.th4rv4.zukinav.service.DashService
 import com.th4rv4.zukinav.update.Updater
 import com.th4rv4.zukinav.util.AppLog
+import com.th4rv4.zukinav.util.Places
 import com.th4rv4.zukinav.util.Prefs
 
 /**
@@ -45,6 +46,7 @@ class MainActivity : Activity() {
 
     enum class Tab(val label: String, val icon: Int) {
         RIDE("Ride", R.drawable.ic_tab_ride),
+        TRIPS("Trips", R.drawable.ic_tab_trips),
         DASH_TEST("Dash Test", R.drawable.ic_tab_dash),
         SETTINGS("Settings", R.drawable.ic_tab_settings),
     }
@@ -118,7 +120,8 @@ class MainActivity : Activity() {
 
     @Deprecated("Back from Setup returns to the tabs")
     override fun onBackPressed() {
-        if (current is SetupScreen && setupComplete()) showTab(Tab.RIDE) else {
+        if (current is TripDetailScreen) showTab(Tab.TRIPS)
+        else if (current is SetupScreen && setupComplete()) showTab(Tab.RIDE) else {
             @Suppress("DEPRECATION")
             super.onBackPressed()
         }
@@ -206,11 +209,20 @@ class MainActivity : Activity() {
         swapTo(
             when (tab) {
                 Tab.RIDE -> screen("ride") { RideScreen(this) }
+                Tab.TRIPS -> screen("trips") { TripsScreen(this) }
                 Tab.DASH_TEST -> screen("dash") { DashTestScreen(this) }
                 Tab.SETTINGS -> screen("settings") { SettingsScreen(this) }
             },
         )
     }
+
+    /** Opens one trip's details, with the Trips tab still selected. */
+    fun showTrip(id: Long) {
+        swapTo(TripDetailScreen(this, id))
+    }
+
+    /** Dialog style that matches the app. */
+    val dialogTheme: Int get() = android.R.style.Theme_DeviceDefault_Dialog_Alert
 
     fun showSetup() {
         currentTab = null
@@ -267,7 +279,58 @@ class MainActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            REQ_LOCATION -> {
+                if (Places.hasForeground(this) && !Places.hasBackground(this)) askBackgroundLocation()
+                else finishLocationRequest()
+            }
+            REQ_LOCATION_BG -> finishLocationRequest()
+        }
         current?.onShow()
+    }
+
+    // ---- location for trip places -----------------------------------------
+
+    private var locationDone: ((Boolean) -> Unit)? = null
+
+    /** True while the location prompts for Start And End Places are open. */
+    val askingLocation: Boolean get() = locationDone != null
+
+    /**
+     * Asks for location, then for "Allow all the time": a ride ends with the
+     * ignition off and the app in the background, which is when the end
+     * place is noted. [done] gets whether both were granted.
+     */
+    fun requestTripLocation(done: (Boolean) -> Unit) {
+        if (Places.hasPermission(this)) { done(true); return }
+        locationDone = done
+        if (!Places.hasForeground(this)) {
+            requestPermissions(
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+                REQ_LOCATION,
+            )
+        } else {
+            askBackgroundLocation()
+        }
+    }
+
+    private fun askBackgroundLocation() {
+        val label = if (Build.VERSION.SDK_INT >= 30) packageManager.backgroundPermissionOptionLabel else "Allow all the time"
+        AlertDialog.Builder(this, dialogTheme)
+            .setTitle("Location While Riding")
+            .setMessage("To note where a ride ends, Zuki Nav needs location after the ignition is off, when the app is in the background. On the next screen choose \"$label\".")
+            .setPositiveButton("Continue") { _, _ ->
+                requestPermissions(arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION), REQ_LOCATION_BG)
+            }
+            .setNegativeButton("Not Now") { _, _ -> finishLocationRequest() }
+            .setOnCancelListener { finishLocationRequest() }
+            .show()
+    }
+
+    private fun finishLocationRequest() {
+        val done = locationDone ?: return
+        locationDone = null
+        done(Places.hasPermission(this))
     }
 
     fun openListenerSettings() {
@@ -329,6 +392,11 @@ class MainActivity : Activity() {
     }
 
     fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
+
+    private companion object {
+        const val REQ_LOCATION = 2
+        const val REQ_LOCATION_BG = 3
+    }
 }
 
 /** One page of the app. */

@@ -70,6 +70,26 @@ class Prefs(context: Context) {
         get() = sp.getLong(K_BIKE_AT, 0)
         set(v) = sp.edit().putLong(K_BIKE_AT, v).apply()
 
+    /** Save each ride as a trip. */
+    var recordTrips: Boolean
+        get() = sp.getBoolean(K_TRIPS, true)
+        set(v) = sp.edit().putBoolean(K_TRIPS, v).apply()
+
+    /** Don't save rides under half a kilometre (moving the bike around). */
+    var skipShortTrips: Boolean
+        get() = sp.getBoolean(K_TRIPS_SHORT, true)
+        set(v) = sp.edit().putBoolean(K_TRIPS_SHORT, v).apply()
+
+    /** Note where each ride starts and ends (needs location). */
+    var tripPlaces: Boolean
+        get() = sp.getBoolean(K_TRIPS_PLACES, false)
+        set(v) = sp.edit().putBoolean(K_TRIPS_PLACES, v).apply()
+
+    /** The ride in progress, see TripRecorder.Active. */
+    var activeTrip: String?
+        get() = sp.getString(K_TRIP_ACTIVE, null)
+        set(v) = sp.edit().putString(K_TRIP_ACTIVE, v).apply()
+
     /** Dash Test results. */
     var iconMarks: IconMarks
         get() = IconMarks.decode(sp.getString(K_MARKS, null))
@@ -96,6 +116,10 @@ class Prefs(context: Context) {
         const val K_MARKS = "icon_marks"
         const val K_CALLS = "call_alerts"
         const val K_BIKE = "last_bike"
+        const val K_TRIPS = "record_trips"
+        const val K_TRIPS_SHORT = "skip_short_trips"
+        const val K_TRIPS_PLACES = "trip_places"
+        const val K_TRIP_ACTIVE = "active_trip"
         const val K_BIKE_AT = "last_bike_at"
         const val K_UPDATE_AUTO = "update_check_on_launch"
         const val K_UPDATE_LAST = "update_last_check"

@@ -73,6 +73,24 @@ The dash reports its fuel gauge, ODO and both trip meters every few
 seconds. The Ride tab shows them live, and keeps the last readings (with
 when they were received) after the ignition is off.
 
+## Trips
+
+Every ride is saved as a trip, from ignition on to ignition off. A stop
+with the engine off for less than 3 minutes (a fuel stop) stays part of
+the same ride. Distance comes from Trip A, with the ODO covering any
+stretch where Trip A was reset. Each trip has its distance, moving time,
+average and top speed, time stopped, and the ODO at the start and end.
+
+Trips can be renamed, starred, shared or deleted. Up to 300 trips are
+kept; starred ones are never removed. Rides under 0.5 km are skipped
+unless **Skip Short Rides** is turned off.
+
+**Start And End Places** (off by default) names where each ride started
+and ended, using the phone's location. It needs location allowed all the
+time, because a ride ends with the ignition off while the app is in the
+background. Fuel economy is not shown: the Gixxer SF 250 dash does not
+send it.
+
 ## How the turn arrow is chosen
 
 1. **The Maps arrow itself.** Google Maps ships its arrows as named drawables
@@ -104,13 +122,16 @@ This approach, and the Maps notification layouts, follow
 
 ## App layout
 
-- **Ride**: the bike and its connection, live guidance (arrow, distance,
-  ETA, remaining distance, dash icon number) and a Connect/Disconnect button.
+- **Ride**: the bike and its connection, fuel, ODO and trip meters, the
+  ride in progress, live guidance (arrow, distance, ETA, remaining
+  distance, dash icon number) and a Connect/Disconnect button.
+- **Trips**: saved rides with this month's total, and a Starred filter.
 - **Dash Test**: show any turn icon on the dash, mark it **Looks Right** or
   **Looks Wrong** (the next icon follows automatically), see progress for
   all 64 icons, and **Share Results**.
 - **Settings**: rider name, speed alert, call and message alerts, traffic
-  side, Auto-Connect, Start On Boot, Change Bike, updates, and the log.
+  side, trip recording, Auto-Connect, Start On Boot, Change Bike, updates,
+  and the log.
 
 ## Updates
 

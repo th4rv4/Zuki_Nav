@@ -16,6 +16,8 @@ import com.th4rv4.zukinav.nav.NavSnapshot
 import com.th4rv4.zukinav.protocol.BikeData
 import com.th4rv4.zukinav.protocol.ClusterModels
 import com.th4rv4.zukinav.service.DashService
+import com.th4rv4.zukinav.trips.TripFormat
+import com.th4rv4.zukinav.trips.TripLog
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -46,6 +48,10 @@ class RideScreen(host: MainActivity) : Screen(host) {
     private val iconValue = statValue()
     private val guidanceBody: LinearLayout
     private val idleBody: LinearLayout
+
+    private val rideValue = ui.text("", 16f, Palette.TEXT, Ui.Weight.MEDIUM)
+    private val rideTop = ui.text("", 13f, Palette.MUTED)
+    private val rideCard: LinearLayout
 
     private val sendingValue = ui.text("", 13f, Palette.MUTED)
     private val sourceValue = ui.text("", 13f, Palette.TEXT_SOFT)
@@ -101,6 +107,21 @@ class RideScreen(host: MainActivity) : Screen(host) {
         )
         val bikeCard = ui.card(bikeRow, bikeData, bikeDataHint, gapDp = 14)
 
+        rideCard = ui.card(
+            ui.text("CURRENT RIDE", 11f, Palette.MUTED, Ui.Weight.BOLD).apply { letterSpacing = 0.08f },
+            LinearLayout(ui.ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(rideValue, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+                addView(rideTop)
+            },
+            gapDp = 6,
+        ).apply {
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { host.showTab(MainActivity.Tab.TRIPS) }
+        }
+
         val arrowTile = LinearLayout(ui.ctx).apply {
             gravity = Gravity.CENTER
             background = ui.rounded(Palette.ACCENT, 24)
@@ -142,7 +163,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
             ui.row("Bike Model", trailing = modelValue),
         )
 
-        view = host.page(header, bikeCard, guidanceCard, statusCard, linkButton)
+        view = host.page(header, bikeCard, rideCard, guidanceCard, statusCard, linkButton)
     }
 
     override fun onShow() {
@@ -217,6 +238,14 @@ class RideScreen(host: MainActivity) : Screen(host) {
         modelValue.text = if (name == null) "-" else model.displayName
 
         renderBikeData(name != null)
+
+        val ride = if (prefs.recordTrips) TripLog.active(host) else null
+        rideCard.visibility = if (ride == null) View.GONE else View.VISIBLE
+        if (ride != null) {
+            rideValue.text = TripFormat.distance(ride.distanceKm) + " · " +
+                TripFormat.duration((ride.lastAt - ride.start) / 1000)
+            rideTop.text = "Top ${ride.topSpeed} km/h"
+        }
 
         if (running) {
             linkButton.text = "Disconnect"
