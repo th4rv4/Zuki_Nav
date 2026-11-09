@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.GixxerNav" parent="android:Theme.Material.NoActionBar">
+        <item name="android:colorAccent">#FF2D6BFF</item>
+        <item name="android:colorPrimary">#FF0E1116</item>
+        <item name="android:statusBarColor">#FF0E1116</item>
+        <item name="android:navigationBarColor">#FF0E1116</item>
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>
