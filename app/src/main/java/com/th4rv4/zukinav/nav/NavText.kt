@@ -191,6 +191,10 @@ object NavText {
             }
         }
         if (isArrival(t)) return ClusterIcon.DESTINATION
+        // "Head northeast": the dash has compass arrows for these.
+        if (t.hasWord("head")) {
+            HEAD_DIRECTION.find(t)?.let { m -> ClusterIcon.compass(m.groupValues[1])?.let { return it } }
+        }
         if (left && !right) return ClusterIcon.TURN_LEFT
         if (right && !left) return ClusterIcon.TURN_RIGHT
         if (t.hasWord("straight") || t.hasWord("continue") || t.hasWord("head") || t.hasWord("proceed")) {
@@ -213,6 +217,9 @@ object NavText {
         }
         return ClusterIcon.roundabout(deg, leftHandTraffic)
     }
+
+    private val HEAD_DIRECTION =
+        Regex("""\bhead\s+(north[\s-]?east|north[\s-]?west|south[\s-]?east|south[\s-]?west|north|south|east|west)\b""")
 
     private val ARRIVAL = listOf(
         "you have arrived", "you've arrived", "arriving at", "arrive at your destination",

@@ -10,9 +10,7 @@ package com.th4rv4.zukinav.protocol
  * (`mappls-directions-en_short_instructions.json`) and from
  * `DirectionsUtils.getManeuverId()` for roundabouts.
  *
- * IDs marked "unverified" are known to exist but nothing in the Suzuki app
- * produces them from a normal route, so their artwork is a guess. Use the
- * Icon Test panel in the app to check them on the dash.
+ * Every icon from 1 to 46 has been checked on a Gixxer SF 250 dash.
  */
 enum class ClusterIcon(val id: Int, val label: String) {
     TURN_LEFT(1, "Turn Left"),
@@ -26,15 +24,17 @@ enum class ClusterIcon(val id: Int, val label: String) {
     STRAIGHT(8, "Straight"),
     DESTINATION(9, "Destination"),
     OFF_RAMP_RIGHT(10, "Take Right Ramp"),
-    UNKNOWN_11(11, "Unverified 11"),
-    UNKNOWN_12(12, "Unverified 12"),
+    /** Turn off the main road to the left (road continues straight). */
+    BRANCH_LEFT(11, "Branch Left"),
+    BRANCH_RIGHT(12, "Branch Right"),
     END_OF_ROAD_LEFT(13, "End Of Road, Left"),
     END_OF_ROAD_RIGHT(14, "End Of Road, Right"),
-    UNKNOWN_15(15, "Unverified 15"),
-    UNKNOWN_16(16, "Unverified 16"),
-    UNKNOWN_17(17, "Unverified 17"),
-    UNKNOWN_18(18, "Unverified 18"),
-    UNKNOWN_19(19, "Unverified 19"),
+    // Compass arrows, used by the Suzuki app for "Head <direction>" steps.
+    HEAD_SOUTHEAST(15, "Head Southeast"),
+    HEAD_SOUTH(16, "Head South"),
+    HEAD_SOUTHWEST(17, "Head Southwest"),
+    HEAD_WEST(18, "Head West"),
+    HEAD_NORTHWEST(19, "Head Northwest"),
 
     // Roundabout exits, left-hand traffic (India: clockwise). Bucketed by the
     // angle travelled round the roundabout: <=45, <=90, ... >270 degrees.
@@ -53,16 +53,16 @@ enum class ClusterIcon(val id: Int, val label: String) {
     BEAR_LEFT(31, "Bear Left / Merge Left"),
     BEAR_RIGHT(32, "Bear Right / Merge Right"),
     CONTINUE_STRAIGHT(33, "Continue Straight"),
-    UNKNOWN_34(34, "Unverified 34"),
-    UNKNOWN_35(35, "Unverified 35"),
-    UNKNOWN_36(36, "Unverified 36"),
-    UNKNOWN_37(37, "Unverified 37"),
+    CURVE_SHARP_LEFT(34, "Curve Sharp Left"),
+    CURVE_RIGHT(35, "Curve Right"),
+    CURVE_SHARP_RIGHT(36, "Curve Sharp Right"),
+    CURVE_LEFT(37, "Curve Left"),
     TAKE_RAMP(38, "Take The Ramp"),
     /** U-turn for left-hand traffic (Mappls 41) - the one India uses. */
     U_TURN(39, "U-Turn"),
-    UNKNOWN_40(40, "Unverified 40"),
-    UNKNOWN_41(41, "Unverified 41"),
-    UNKNOWN_42(42, "Unverified 42"),
+    HEAD_NORTH(40, "Head North"),
+    HEAD_NORTHEAST(41, "Head Northeast"),
+    HEAD_EAST(42, "Head East"),
     FERRY(43, "Ferry"),
     OFF_RAMP_LEFT(44, "Take Left Ramp"),
     ENTER_ROUNDABOUT(45, "Enter Roundabout"),
@@ -90,6 +90,33 @@ enum class ClusterIcon(val id: Int, val label: String) {
         const val STATUS_PLACEHOLDER = 46
 
         fun fromId(id: Int): ClusterIcon? = entries.firstOrNull { it.id == id }
+
+        /** Compass arrow for a direction word ("north", "south-west", ...), or null. */
+        fun compass(direction: String): ClusterIcon? =
+            when (direction.lowercase().replace("-", "").replace(" ", "")) {
+                "north" -> HEAD_NORTH
+                "northeast" -> HEAD_NORTHEAST
+                "east" -> HEAD_EAST
+                "southeast" -> HEAD_SOUTHEAST
+                "south" -> HEAD_SOUTH
+                "southwest" -> HEAD_SOUTHWEST
+                "west" -> HEAD_WEST
+                "northwest" -> HEAD_NORTHWEST
+                else -> null
+            }
+
+        /** Clockwise angle of a compass arrow from north, or null for other icons. */
+        fun compassDegrees(icon: ClusterIcon): Int? = when (icon) {
+            HEAD_NORTH -> 0
+            HEAD_NORTHEAST -> 45
+            HEAD_EAST -> 90
+            HEAD_SOUTHEAST -> 135
+            HEAD_SOUTH -> 180
+            HEAD_SOUTHWEST -> 225
+            HEAD_WEST -> 270
+            HEAD_NORTHWEST -> 315
+            else -> null
+        }
 
         /**
          * Roundabout exit by angle travelled, same buckets as Mappls'

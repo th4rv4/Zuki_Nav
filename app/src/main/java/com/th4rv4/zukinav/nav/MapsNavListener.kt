@@ -101,6 +101,12 @@ class MapsNavListener : NotificationListenerService() {
                 }
             }
         }
+        // Maps draws a plain "depart" arrow for "Head northeast"; the dash has
+        // a compass arrow for it, as the Suzuki app shows.
+        if (parsed.textIcon != null && ClusterIcon.compassDegrees(parsed.textIcon) != null) {
+            icon = parsed.textIcon
+            source = "text"
+        }
         if (icon == null && parsed.textIcon != null) {
             icon = parsed.textIcon
             source = "text"

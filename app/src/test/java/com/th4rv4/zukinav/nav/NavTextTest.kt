@@ -46,7 +46,9 @@ class NavTextTest {
         assertEquals(ClusterIcon.DESTINATION, m("Your destination will be on the left"))
         assertEquals(ClusterIcon.TURN_LEFT, m("Turn left onto Harding Rd"))
         assertEquals(ClusterIcon.STRAIGHT, m("Continue onto Right Bank Rd"))
-        assertEquals(ClusterIcon.STRAIGHT, m("Head north on MG Rd"))
+        assertEquals(ClusterIcon.HEAD_NORTH, m("Head north on MG Rd"))
+        assertEquals(ClusterIcon.HEAD_SOUTHWEST, m("Head southwest toward 5th Cross"))
+        assertEquals(ClusterIcon.HEAD_NORTHEAST, m("Head north-east"))
         assertEquals(ClusterIcon.OFF_RAMP_LEFT, m("Take the exit on the left"))
         assertNull(m("towards Koramangala"))
     }

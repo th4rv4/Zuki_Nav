@@ -167,6 +167,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
             val art = TurnArt.of(nav.icon)
             arrowImage.setImageResource(art.res)
             arrowImage.scaleX = if (art.mirrored) -1f else 1f
+            arrowImage.rotation = art.rotation
             arrowImage.contentDescription = nav.icon?.label ?: "Next Turn"
             distance.text = nav.metersToTurn?.let { formatDistance(it) } ?: "—"
             maneuver.text = nav.icon?.label ?: "Follow The Route"

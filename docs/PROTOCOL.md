@@ -135,10 +135,10 @@ right-hand traffic.
 | 8 | 7 | Straight |
 | 9 | 8, 9, 10 | Destination |
 | 10 | 75 | Off-ramp right |
-| 11, 12 | 11, 12 | unverified |
+| 11, 12 | 11, 12 | Branch left / right (road continues straight) |
 | 13 | 13 | End of road, left |
 | 14 | 14 | End of road, right |
-| 15–19 | 53–57 | unverified |
+| 15–19 | 53–57 | Head southeast, south, southwest, west, northwest |
 | 20–26 | 65–71 | Roundabout exit, left-hand traffic, ≤45° … >270° |
 | 27 | 19 | Fork / keep left |
 | 28 | 20 | Fork / keep right |
@@ -147,10 +147,10 @@ right-hand traffic.
 | 31 | 15, 26, 27, 28 | Continue slight left / merge left |
 | 32 | 16, 30, 31 | Continue slight right / merge right |
 | 33 | 21 | Continue straight |
-| 34–37 | 22–25 | unverified |
+| 34–37 | 22–25 | Curve: sharp left, right, sharp right, left |
 | 38 | 73 | Take the ramp (Access-type clusters: also 74) |
 | 39 | 41 | U-turn (left-hand traffic) |
-| 40–42 | 50–52 | unverified |
+| 40–42 | 50–52 | Head north, northeast, east |
 | 43 | 36 | Ferry |
 | 44 | 74 | Off-ramp left |
 | 45 | 72 | Enter roundabout |
@@ -198,6 +198,9 @@ Cluster `SBM21`:
   itself.
 - The status frame lights the signal-bar, Bluetooth and navigation icons
   and sets the clock.
+- Icons 11, 12, 15–19, 34–37 and 40–42 show the pictures listed in the
+  icon table above. The compass arrows (15–19, 40–42) are what the Suzuki
+  app shows for "Head north", "Head southwest" and so on.
 - Icon 43 is a ferry. Icon 46 is a "!" (the warning placeholder).
   Icons 47 to 64 are not drawn, including the right-hand-traffic
   roundabouts (47–52).

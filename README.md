@@ -102,8 +102,7 @@ Run **Dash Test → Cycle All** once to check every icon on your dash.
 > Gixxer SF 250, icon 46 is a "!" and 47 to 64 are blank. The app sends the
 > icon the Traffic Side setting asks for either way.
 
-Some icons in `ClusterIcon` are marked unverified because nothing in the
-Suzuki app uses them.
+Icons 1 to 46 have all been checked on a Gixxer SF 250 dash.
 
 ## Build
 
