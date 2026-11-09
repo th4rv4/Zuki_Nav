@@ -19,6 +19,10 @@ class MapsNavListener : NotificationListenerService() {
 
     private lateinit var prefs: Prefs
     private var lastIcon: ClusterIcon? = null
+    // While Maps says "Rerouting..." its status line is a bare "Arrive ";
+    // keep showing the last ETA / remaining distance instead of zeros.
+    private var lastEta: LocalTime? = null
+    private var lastRemaining: Double? = null
     /** Same arrow bitmap -> same answer; Maps reposts the notification every second or so. */
     private val arrowCache = HashMap<Int, ClusterIcon>()
 
@@ -43,6 +47,8 @@ class MapsNavListener : NotificationListenerService() {
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         if (isMapsGuidance(sbn)) {
             AppLog.d("Maps", "Guidance notification removed")
+            lastEta = null
+            lastRemaining = null
             NavRepository.scheduleEnd()
         }
     }
@@ -61,6 +67,7 @@ class MapsNavListener : NotificationListenerService() {
         val lht = prefs.leftHandTraffic
 
         val parsed = NavText.parse(title, text, sub, critical, LocalTime.now(), lht)
+        logExtrasIfNew(e)
 
         var source = "none"
         var icon: ClusterIcon? = null
@@ -102,10 +109,26 @@ class MapsNavListener : NotificationListenerService() {
                 iconSource = source,
                 metersToTurn = parsed.metersToTurn,
                 instruction = parsed.instruction,
-                remainingMeters = parsed.remainingMeters,
-                eta = parsed.eta,
+                remainingMeters = (parsed.remainingMeters ?: lastRemaining).also { lastRemaining = it },
+                eta = (parsed.eta ?: lastEta).also { lastEta = it },
             ),
         )
+    }
+
+    private var lastExtrasKeys: Set<String> = emptySet()
+
+    /**
+     * Logs every text field of the Maps notification whenever a key appears
+     * that was not there before. Maps keeps moving the remaining distance
+     * around, so this shows where it went.
+     */
+    @Suppress("DEPRECATION") // Bundle.get: we want every value, whatever its type.
+    private fun logExtrasIfNew(e: android.os.Bundle) {
+        val keys = e.keySet().filter { e.get(it) is CharSequence || e.get(it) is Number || e.get(it) is Boolean }.toSet()
+        if (keys == lastExtrasKeys) return
+        lastExtrasKeys = keys
+        val dump = keys.sorted().joinToString("; ") { k -> "$k=${e.get(k)}" }
+        AppLog.d("Maps", "extras: $dump")
     }
 
     private fun largeIconSignature(sbn: StatusBarNotification): IconSignature? {

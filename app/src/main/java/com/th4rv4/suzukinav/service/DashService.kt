@@ -50,7 +50,23 @@ class DashService : Service(), ClusterLink.Listener {
     private var navWasActive = false
     private var testIconId: Int? = null
     private var testUntil = 0L
-    private var reconnectInBackground = false
+    private var retries = 0
+    private var lastNavHex: String? = null
+    private var statusLogged = false
+
+    /** A direct connect that hangs is abandoned after this and retried. */
+    private val connectTimeout = Runnable {
+        when (link.state) {
+            ClusterLink.State.CONNECTING -> {
+                AppLog.d("Dash", "Bike not answering, retrying")
+                link.disconnect()
+            }
+            // e.g. Bluetooth was off: the link never left DISCONNECTED, so
+            // nothing else would schedule another attempt.
+            ClusterLink.State.DISCONNECTED -> if (prefs.autoConnect) connectIfNeeded()
+            ClusterLink.State.READY -> Unit
+        }
+    }
 
     private val navListener: (NavSnapshot?) -> Unit = { updateNotification() }
 
@@ -98,7 +114,12 @@ class DashService : Service(), ClusterLink.Listener {
             AppLog.d("Dash", "Bluetooth permission missing")
             return
         }
-        link.connect(addr, background = reconnectInBackground)
+        // Direct connects, retried with backoff (see onStateChanged). Android's
+        // background auto-connect was tried first and could sit for minutes
+        // after the bike came back.
+        link.connect(addr, background = false)
+        main.removeCallbacks(connectTimeout)
+        main.postDelayed(connectTimeout, CONNECT_TIMEOUT_MS)
     }
 
     override fun onStateChanged(state: ClusterLink.State) {
@@ -106,7 +127,10 @@ class DashService : Service(), ClusterLink.Listener {
             AppLog.d("Dash", "Link $state")
             when (state) {
                 ClusterLink.State.READY -> {
-                    reconnectInBackground = false
+                    main.removeCallbacks(connectTimeout)
+                    retries = 0
+                    lastNavHex = null
+                    statusLogged = false
                     helloLeft = 4
                     tick = 0
                     main.removeCallbacks(loop)
@@ -114,10 +138,13 @@ class DashService : Service(), ClusterLink.Listener {
                 }
                 ClusterLink.State.DISCONNECTED -> {
                     main.removeCallbacks(loop)
+                    main.removeCallbacks(connectTimeout)
                     if (prefs.autoConnect && instance != null) {
-                        // From now on let Android wait for the bike in the background.
-                        reconnectInBackground = true
-                        main.postDelayed({ connectIfNeeded() }, 2_000)
+                        // 2 s, 4 s, 8 s, then every 15 s while the bike is off.
+                        val delay = minOf(2_000L shl retries.coerceAtMost(3), 15_000L)
+                        retries++
+                        AppLog.d("Dash", "Reconnecting in ${delay / 1000} s")
+                        main.postDelayed({ connectIfNeeded() }, delay)
                     }
                 }
                 ClusterLink.State.CONNECTING -> Unit
@@ -144,7 +171,9 @@ class DashService : Service(), ClusterLink.Listener {
 
         if (helloLeft > 0) {
             val first = name != null && prefs.isFirstPairing(name)
-            link.send(SuzukiFrames.hello(prefs.riderName, first, mode))
+            val hello = SuzukiFrames.hello(prefs.riderName, first, mode)
+            if (helloLeft == 4) AppLog.d("Dash", "-> ${SuzukiFrames.hex(hello)} (hello, ${model.displayName})")
+            link.send(hello)
             helloLeft--
             if (helloLeft == 0 && name != null) prefs.markPaired(name)
             tick++
@@ -152,12 +181,14 @@ class DashService : Service(), ClusterLink.Listener {
         }
 
         if (tick % 10 == 0 && model.statusLayout != ClusterModel.StatusLayout.NONE) {
-            link.send(
-                SuzukiFrames.status(
-                    LocalTime.now(), speedAlertKmh = prefs.speedAlertKmh, mode = mode, layout = model.statusLayout,
-                ),
-                coalesceKey = "status",
+            val status = SuzukiFrames.status(
+                LocalTime.now(), speedAlertKmh = prefs.speedAlertKmh, mode = mode, layout = model.statusLayout,
             )
+            if (!statusLogged) {
+                AppLog.d("Dash", "-> ${SuzukiFrames.hex(status)} (status, every 2 s)")
+                statusLogged = true
+            }
+            link.send(status, coalesceKey = "status")
         }
         tick++
 
@@ -172,7 +203,13 @@ class DashService : Service(), ClusterLink.Listener {
                 navWasActive = true
             }
             nav != null -> {
-                link.send(navFrame(nav, model), coalesceKey = "nav")
+                val frame = navFrame(nav, model)
+                val hex = SuzukiFrames.hex(frame)
+                if (hex != lastNavHex) {
+                    AppLog.d("Dash", "-> $hex")
+                    lastNavHex = hex
+                }
+                link.send(frame, coalesceKey = "nav")
                 navWasActive = true
                 endFramesLeft = 0
             }
@@ -264,6 +301,7 @@ class DashService : Service(), ClusterLink.Listener {
     companion object {
         private const val CHANNEL = "dash_link"
         private const val NOTIF_ID = 17
+        private const val CONNECT_TIMEOUT_MS = 20_000L
         const val ACTION_STOP = "com.th4rv4.suzukinav.STOP"
 
         @Volatile var instance: DashService? = null

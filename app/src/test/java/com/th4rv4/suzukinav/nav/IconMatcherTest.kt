@@ -55,4 +55,22 @@ class IconMatcherTest {
         assertEquals(ClusterIcon.OFF_RAMP_LEFT, MapsManeuvers.toCluster("maneuver_off_ramp_slight_left"))
         for (n in MapsManeuvers.NAMES) assertNotNull(n, MapsManeuvers.toCluster(n))
     }
+
+    /** Maps draws turn_normal_right and on_ramp_normal_right identically (seen on a real ride). */
+    @Test fun identicalPicturesPreferPlainTurn() {
+        val right = IconSignature.of(arrow(128, 3f, 2, 0, right = true), 128, 128)!!
+        val left = IconSignature.of(arrow(128, 3f, 2, 0, right = false), 128, 128)!!
+        val matcher = IconMatcher(listOf(
+            "maneuver_on_ramp_normal_right" to right,
+            "maneuver_turn_normal_right" to right,
+            "maneuver_turn_normal_left" to left,
+            "maneuver_on_ramp_normal_left" to left,
+        ))
+        assertEquals(2, matcher.size)
+        val sig = IconSignature.of(arrow(64, 1.2f, 9, 7, right = true), 64, 64)!!
+        val m = matcher.match(sig)!!
+        assertEquals("maneuver_turn_normal_right", m.drawableName)
+        assertEquals(ClusterIcon.TURN_RIGHT, m.icon)
+        assertTrue("margin ${m.margin}", m.margin > IconMatcher.MIN_MARGIN)
+    }
 }

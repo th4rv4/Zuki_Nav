@@ -86,7 +86,10 @@ class IconSignature private constructor(val cells: FloatArray) {
  * `maneuver_*` drawables on the phone (see MapsIconTemplates), so nothing of
  * Google's is bundled in this app.
  */
-class IconMatcher(private val templates: List<Pair<String, IconSignature>>) {
+class IconMatcher(templates: List<Pair<String, IconSignature>>) {
+
+    /** Templates with look-alikes for a different dash icon removed, see [dedupe]. */
+    private val templates: List<Pair<String, IconSignature>> = dedupe(templates)
 
     data class Match(val drawableName: String, val icon: ClusterIcon, val distance: Float, val margin: Float)
 
@@ -119,6 +122,47 @@ class IconMatcher(private val templates: List<Pair<String, IconSignature>>) {
         /** Accept a match only if it is close and clearly better than the next different icon. */
         const val MAX_DISTANCE = 0.30f
         const val MIN_MARGIN = 0.04f
+
+        /** Two templates closer than this are the same picture. */
+        const val SAME_PICTURE = 0.02f
+
+        /**
+         * Google Maps reuses one picture for several maneuvers: the
+         * `turn_normal_right` and `on_ramp_normal_right` arrows render
+         * identically. Kept both, they tie on every right turn and the
+         * matcher refuses to answer (margin 0). Of each group of identical
+         * pictures, keep the maneuver that is far more common on Indian
+         * roads, by [priority].
+         */
+        fun dedupe(templates: List<Pair<String, IconSignature>>): List<Pair<String, IconSignature>> {
+            val sorted = templates.sortedBy { priority(it.first) }
+            val kept = ArrayList<Pair<String, IconSignature>>()
+            for (t in sorted) {
+                val icon = MapsManeuvers.toCluster(t.first)
+                val clash = kept.any { k ->
+                    MapsManeuvers.toCluster(k.first) != icon && k.second.distance(t.second) < SAME_PICTURE
+                }
+                if (!clash) kept += t
+            }
+            return kept
+        }
+
+        /** Lower wins. Plain turns first, ramps last. */
+        fun priority(name: String): Int {
+            val n = name.removePrefix("maneuver_")
+            return when {
+                n.startsWith("turn_") -> 0
+                n == "straight" || n == "depart" -> 1
+                n.startsWith("u_turn") -> 2
+                n.startsWith("destination") -> 3
+                n.startsWith("roundabout_") -> 4
+                n.startsWith("keep_") || n.startsWith("fork_") -> 5
+                n.startsWith("merge") || n == "name_change" -> 6
+                n.startsWith("off_ramp") -> 7
+                n.startsWith("on_ramp") -> 8
+                else -> 9
+            }
+        }
     }
 }
 

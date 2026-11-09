@@ -144,6 +144,7 @@ class ClusterLink(private val context: Context, private val listener: Listener) 
         h.removeCallbacks(writeTimeout)
         queue.clear()
         inFlight = false
+        lastIncoming = null
         writeChar = null
         notifyChar = null
         gatt?.let {
@@ -216,8 +217,15 @@ class ClusterLink(private val context: Context, private val listener: Listener) 
         }
     }
 
+    private var lastIncoming: String? = null
+
+    /** The bike repeats its frame every 5 s; log it only when it changes. */
     private fun onIncoming(value: ByteArray) {
-        AppLog.d("BLE", "<- ${SuzukiFrames.hex(value)}")
+        val hex = SuzukiFrames.hex(value)
+        if (hex != lastIncoming) {
+            AppLog.d("BLE", "<- $hex")
+            lastIncoming = hex
+        }
         listener.onNotification(value)
     }
 
