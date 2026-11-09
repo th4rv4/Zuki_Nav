@@ -86,6 +86,11 @@ app uses them.
 
 ## Build
 
+Every push is built by GitHub Actions (`.github/workflows/build.yml`): unit
+tests run and the debug APK is attached to the run as an artifact.
+
+To build locally:
+
 ```
 ./gradlew testDebugUnitTest assembleDebug
 adb install -r app/build/outputs/apk/debug/app-debug.apk
