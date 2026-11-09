@@ -29,6 +29,16 @@ android {
     }
 
     signingConfigs {
+        // A fixed debug key kept in the repo, so every build (local or
+        // GitHub Actions) has the same signature and installs as an update.
+        // Without it each CI runner made a fresh key and Android refused to
+        // update over the previous APK.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         create("release") {
             localProps.getProperty("RELEASE_STORE_FILE")?.let { path ->
                 storeFile = file(path)

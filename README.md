@@ -107,6 +107,11 @@ To build locally:
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
+Debug builds are signed with `app/debug.keystore` (password `android`), which
+is checked in so that every build, local or CI, can update the previous one.
+It is a public key: anyone can sign an APK with it, so only install builds
+from this repo's releases.
+
 Needs JDK 17+ and an Android SDK with platform 36 (`local.properties` → `sdk.dir`).
 For a signed release, add `RELEASE_STORE_FILE`, `RELEASE_STORE_PASSWORD`,
 `RELEASE_KEY_ALIAS` and `RELEASE_KEY_PASSWORD` to `local.properties` and run
