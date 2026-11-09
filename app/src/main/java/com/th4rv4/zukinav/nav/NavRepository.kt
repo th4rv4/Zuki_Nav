@@ -1,8 +1,8 @@
-package com.th4rv4.suzukinav.nav
+package com.th4rv4.zukinav.nav
 
 import android.os.Handler
 import android.os.Looper
-import com.th4rv4.suzukinav.protocol.ClusterIcon
+import com.th4rv4.zukinav.protocol.ClusterIcon
 import java.time.LocalTime
 import java.util.concurrent.CopyOnWriteArrayList
 

@@ -16,11 +16,11 @@ val localProps = Properties().apply {
 }
 
 android {
-    namespace = "com.th4rv4.suzukinav"
+    namespace = "com.th4rv4.zukinav"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.th4rv4.suzukinav"
+        applicationId = "com.th4rv4.zukinav"
         minSdk = 29
         targetSdk = 35
         // CI passes -PappVersionName / -PappVersionCode from the git tag.

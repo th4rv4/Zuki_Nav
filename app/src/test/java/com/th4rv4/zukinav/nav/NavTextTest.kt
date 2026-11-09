@@ -1,6 +1,6 @@
-package com.th4rv4.suzukinav.nav
+package com.th4rv4.zukinav.nav
 
-import com.th4rv4.suzukinav.protocol.ClusterIcon
+import com.th4rv4.zukinav.protocol.ClusterIcon
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

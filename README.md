@@ -1,4 +1,4 @@
-# Suzuki Nav
+# Zuki Nav
 
 Google Maps turn-by-turn directions on the dash of Suzuki two-wheelers that
 have **Suzuki Ride Connect**, over Bluetooth LE.
@@ -75,7 +75,7 @@ This approach, and the Maps notification layouts, follow
 ## Setup
 
 1. Build and install (below).
-2. Open Suzuki Nav, tap **Permissions**, then **Notification Access** and enable it.
+2. Open Zuki Nav, tap **Permissions**, then **Notification Access** and enable it.
 3. Force-stop Suzuki Ride Connect. The cluster accepts one phone at a time.
 4. Ignition on, tap **Scan For Bike**, pick your vehicle (it is listed with its model name).
 5. Start a route in Google Maps.

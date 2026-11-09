@@ -53,12 +53,12 @@ jobs:
             -PappVersionName="${{ steps.version.outputs.name }}" \
             -PappVersionCode="${{ github.run_number }}"
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk "dist/suzuki-nav-${{ github.ref_name }}.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "dist/zuki-nav-${{ github.ref_name }}.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: suzuki-nav-${{ github.ref_name }}
+          name: zuki-nav-${{ github.ref_name }}
           path: dist/*.apk
 
       - name: Upload test reports
@@ -97,6 +97,6 @@ jobs:
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
-          name: Suzuki Nav ${{ github.ref_name }}
+          name: Zuki Nav ${{ github.ref_name }}
           body_path: release-notes.md
           files: dist/*.apk

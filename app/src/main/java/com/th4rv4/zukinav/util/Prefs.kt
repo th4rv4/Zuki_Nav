@@ -1,4 +1,4 @@
-package com.th4rv4.suzukinav.util
+package com.th4rv4.zukinav.util
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -7,7 +7,7 @@ import android.content.SharedPreferences
 class Prefs(context: Context) {
 
     private val sp: SharedPreferences =
-        context.applicationContext.getSharedPreferences("suzuki_nav", Context.MODE_PRIVATE)
+        context.applicationContext.getSharedPreferences("zuki_nav", Context.MODE_PRIVATE)
 
     var clusterAddress: String?
         get() = sp.getString(K_ADDR, null)

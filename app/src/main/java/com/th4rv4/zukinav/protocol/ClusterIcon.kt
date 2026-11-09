@@ -1,4 +1,4 @@
-package com.th4rv4.suzukinav.protocol
+package com.th4rv4.zukinav.protocol
 
 /**
  * Turn-icon IDs understood by the Suzuki Ride Connect instrument cluster.

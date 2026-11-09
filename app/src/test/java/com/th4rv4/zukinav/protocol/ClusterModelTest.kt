@@ -1,4 +1,4 @@
-package com.th4rv4.suzukinav.protocol
+package com.th4rv4.zukinav.protocol
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

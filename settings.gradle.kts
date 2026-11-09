@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "SuzukiNav"
+rootProject.name = "ZukiNav"
 include(":app")

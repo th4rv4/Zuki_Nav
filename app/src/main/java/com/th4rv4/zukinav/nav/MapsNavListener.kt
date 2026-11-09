@@ -1,13 +1,13 @@
-package com.th4rv4.suzukinav.nav
+package com.th4rv4.zukinav.nav
 
 import android.app.Notification
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
-import com.th4rv4.suzukinav.protocol.ClusterIcon
-import com.th4rv4.suzukinav.util.AppLog
-import com.th4rv4.suzukinav.util.Prefs
+import com.th4rv4.zukinav.protocol.ClusterIcon
+import com.th4rv4.zukinav.util.AppLog
+import com.th4rv4.zukinav.util.Prefs
 import java.time.LocalTime
 
 /**

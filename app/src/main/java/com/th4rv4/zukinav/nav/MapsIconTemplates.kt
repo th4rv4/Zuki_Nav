@@ -1,4 +1,4 @@
-package com.th4rv4.suzukinav.nav
+package com.th4rv4.zukinav.nav
 
 import android.content.Context
 import android.content.pm.PackageManager
@@ -6,7 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.Drawable
 import android.os.Build
-import com.th4rv4.suzukinav.util.AppLog
+import com.th4rv4.zukinav.util.AppLog
 
 /**
  * Builds the arrow templates from the Google Maps app installed on this phone.

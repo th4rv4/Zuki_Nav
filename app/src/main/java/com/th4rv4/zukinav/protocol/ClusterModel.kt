@@ -1,4 +1,4 @@
-package com.th4rv4.suzukinav.protocol
+package com.th4rv4.zukinav.protocol
 
 /**
  * Every vehicle Suzuki Ride Connect 8.0 knows, keyed by the cluster's BLE

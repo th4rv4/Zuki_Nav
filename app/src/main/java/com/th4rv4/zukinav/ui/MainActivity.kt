@@ -1,4 +1,4 @@
-package com.th4rv4.suzukinav.ui
+package com.th4rv4.zukinav.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -33,17 +33,17 @@ import android.widget.ScrollView
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
-import com.th4rv4.suzukinav.ble.ClusterLink
-import com.th4rv4.suzukinav.nav.MapsIconTemplates
-import com.th4rv4.suzukinav.nav.MapsNavListener
-import com.th4rv4.suzukinav.nav.NavRepository
-import com.th4rv4.suzukinav.nav.NavSnapshot
-import com.th4rv4.suzukinav.protocol.ClusterIcon
-import com.th4rv4.suzukinav.protocol.ClusterModels
-import com.th4rv4.suzukinav.protocol.DashDistance
-import com.th4rv4.suzukinav.service.DashService
-import com.th4rv4.suzukinav.util.AppLog
-import com.th4rv4.suzukinav.util.Prefs
+import com.th4rv4.zukinav.ble.ClusterLink
+import com.th4rv4.zukinav.nav.MapsIconTemplates
+import com.th4rv4.zukinav.nav.MapsNavListener
+import com.th4rv4.zukinav.nav.NavRepository
+import com.th4rv4.zukinav.nav.NavSnapshot
+import com.th4rv4.zukinav.protocol.ClusterIcon
+import com.th4rv4.zukinav.protocol.ClusterModels
+import com.th4rv4.zukinav.protocol.DashDistance
+import com.th4rv4.zukinav.service.DashService
+import com.th4rv4.zukinav.util.AppLog
+import com.th4rv4.zukinav.util.Prefs
 
 /**
  * One functional screen: setup, live guidance preview, icon test panel,
@@ -178,7 +178,7 @@ class MainActivity : Activity() {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(24), dp(16), dp(24))
-            addView(text("Suzuki Nav", 26f, bold = true))
+            addView(text("Zuki Nav", 26f, bold = true))
             addView(text("Google Maps Directions On Your Suzuki Dash", 14f, 0xFF8A93A6.toInt()))
             addView(View(this@MainActivity), LinearLayout.LayoutParams(1, dp(12)))
             addView(card("STATUS", statusText, setupText,
@@ -348,7 +348,7 @@ class MainActivity : Activity() {
 
     private fun copyLog() {
         val cm = getSystemService(ClipboardManager::class.java)
-        cm.setPrimaryClip(ClipData.newPlainText("Suzuki Nav log", AppLog.snapshot().joinToString("\n")))
+        cm.setPrimaryClip(ClipData.newPlainText("Zuki Nav log", AppLog.snapshot().joinToString("\n")))
         toast("Log copied")
     }
 

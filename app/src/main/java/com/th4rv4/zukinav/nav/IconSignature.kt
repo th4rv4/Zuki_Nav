@@ -1,6 +1,6 @@
-package com.th4rv4.suzukinav.nav
+package com.th4rv4.zukinav.nav
 
-import com.th4rv4.suzukinav.protocol.ClusterIcon
+import com.th4rv4.zukinav.protocol.ClusterIcon
 
 /**
  * Shape fingerprint of a maneuver arrow, computed from raw ARGB pixels so it
