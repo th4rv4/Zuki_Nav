@@ -80,6 +80,8 @@ This approach, and the Maps notification layouts, follow
    - **Notification Access**: tap **Grant** and switch Zuki Nav on.
    - **Close Suzuki Ride Connect**: tap **Force Stop**. The dash accepts
      one phone at a time.
+   - **Your Name** (optional): the dash greets you with it when it
+     connects. It can be changed later in Settings.
 3. Turn the ignition on. Under **Find Your Bike**, tap your bike (it is
    listed with its model name), then **Finish Setup**.
 4. Start a route in Google Maps. The **Ride** tab shows the next turn and

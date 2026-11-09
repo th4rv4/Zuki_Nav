@@ -10,13 +10,16 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
 
     private val subtitle = ui.text("", 13f, Palette.MUTED)
     private var arrowsRow: TextView? = null
+    private val riderInput = ui.input(prefs.riderName, "Your Name") { prefs.riderName = it }.apply {
+        filters = arrayOf(android.text.InputFilter.LengthFilter(20))
+    }
 
     override val view: View
 
     init {
         val dash = ui.listCard(
             ui.row("Rider Name", "Shown on the dash when it connects",
-                ui.input(prefs.riderName, "Your Name") { prefs.riderName = it }),
+                riderInput),
             ui.row("Speed Alert", "km/h, empty to turn off",
                 ui.input(prefs.speedAlertKmh.takeIf { it > 0 }?.toString() ?: "", "Off", numeric = true) {
                     prefs.speedAlertKmh = it.toIntOrNull()?.coerceIn(0, 999) ?: 0
@@ -59,6 +62,8 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
     }
 
     override fun onShow() {
+        // Setup may have changed it since this screen was built.
+        if (riderInput.text.toString().trim() != prefs.riderName) riderInput.setText(prefs.riderName)
         val name = prefs.clusterName
         subtitle.text = if (name == null) "No bike chosen" else "${ClusterModels.fromBleName(name).displayName} · $name"
     }

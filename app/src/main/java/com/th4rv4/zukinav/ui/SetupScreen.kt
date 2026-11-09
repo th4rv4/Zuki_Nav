@@ -38,6 +38,15 @@ class SetupScreen(host: MainActivity) : Screen(host) {
             ui.text("A few things, once. After this the app connects to your bike on its own.", 14f, Palette.MUTED),
         ).apply { setPadding(ui.dp(4), 0, ui.dp(4), 0) }
 
+        val nameCard = ui.card(
+            ui.text("Your Name", 16f, Palette.TEXT, Ui.Weight.MEDIUM),
+            ui.text("The dash greets you with it when it connects. Optional, and you can change it later in Settings.", 13f, Palette.MUTED),
+            ui.input(prefs.riderName, "Rider Name") { prefs.riderName = it }.apply {
+                gravity = Gravity.START or Gravity.CENTER_VERTICAL
+                filters = arrayOf(android.text.InputFilter.LengthFilter(MAX_NAME))
+            },
+        )
+
         val bikeCard = ui.card(
             LinearLayout(ui.ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -52,7 +61,7 @@ class SetupScreen(host: MainActivity) : Screen(host) {
             ui.text("Works with Suzuki Ride Connect models sold in India.", 12f, Palette.MUTED),
         )
 
-        view = host.page(intro, checklist, bikeCard, finishButton)
+        view = host.page(intro, checklist, nameCard, bikeCard, finishButton)
     }
 
     override fun onShow() {
@@ -211,5 +220,7 @@ class SetupScreen(host: MainActivity) : Screen(host) {
 
     private companion object {
         const val RIDE_CONNECT_PKG = "suzuki.com.suzuki"
+        /** The dash shows up to 20 characters. */
+        const val MAX_NAME = 20
     }
 }
