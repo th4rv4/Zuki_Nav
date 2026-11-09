@@ -91,6 +91,10 @@ is pushed, or when started by hand (Actions → Build → Run workflow). Plain
 commits don't trigger it. Unit tests run and the debug APK is attached to
 the run as an artifact.
 
+A tag push also publishes a GitHub Release named after the tag, with the
+APK attached and every commit since the previous `v*` tag listed in the
+notes. The app's version name is taken from the tag (`v0.2.0` → `0.2.0`).
+
 ```
 git tag v0.2.0
 git push origin v0.2.0

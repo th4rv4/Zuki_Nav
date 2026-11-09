@@ -2,17 +2,26 @@ name: Build
 
 # Builds only when a version tag is pushed (e.g. v0.2.0) or when started by
 # hand from the Actions tab. Ordinary commits and pushes do not trigger it.
+# A tag push also publishes a GitHub Release with the APK and the list of
+# commits since the previous tag.
 on:
   push:
     tags:
       - "v*"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history and tags, so the release notes can list commits
+          # since the previous tag.
+          fetch-depth: 0
 
       - uses: actions/setup-java@v4
         with:
@@ -28,16 +37,29 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Version
+        id: version
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            echo "name=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=0.0.0-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Unit tests and debug APK
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon testDebugUnitTest assembleDebug
+          ./gradlew --no-daemon testDebugUnitTest assembleDebug \
+            -PappVersionName="${{ steps.version.outputs.name }}" \
+            -PappVersionCode="${{ github.run_number }}"
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk "dist/suzuki-nav-${{ github.ref_name }}.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: suzuki-nav-debug-${{ github.ref_name }}
-          path: app/build/outputs/apk/debug/*.apk
+          name: suzuki-nav-${{ github.ref_name }}
+          path: dist/*.apk
 
       - name: Upload test reports
         if: always()
@@ -46,3 +68,35 @@ jobs:
           name: test-reports-${{ github.ref_name }}
           path: app/build/reports/tests/
           if-no-files-found: ignore
+
+      - name: Release notes
+        if: github.ref_type == 'tag'
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          PREV="$(git describe --tags --abbrev=0 --match 'v*' "${TAG}^" 2>/dev/null || true)"
+          if [ -n "$PREV" ]; then
+            RANGE="${PREV}..${TAG}"
+            HEADER="Changes since ${PREV}"
+          else
+            RANGE="${TAG}"
+            HEADER="Changes"
+          fi
+          {
+            echo "## ${HEADER}"
+            echo
+            git log --no-merges --reverse --pretty=format:'- %s (%h)' "$RANGE"
+            echo
+            if [ -n "$PREV" ]; then
+              echo
+              echo "**Full diff:** ${{ github.server_url }}/${{ github.repository }}/compare/${PREV}...${TAG}"
+            fi
+          } > release-notes.md
+          cat release-notes.md
+
+      - name: Publish release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Suzuki Nav ${{ github.ref_name }}
+          body_path: release-notes.md
+          files: dist/*.apk
