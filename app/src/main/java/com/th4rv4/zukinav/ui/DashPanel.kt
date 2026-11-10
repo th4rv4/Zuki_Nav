@@ -50,7 +50,7 @@ class DashPanel(private val host: MainActivity) {
     private val fuelRow: LinearLayout
 
     private val eta = numberText(16f, Palette.TEXT)
-    private val left = numberText(16f, Palette.TEXT)
+    private val remaining = numberText(16f, Palette.TEXT)
     private val etaRow: LinearLayout
 
     private val odo = numberText(19f, Palette.TEXT)
@@ -108,7 +108,7 @@ class DashPanel(private val host: MainActivity) {
             setPadding(ui.dp(12), ui.dp(8), ui.dp(12), ui.dp(8))
             addView(label("ETA"), LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginEnd = ui.dp(8) })
             addView(eta, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            addView(left, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginEnd = ui.dp(6) })
+            addView(remaining, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginEnd = ui.dp(6) })
             addView(label("LEFT"))
         }
         content.addView(etaRow)
@@ -183,7 +183,7 @@ class DashPanel(private val host: MainActivity) {
 
         etaRow.visibility = if (nav == null) View.GONE else View.VISIBLE
         eta.text = etaText ?: "--"
-        left.text = nav?.remainingMeters?.let { formatDistance(it) } ?: "--"
+        remaining.text = nav?.remainingMeters?.let { formatDistance(it) } ?: "--"
 
         odo.text = data?.let { String.format(Locale.US, "%,d", it.odoKm) } ?: "--"
         tripA.text = data?.let { String.format(Locale.US, "%.1f", it.tripAKm) } ?: "--"
