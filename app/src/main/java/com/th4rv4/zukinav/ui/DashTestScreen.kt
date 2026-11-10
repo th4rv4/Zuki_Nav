@@ -133,11 +133,26 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
             radiusDp = 24,
         )
 
+        fun close(label: String, how: DashService.GreetingClose) =
+            ui.button(label, Ui.Btn.SECONDARY, 46) { greeting { DashService.testGreetingClose(how) } }
+        val greetingCard = ui.card(
+            ui.sectionLabel("Greeting Test").apply { setPadding(0, 0, 0, 0) },
+            ui.text("Shows your Startup Greeting on the dash's call screen. About 3 s later, tap one way to close it, and note whether the screen and the flashing light go away, and whether anything is left behind (a missed-call mark or a phone icon).", 13f, Palette.MUTED),
+            ui.button("Show Greeting", Ui.Btn.PRIMARY, 48) { greeting { DashService.testGreeting() } },
+            ui.hstack(8, close("A · Answered", DashService.GreetingClose.ANSWERED),
+                close("B · Clear Alerts", DashService.GreetingClose.CLEAR_ALERTS), weighted = true),
+            ui.hstack(8, close("C · End Nav", DashService.GreetingClose.END_NAV),
+                close("D · Nav Screen", DashService.GreetingClose.NAV_SCREEN), weighted = true),
+            gapDp = 12,
+            radiusDp = 24,
+        )
+
         view = host.page(
             ui.vstack(2, ui.title("Dash Test"), ui.text("Check each turn icon on your dash", 13f, Palette.MUTED)),
             currentCard,
             allCard,
             textCard,
+            greetingCard,
             ui.text(ICON_WARNING, 12f, Palette.WARN),
             ui.hstack(8, cycleButton, ui.button("Share Results", Ui.Btn.SECONDARY) { share() }, weighted = true),
         )
@@ -175,6 +190,14 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
             host.toast(NAVIGATING)
             stopCycle()
         }
+    }
+
+    private fun greeting(send: () -> Boolean) {
+        if (DashService.linkState != ClusterLink.State.READY) {
+            host.toast("Connect to the bike first")
+            return
+        }
+        if (!send()) host.toast(NAVIGATING)
     }
 
     private fun sendText() {
