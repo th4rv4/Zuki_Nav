@@ -48,7 +48,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             ui.switchRow("Startup Animation", "Spins the arrow on the dash after Welcome. Skipped during a route.", prefs.startupAnimation) {
                 prefs.startupAnimation = it
             },
-            ui.row("Startup Greeting", "Shown on the dash's call screen after Welcome",
+            ui.row("Startup Greeting", "Shown for 3 s after Welcome, on the dash's call screen under \"CALLER:\"",
                 ui.input(prefs.startupGreeting, "None") { prefs.startupGreeting = it }.apply {
                     filters = arrayOf(android.text.InputFilter.LengthFilter(20))
                 }),

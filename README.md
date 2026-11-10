@@ -138,8 +138,9 @@ This approach, and the Maps notification layouts, follow
   isn't navigating.
 
 Optional extras in Settings: **Startup Animation** spins the compass arrow
-on the dash after "Welcome", and **Startup Greeting** shows a short text on
-the dash's call screen. Both are skipped when a route is already running,
+on the dash after "Welcome", and **Startup Greeting** shows a short text for 3
+seconds on the dash's call screen. The dash always puts its own
+"CALLER:" label above it; no other screen can show text. Both are skipped when a route is already running,
 and a route starting mid-animation takes over at once.
 - **Settings**: rider name, speed alert, call and message alerts, traffic
   side, theme (System, Light or Dark), trip recording, Auto-Connect, Start
