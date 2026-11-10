@@ -124,8 +124,11 @@ object SuzukiFrames {
     /**
      * A navigation frame with free text in the three number fields, for
      * finding out what the dash can show there (Dash Test > Text Test).
-     * Text is upper-cased, cut or padded with spaces to 4 / 6 / 4 characters;
-     * the unit bytes stay 'M'. Not used while navigating.
+     * Text is upper-cased and cut or padded to 4 / 6 / 4 characters. A number
+     * in the distance or remaining spot is padded with zeros in front, the
+     * way navigation sends it ("50" -> "0050"); anything else is padded with
+     * spaces, which the dash shows as '*'. The unit bytes stay 'M'.
+     * Not used while navigating.
      */
     fun navigationText(
         iconId: Int,
@@ -135,14 +138,18 @@ object SuzukiFrames {
         mode: Checksum = Checksum.SUM,
     ): ByteArray {
         fun field(s: String, n: Int) = asciiOnly(s.uppercase()).take(n).padEnd(n, ' ')
+        fun number(s: String, n: Int): String {
+            val t = asciiOnly(s.trim()).take(n)
+            return if (t.isNotEmpty() && t.all { it.isDigit() || it == '.' }) t.padStart(n, '0') else field(s, n)
+        }
         val f = newFrame('1')
         f[2] = iconId.toByte()
         f[3] = FF
-        f.putAscii(4, field(toTurn, 4))
+        f.putAscii(4, number(toTurn, 4))
         f[8] = 'M'.code.toByte()
         f.putAscii(9, field(eta, 6))
         f.fill(15, 17, FF)
-        f.putAscii(18, field(remaining, 4))
+        f.putAscii(18, number(remaining, 4))
         f[22] = 'M'.code.toByte()
         f[23] = NavStatus.OK.code.code.toByte()
         f[24] = '1'.code.toByte()

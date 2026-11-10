@@ -120,5 +120,9 @@ class SuzukiFramesTest {
         assertEquals("HI  ", String(hi, 4, 4, Charsets.US_ASCII))
         assertEquals("RIDER!", String(hi, 9, 6, Charsets.US_ASCII))
         assertEquals("ZUKI", String(hi, 18, 4, Charsets.US_ASCII))
+        // Numbers are sent the way navigation sends them.
+        val n = SuzukiFrames.navigationText(40, "50", "", "1.5")
+        assertEquals("0050", String(n, 4, 4, Charsets.US_ASCII))
+        assertEquals("01.5", String(n, 18, 4, Charsets.US_ASCII))
     }
 }

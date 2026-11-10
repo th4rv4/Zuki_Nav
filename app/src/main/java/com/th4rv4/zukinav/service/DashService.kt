@@ -310,46 +310,22 @@ class DashService : Service(), ClusterLink.Listener {
         if (splashLeft == 0) navWasActive = true
     }
 
-    /** The greeting uses the dash's incoming-call screen, the only one with free text. */
-    private fun showGreeting(mode: SuzukiFrames.Checksum, text: String = prefs.startupGreeting) {
+    /**
+     * The greeting uses the dash's incoming-call screen, the only one with
+     * free text. Left alone the dash keeps it up for about 14 s with the
+     * light flashing, so after [GREETING_MS] it is marked as answered,
+     * which closes it cleanly.
+     */
+    private fun showGreeting(mode: SuzukiFrames.Checksum) {
         greetingPending = false
         if (NavRepository.current != null) return
-        val frame = SuzukiFrames.call(text, ringing = true, mode = mode)
-        AppLog.d("Dash", "-> ${SuzukiFrames.hex(frame)} (greeting)")
-        repeat(3) { i -> main.postDelayed({ link.send(frame) }, i * 200L) }
+        val text = prefs.startupGreeting
+        val show = SuzukiFrames.call(text, ringing = true, mode = mode)
+        val close = SuzukiFrames.call(text, ringing = false, mode = mode)
+        AppLog.d("Dash", "-> ${SuzukiFrames.hex(show)} (greeting)")
+        repeat(3) { i -> main.postDelayed({ link.send(show) }, i * 200L) }
+        repeat(3) { i -> main.postDelayed({ link.send(close) }, GREETING_MS + i * 200L) }
     }
-
-    /**
-     * Ways to close the greeting's call screen early, tried from Dash Test.
-     * The dash otherwise keeps it up for about 14 s with the light flashing.
-     */
-    enum class GreetingClose { ANSWERED, CLEAR_ALERTS, END_NAV, NAV_SCREEN }
-
-    private fun closeGreeting(how: GreetingClose, text: String) {
-        val mode = model().checksum
-        AppLog.d("Dash", "Closing greeting: $how")
-        when (how) {
-            GreetingClose.ANSWERED -> {
-                val frame = SuzukiFrames.call(text, ringing = false, mode = mode)
-                AppLog.d("Dash", "-> ${SuzukiFrames.hex(frame)} (greeting answered)")
-                repeat(3) { i -> main.postDelayed({ link.send(frame) }, i * 200L) }
-            }
-            GreetingClose.CLEAR_ALERTS -> {
-                clearMissedLeft = CLEAR_REPEATS
-                clearSmsLeft = CLEAR_REPEATS
-            }
-            GreetingClose.END_NAV -> {
-                navWasActive = false
-                endFramesLeft = 10
-            }
-            GreetingClose.NAV_SCREEN -> {
-                testFrame = { m -> dotsFrame(ClusterIcon.STRAIGHT.id, m.checksum) }
-                testUntil = System.currentTimeMillis() + 2_000
-            }
-        }
-    }
-
-    private fun model(): ClusterModel = ClusterModels.fromBleName(link.deviceName ?: prefs.clusterName)
 
     /** Nav screen with dots in the number spots: the dash has no blank character. */
     private fun dotsFrame(icon: Int, mode: SuzukiFrames.Checksum): ByteArray =
@@ -452,10 +428,12 @@ class DashService : Service(), ClusterLink.Listener {
             ClusterIcon.HEAD_NORTH, ClusterIcon.HEAD_NORTHEAST, ClusterIcon.HEAD_EAST, ClusterIcon.HEAD_SOUTHEAST,
             ClusterIcon.HEAD_SOUTH, ClusterIcon.HEAD_SOUTHWEST, ClusterIcon.HEAD_WEST, ClusterIcon.HEAD_NORTHWEST,
         ).map { it.id }
-        /** Two turns, one arrow every 200 ms: about 3 s. */
-        private const val SPIN_FRAMES = 16
+        /** One turn, one arrow every 200 ms: about 1.6 s. */
+        private const val SPIN_FRAMES = 8
         /** Let the "Welcome" screen show for about 3 s before the animation. */
         private const val SPLASH_WAIT_TICKS = 15
+        /** How long the greeting stays on the dash. */
+        private const val GREETING_MS = 3_000L
         const val ACTION_STOP = "com.th4rv4.zukinav.STOP"
 
         @Volatile var instance: DashService? = null
@@ -505,23 +483,6 @@ class DashService : Service(), ClusterLink.Listener {
             }
             return true
         }
-
-        /** Shows the greeting (or "Hello" if none is set), for trying the ways to close it. */
-        fun testGreeting(): Boolean {
-            val s = instance ?: return false
-            if (NavRepository.current != null) return false
-            s.main.post { s.showGreeting(s.model().checksum, greetingText(s)) }
-            return true
-        }
-
-        fun testGreetingClose(how: GreetingClose): Boolean {
-            val s = instance ?: return false
-            if (NavRepository.current != null) return false
-            s.main.post { s.closeGreeting(how, greetingText(s)) }
-            return true
-        }
-
-        private fun greetingText(s: DashService) = s.prefs.startupGreeting.ifBlank { "Hello" }
 
         /**
          * Puts free text in the distance, ETA and remaining spots for 15 s, to
