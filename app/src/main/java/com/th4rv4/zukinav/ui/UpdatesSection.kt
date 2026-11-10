@@ -22,7 +22,10 @@ class UpdatesSection(private val host: MainActivity) {
     private val checkRow = ui.row("Check For Updates", "Installed v$installed", status).apply {
         isClickable = true
         isFocusable = true
-        background = ui.pressable(Palette.SURFACE, 8)
+        // Touch ripple only: the card behind already has the surface colour.
+        background = android.graphics.drawable.RippleDrawable(
+            ColorStateList.valueOf(Palette.RIPPLE), null, ui.rounded(android.graphics.Color.WHITE, 8),
+        )
         setOnClickListener { Updater.check(installed) }
     }
 
