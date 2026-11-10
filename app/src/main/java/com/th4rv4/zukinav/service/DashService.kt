@@ -267,7 +267,7 @@ class DashService : Service(), ClusterLink.Listener {
             }
             splash -> {
                 val icon = SPIN[(SPIN_FRAMES - splashLeft) % SPIN.size]
-                link.send(SuzukiFrames.navigationText(icon, "", "", "", mode), coalesceKey = "nav")
+                link.send(dotsFrame(icon, mode), coalesceKey = "nav")
                 navWasActive = true
                 splashLeft--
             }
@@ -277,7 +277,8 @@ class DashService : Service(), ClusterLink.Listener {
             }
             navWasActive && splashWait == 0 -> {
                 navWasActive = false
-                endFramesLeft = 10
+                // A short clear is enough before the greeting.
+                endFramesLeft = if (greetingPending) 3 else 10
                 AppLog.d("Dash", "Navigation ended, clearing dash")
             }
         }
@@ -317,6 +318,10 @@ class DashService : Service(), ClusterLink.Listener {
         AppLog.d("Dash", "-> ${SuzukiFrames.hex(frame)} (greeting)")
         repeat(3) { i -> main.postDelayed({ link.send(frame) }, i * 200L) }
     }
+
+    /** Nav screen with dots in the number spots: the dash has no blank character. */
+    private fun dotsFrame(icon: Int, mode: SuzukiFrames.Checksum): ByteArray =
+        SuzukiFrames.navigationText(icon, "....", "......", "....", mode)
 
     /** Sends a call or message alert 3 times, 200 ms apart, as Ride Connect does. */
     private fun showAlert(alert: Alert) {
