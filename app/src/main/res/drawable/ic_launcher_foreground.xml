@@ -14,23 +14,16 @@
         android:translateY="2">
         <path
             android:pathData="M28,76 A32,32 0,1 1,80,76"
-            android:strokeColor="#1AFFFFFF"
             android:strokeWidth="8"
             android:strokeLineCap="round"
-            android:fillColor="#00000000" />
-        <path
-            android:pathData="M28,76 A32,32 0,1 1,80,76"
-            android:strokeWidth="8"
-            android:strokeLineCap="round"
-            android:trimPathEnd="0.8"
             android:fillColor="#00000000">
             <aapt:attr name="android:strokeColor">
                 <gradient
                     android:type="linear"
                     android:startX="22"
-                    android:startY="86"
+                    android:startY="54"
                     android:endX="86"
-                    android:endY="22">
+                    android:endY="54">
                     <item android:offset="0" android:color="#FF2D6BFF" />
                     <item android:offset="0.6" android:color="#FF7FE0FF" />
                     <item android:offset="1" android:color="#FFFF4F8B" />
