@@ -262,12 +262,16 @@ class DashService : Service(), ClusterLink.Listener {
     private fun onBikeData(data: BikeData) {
         TripLog.onReading(this, data)
         val changed = data.copy(speedKmh = 0) != bike?.copy(speedKmh = 0)
+        val speedChanged = data.speedKmh != bike?.speedKmh
         bike = data
         prefs.lastBikeAt = System.currentTimeMillis()
         if (changed) {
             prefs.lastBike = data
             AppLog.d("Bike", "ODO ${data.odoKm} km, Trip A ${data.tripAKm}, Trip B ${data.tripBKm}, " +
                 (data.fuelBars?.let { "fuel $it/${BikeData.MAX_FUEL_BARS}" } ?: "battery ${data.batteryPercent}%"))
+            notifyState()
+        } else if (speedChanged) {
+            // The Ride tab's speedometer follows the bike.
             notifyState()
         }
     }

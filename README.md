@@ -127,9 +127,12 @@ This approach, and the Maps notification layouts, follow
 
 ## App layout
 
-- **Ride**: the bike and its connection, fuel, ODO and trip meters, the
-  ride in progress, live guidance (arrow, distance, ETA, remaining
-  distance, dash icon number) and a Connect/Disconnect button.
+- **Ride**: a live dash panel with the model name, the next turn (its arrow
+  ringed by the distance to the turn, which empties over the last 500 m,
+  like the dash's own bar), a speedometer, fuel or battery cells, ETA and
+  distance left, ODO and Trip A/B. Below it: the ride in progress, what is
+  being sent to the dash, and a Connect/Disconnect button. When the bike is
+  off, the panel keeps the last readings and says when they were synced.
 - **Trips**: saved rides with this month's total, and a Starred filter.
 - **Dash Test**: show any turn icon on the dash, mark it **Looks Right** or
   **Looks Wrong** (the next icon follows automatically), see progress for
@@ -144,7 +147,8 @@ seconds on the dash's call screen. The dash always puts its own
 and a route starting mid-animation takes over at once.
 - **Settings**: rider name, speed alert, call and message alerts, traffic
   side, theme (System, Light or Dark), trip recording, Auto-Connect, Start
-  On Boot, Change Bike, updates, and the log.
+  On Boot, Your Model (for dashes shared by several models, such as the
+  Gixxer 250 and Gixxer SF 250), Change Bike, updates, and the log.
 
 ## Updates
 

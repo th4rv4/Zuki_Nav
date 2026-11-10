@@ -51,6 +51,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_BOOT, true)
         set(v) = sp.edit().putBoolean(K_BOOT, v).apply()
 
+    /** Which model the rider has, when the dash is shared by several (see BikeNames). */
+    var bikeVariant: String?
+        get() = sp.getString(K_VARIANT, null)
+        set(v) = sp.edit().putString(K_VARIANT, v).apply()
+
     /** Don't show SMS from bank, OTP, government and promo senders on the dash. */
     var skipBusinessSms: Boolean
         get() = sp.getBoolean(K_SKIP_BIZ_SMS, false)
@@ -145,6 +150,7 @@ class Prefs(context: Context) {
         private const val K_THEME = "theme"
         private const val K_SPLASH = "startup_animation"
         private const val K_SKIP_BIZ_SMS = "skip_business_sms"
+        private const val K_VARIANT = "bike_variant"
         private const val K_GREETING = "startup_greeting"
 
         const val THEME_SYSTEM = 0
