@@ -12,7 +12,6 @@ import com.th4rv4.zukinav.R
 import com.th4rv4.zukinav.ble.ClusterLink
 import com.th4rv4.zukinav.nav.NavRepository
 import com.th4rv4.zukinav.nav.NavSnapshot
-import com.th4rv4.zukinav.protocol.BikeNames
 import com.th4rv4.zukinav.protocol.ClusterModels
 import com.th4rv4.zukinav.service.DashService
 import com.th4rv4.zukinav.trips.TripFormat
@@ -129,7 +128,6 @@ class RideScreen(host: MainActivity) : Screen(host) {
         val live = DashService.liveBike
         val data = live ?: prefs.lastBike
         panel.render(
-            name = if (name == null) null else BikeNames.name(model.displayName, prefs.bikeVariant),
             nav = nav,
             data = data,
             live = live != null,

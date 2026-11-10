@@ -1,10 +1,7 @@
 package com.th4rv4.zukinav.ui
 
 import android.graphics.drawable.GradientDrawable
-import android.text.SpannableStringBuilder
-import android.text.Spanned
 import android.text.TextUtils
-import android.text.style.ForegroundColorSpan
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -16,24 +13,16 @@ import android.widget.TextView
 import com.th4rv4.zukinav.R
 import com.th4rv4.zukinav.nav.NavSnapshot
 import com.th4rv4.zukinav.protocol.BikeData
-import com.th4rv4.zukinav.protocol.BikeNames
 import java.util.Locale
 
 /**
- * The live panel at the top of the Ride tab: model lettering, the next turn
- * with its distance ring, the speedometer, fuel, ETA and the trip meters.
+ * The live panel at the top of the Ride tab: the clock, the next turn with
+ * its distance ring, the speedometer, fuel, ETA and the trip meters.
  */
 class DashPanel(private val host: MainActivity) {
 
     private val ui = host.ui
 
-    private val lettering = TextView(ui.ctx).apply {
-        typeface = DashFonts.lettering
-        textSize = 24f
-        letterSpacing = 0.02f
-        maxLines = 1
-        ellipsize = TextUtils.TruncateAt.END
-    }
     private val clock = numberText(15f, Palette.MUTED)
 
     private val turn = TurnRingView(ui.ctx)
@@ -70,12 +59,7 @@ class DashPanel(private val host: MainActivity) {
         val content = ui.vstack(10)
         content.setPadding(ui.dp(16), ui.dp(14), ui.dp(16), ui.dp(14))
 
-        content.addView(LinearLayout(ui.ctx).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            addView(lettering, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            addView(clock)
-        })
+        content.addView(clock.apply { gravity = Gravity.END })
 
         val turnColumn = LinearLayout(ui.ctx).apply {
             orientation = LinearLayout.VERTICAL
@@ -139,12 +123,10 @@ class DashPanel(private val host: MainActivity) {
     }
 
     /**
-     * [name] is the model's name, or null with no bike chosen. [live] is
-     * true while readings come from the dash; [data] may be the last saved
-     * reading. [syncNote] explains where the numbers come from.
+     * [live] is true while readings come from the dash; [data] may be the
+     * last saved reading. [syncNote] explains where the numbers come from.
      */
-    fun render(name: String?, nav: NavSnapshot?, data: BikeData?, live: Boolean, clockText: String, etaText: String?, syncNote: String?) {
-        lettering.text = letteringFor(name)
+    fun render(nav: NavSnapshot?, data: BikeData?, live: Boolean, clockText: String, etaText: String?, syncNote: String?) {
         clock.text = clockText
 
         val art = nav?.let { TurnArt.of(it.icon) }
@@ -191,20 +173,6 @@ class DashPanel(private val host: MainActivity) {
         sync.text = syncNote.orEmpty()
         sync.visibility = if (syncNote.isNullOrBlank()) View.GONE else View.VISIBLE
         sync.setTextColor(if (live) Palette.OK else Palette.MUTED)
-    }
-
-    private fun letteringFor(name: String?): CharSequence {
-        if (name == null) return "ZUKI NAV"
-        val (main, accent) = BikeNames.lettering(name)
-        val b = SpannableStringBuilder(main)
-        lettering.setTextColor(Palette.TEXT)
-        if (accent.isNotEmpty()) {
-            b.append(' ')
-            val start = b.length
-            b.append(accent)
-            b.setSpan(ForegroundColorSpan(Palette.RACE_RED), start, b.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        }
-        return b
     }
 
     private fun numberText(sizeSp: Float, color: Int) = TextView(ui.ctx).apply {

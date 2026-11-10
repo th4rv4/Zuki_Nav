@@ -45,8 +45,6 @@ object Palette {
     var MARK_RIGHT_FG = 0; var MARK_WRONG_BG = 0; var MARK_WRONG_FG = 0; var UNTESTED_BORDER = 0
     // Live dash panel on the Ride tab.
     var PANEL_TOP = 0; var PANEL_BOTTOM = 0; var GLASS = 0; var GLASS_BORDER = 0; var TRACK = 0
-    /** Racing red for the model number in the lettering. */
-    var RACE_RED = 0
 
     init { apply(false) }
 
@@ -87,7 +85,6 @@ object Palette {
         GLASS = c(0x0DFFFFFF, 0x0A101624)
         GLASS_BORDER = c(0x17FFFFFF, 0x14101624)
         TRACK = c(0x17FFFFFF, 0x17101624)
-        RACE_RED = c(0xFFFF3B4E, 0xFFE0283C)
     }
 }
 

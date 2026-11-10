@@ -4,7 +4,6 @@ import android.view.View
 import android.widget.Switch
 import android.widget.TextView
 import com.th4rv4.zukinav.nav.MapsIconTemplates
-import com.th4rv4.zukinav.protocol.BikeNames
 import com.th4rv4.zukinav.protocol.ClusterModels
 import com.th4rv4.zukinav.trips.TripLog
 import com.th4rv4.zukinav.util.Places
@@ -14,8 +13,6 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
 
     private val subtitle = ui.text("", 13f, Palette.MUTED)
     private var arrowsRow: TextView? = null
-    private val modelRow = ui.navRow("Your Model", "-") { pickModel() }
-    private val modelValue = modelRow.getChildAt(modelRow.childCount - 1) as TextView
     private val updates = UpdatesSection(host)
     private val riderInput = ui.input(prefs.riderName, "Your Name") { prefs.riderName = it }.apply {
         filters = arrayOf(android.text.InputFilter.LengthFilter(20))
@@ -79,7 +76,6 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             ui.switchRow("Start On Boot", "Keep the dash link ready after a restart", prefs.startOnBoot) {
                 prefs.startOnBoot = it
             },
-            modelRow,
             ui.navRow("Change Bike") { host.showSetup() },
         )
 
@@ -127,7 +123,6 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         if (riderInput.text.toString().trim() != prefs.riderName) riderInput.setText(prefs.riderName)
         val name = prefs.clusterName
         updates.onShow()
-        showModel()
         // Location may have been taken away in Android's settings.
         if (!host.askingLocation) showPlaces(prefs.tripPlaces && Places.hasPermission(host))
         subtitle.text = if (name == null) "No bike chosen" else "${ClusterModels.fromBleName(name).displayName} · $name"
@@ -158,30 +153,6 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         syncingPlaces = true
         placesSwitch.isChecked = on
         syncingPlaces = false
-    }
-
-    private fun variants(): List<String> =
-        BikeNames.variants(ClusterModels.fromBleName(prefs.clusterName).displayName)
-
-    /** Only shown when the dash is shared by several models. */
-    private fun showModel() {
-        val all = variants()
-        modelRow.visibility = if (prefs.clusterName != null && all.size > 1) View.VISIBLE else View.GONE
-        modelValue.text = BikeNames.name(ClusterModels.fromBleName(prefs.clusterName).displayName, prefs.bikeVariant)
-    }
-
-    private fun pickModel() {
-        val all = variants()
-        val current = all.indexOf(BikeNames.name(ClusterModels.fromBleName(prefs.clusterName).displayName, prefs.bikeVariant))
-        android.app.AlertDialog.Builder(host, host.dialogTheme)
-            .setTitle("Your Model")
-            .setSingleChoiceItems(all.toTypedArray(), current) { d, which ->
-                prefs.bikeVariant = all[which]
-                showModel()
-                d.dismiss()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
     }
 
     private fun reloadArrows() {

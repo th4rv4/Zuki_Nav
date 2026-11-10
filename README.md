@@ -127,7 +127,7 @@ This approach, and the Maps notification layouts, follow
 
 ## App layout
 
-- **Ride**: a live dash panel with the model name, the next turn (its arrow
+- **Ride**: a live dash panel with the clock, the next turn (its arrow
   ringed by the distance to the turn, which empties over the last 500 m,
   like the dash's own bar), a speedometer, fuel or battery cells, ETA and
   distance left, ODO and Trip A/B. Below it: the ride in progress, what is
@@ -147,8 +147,7 @@ seconds on the dash's call screen. The dash always puts its own
 and a route starting mid-animation takes over at once.
 - **Settings**: rider name, speed alert, call and message alerts, traffic
   side, theme (System, Light or Dark), trip recording, Auto-Connect, Start
-  On Boot, Your Model (for dashes shared by several models, such as the
-  Gixxer 250 and Gixxer SF 250), Change Bike, updates, and the log.
+  On Boot, Change Bike, updates, and the log.
 
 ## Updates
 

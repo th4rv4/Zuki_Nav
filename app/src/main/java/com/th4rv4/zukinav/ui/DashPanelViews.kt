@@ -18,7 +18,6 @@ import kotlin.math.roundToInt
 /** Fonts for the live dash panel; system fonts, so nothing extra is bundled. */
 object DashFonts {
     val numbers: Typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
-    val lettering: Typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD_ITALIC)
 }
 
 private fun Context.dpf(v: Float) = v * resources.displayMetrics.density
