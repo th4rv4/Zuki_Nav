@@ -510,10 +510,10 @@ class DashService : Service(), ClusterLink.Listener {
         const val ACTION_STOP = "com.th4rv4.zukinav.STOP"
 
         @Volatile var instance: DashService? = null
+            private set
 
         /** The phone's Bluetooth is off; the link waits and reconnects when it is back. */
         @Volatile var bluetoothOff = false
-            private set
             private set
 
         private val stateListeners = CopyOnWriteArrayList<() -> Unit>()
