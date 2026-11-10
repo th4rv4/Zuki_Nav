@@ -63,6 +63,12 @@ class DashService : Service(), ClusterLink.Listener {
     private var splashLeft = 0
     private var greetingPending = false
     private var retries = 0
+    /** When the bike was last lost (or the search began); 0 while connected. */
+    private var lostAt = 0L
+    /** In battery-saving mode, alternate a quick direct try with a quiet wait. */
+    private var directTurn = true
+    private var slowLogged = false
+    private var lastConnectWasBackground = false
     private var lastNavHex: String? = null
     private var statusLogged = false
     /** Status frames still to send with the "clear" flags set. */
@@ -73,7 +79,7 @@ class DashService : Service(), ClusterLink.Listener {
     private val connectTimeout = Runnable {
         when (link.state) {
             ClusterLink.State.CONNECTING -> {
-                AppLog.d("Dash", "Bike not answering, retrying")
+                AppLog.d("Dash", if (lastConnectWasBackground) "Still no bike, trying directly" else "Bike not answering, retrying")
                 link.disconnect()
             }
             // e.g. Bluetooth was off: the link never left DISCONNECTED, so
@@ -110,6 +116,7 @@ class DashService : Service(), ClusterLink.Listener {
         prefs = Prefs(this)
         link = ClusterLink(this, this)
         instance = this
+        lostAt = System.currentTimeMillis()
         bluetoothOff = !isBluetoothOn()
         val filter = IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(bluetoothReceiver, filter, RECEIVER_NOT_EXPORTED)
@@ -160,6 +167,9 @@ class DashService : Service(), ClusterLink.Listener {
         if (!bluetoothOff) return
         bluetoothOff = false
         retries = 0
+        lostAt = System.currentTimeMillis()
+        slowLogged = false
+        directTurn = true
         AppLog.d("Dash", "Bluetooth back on, reconnecting")
         // Give the Bluetooth stack a moment to settle.
         main.postDelayed({ connectIfNeeded() }, 1_500)
@@ -179,13 +189,27 @@ class DashService : Service(), ClusterLink.Listener {
             AppLog.d("Dash", "Bluetooth permission missing")
             return
         }
-        // Direct connects, retried with backoff (see onStateChanged). Android's
-        // background auto-connect was tried first and could sit for minutes
-        // after the bike came back.
-        link.connect(addr, background = false)
+        // For the first minutes after losing the bike: direct connects,
+        // retried with backoff (see onStateChanged), so short stops reconnect
+        // quickly. After that, to spare the battery while the bike is parked,
+        // Android's low-power background connect waits for it, with a quick
+        // direct try every couple of minutes (the background connect alone
+        // can take minutes to notice the bike).
+        val slow = isSaving()
+        if (slow && !slowLogged) {
+            AppLog.d("Dash", "No bike for ${FAST_WINDOW_MS / 60_000} min, saving battery: waiting quietly, quick check every 2 min")
+            slowLogged = true
+        }
+        val background = slow && !directTurn
+        if (slow) directTurn = !directTurn
+        lastConnectWasBackground = background
+        link.connect(addr, background = background)
         main.removeCallbacks(connectTimeout)
-        main.postDelayed(connectTimeout, CONNECT_TIMEOUT_MS)
+        main.postDelayed(connectTimeout, if (background) SLOW_WAIT_MS else CONNECT_TIMEOUT_MS)
     }
+
+    private fun isSaving(): Boolean =
+        lostAt > 0 && System.currentTimeMillis() - lostAt > FAST_WINDOW_MS
 
     override fun onStateChanged(state: ClusterLink.State) {
         main.post {
@@ -194,6 +218,9 @@ class DashService : Service(), ClusterLink.Listener {
                 ClusterLink.State.READY -> {
                     main.removeCallbacks(connectTimeout)
                     retries = 0
+                    lostAt = 0
+                    slowLogged = false
+                    directTurn = true
                     lastNavHex = null
                     statusLogged = false
                     helloLeft = 4
@@ -202,6 +229,7 @@ class DashService : Service(), ClusterLink.Listener {
                     main.post(loop)
                 }
                 ClusterLink.State.DISCONNECTED -> {
+                    if (lostAt == 0L) lostAt = System.currentTimeMillis()
                     if (bike != null) TripLog.onDisconnected(this)
                     bike = null
                     main.removeCallbacks(loop)
@@ -209,10 +237,11 @@ class DashService : Service(), ClusterLink.Listener {
                     if (bluetoothOff) {
                         AppLog.d("Dash", "Waiting for Bluetooth")
                     } else if (prefs.autoConnect && instance != null) {
-                        // 2 s, 4 s, 8 s, then every 15 s while the bike is off.
-                        val delay = minOf(2_000L shl retries.coerceAtMost(3), 15_000L)
+                        // 2 s, 4 s, 8 s, then every 15 s while the bike is off;
+                        // in battery-saving mode straight on to the next step.
+                        val delay = if (isSaving()) 500L else minOf(2_000L shl retries.coerceAtMost(3), 15_000L)
                         retries++
-                        AppLog.d("Dash", "Reconnecting in ${delay / 1000} s")
+                        if (!isSaving()) AppLog.d("Dash", "Reconnecting in ${delay / 1000} s")
                         main.postDelayed({ connectIfNeeded() }, delay)
                     }
                 }
@@ -501,6 +530,10 @@ class DashService : Service(), ClusterLink.Listener {
         private const val CHANNEL = "dash_link"
         private const val NOTIF_ID = 17
         private const val CONNECT_TIMEOUT_MS = 20_000L
+        /** Fast reconnect attempts for this long after losing the bike. */
+        private const val FAST_WINDOW_MS = 5 * 60_000L
+        /** Then a quiet background wait of this long between quick direct tries. */
+        private const val SLOW_WAIT_MS = 2 * 60_000L
         private const val CLEAR_REPEATS = 3
 
         /** Compass arrows clockwise from north: one turn of the spinning arrow. */
