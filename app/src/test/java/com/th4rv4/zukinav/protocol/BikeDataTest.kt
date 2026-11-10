@@ -12,7 +12,7 @@ class BikeDataTest {
     private val sf250 = "A5 37 30 30 30 30 30 33 32 39 32 30 30 30 37 34 38 30 30 34 37 31 31 4E 35 26 FF FF FE 7F"
 
     @Test fun gixxerFrame() {
-        assertEquals(BikeData(0, 3292, 74.8, 471.1, 5, null), BikeData.parse(bytes(sf250)))
+        assertEquals(BikeData(0, 3292, 74.8, 471.1, 5, null, 38), BikeData.parse(bytes(sf250)))
     }
 
     @Test fun badChecksumIgnored() {

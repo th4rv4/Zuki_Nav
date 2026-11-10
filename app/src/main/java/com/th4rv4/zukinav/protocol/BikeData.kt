@@ -13,6 +13,12 @@ data class BikeData(
     val fuelBars: Int?,
     /** Battery charge in percent, on electric models. */
     val batteryPercent: Int?,
+    /**
+     * Byte 25 of the frame, which the dash fills with what looks like its own
+     * fuel economy figure (0x26 = 38 on a Gixxer SF 250). Not shown yet; it is
+     * logged so it can be checked against the mileage the app works out.
+     */
+    val dashEconomy: Int? = null,
 ) {
     /** For saving the last reading: "odo;tripA;tripB;fuel;battery" (speed is not kept). */
     fun encode(): String = listOf(odoKm, tripAKm, tripBKm, fuelBars ?: "", batteryPercent ?: "").joinToString(";")
@@ -41,7 +47,8 @@ data class BikeData(
          *   [11..16] Trip A in 0.1 km, 6 ASCII digits
          *   [17..22] Trip B in 0.1 km, 6 ASCII digits
          *   [24]     fuel bars as '0'..'6'; on e-ACCESS, battery % + 64
-         *   [25..27] fuel economy (not decoded)
+         *   [25]     fuel economy as a number? (logged as [dashEconomy]; 0xFF = none)
+         *   [26..27] 0xFF
          *
          * Returns null for anything else, or a frame that fails its checksum.
          */
@@ -60,7 +67,8 @@ data class BikeData(
             val f = frame[24].toInt() and 0xFF
             val bars = if (f in '0'.code..('0'.code + MAX_FUEL_BARS)) f - '0'.code else null
             val battery = if (bars == null && f >= 64) (f - 64).coerceAtMost(100) else null
-            return BikeData(speed, odo, tripA / 10.0, tripB / 10.0, bars, battery)
+            val economy = (frame[25].toInt() and 0xFF).takeIf { it != 0xFF }
+            return BikeData(speed, odo, tripA / 10.0, tripB / 10.0, bars, battery, economy)
         }
 
         private fun digits(f: ByteArray, at: Int, len: Int): Int? {

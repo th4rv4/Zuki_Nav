@@ -268,7 +268,8 @@ class DashService : Service(), ClusterLink.Listener {
         if (changed) {
             prefs.lastBike = data
             AppLog.d("Bike", "ODO ${data.odoKm} km, Trip A ${data.tripAKm}, Trip B ${data.tripBKm}, " +
-                (data.fuelBars?.let { "fuel $it/${BikeData.MAX_FUEL_BARS}" } ?: "battery ${data.batteryPercent}%"))
+                (data.fuelBars?.let { "fuel $it/${BikeData.MAX_FUEL_BARS}" } ?: "battery ${data.batteryPercent}%") +
+                (data.dashEconomy?.let { ", dash economy $it" } ?: ""))
             notifyState()
         } else if (speedChanged) {
             // The Ride tab's speedometer follows the bike.
