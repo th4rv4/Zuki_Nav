@@ -21,16 +21,21 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
     private var current = 1
     private var cycling = false
 
-    private val idText = ui.text("", 52f, Palette.ACCENT_SOFT, Ui.Weight.BOLD)
-    private val labelText = ui.text("", 16f, Palette.TEXT, Ui.Weight.MEDIUM)
-    private val markText = ui.text("", 13f, Palette.MUTED)
+    private val ring = TurnRingView(host.ui.ctx)
+    private val idText = android.widget.TextView(host.ui.ctx).apply {
+        typeface = DashFonts.numbers
+        textSize = 22f
+        setTextColor(Palette.TEXT)
+        gravity = Gravity.CENTER
+    }
+    private val markText = ui.text("", 13f, Palette.MUTED).apply { gravity = Gravity.CENTER }
     private val countsText = ui.text("", 12f, Palette.MUTED)
     private val cells = ArrayList<TextView>()
     private val cycleButton: Button = ui.button("Cycle All", Ui.Btn.SECONDARY) { toggleCycle() }
 
-    private val textTurn = ui.input("HI", "4 chars") {}.apply { filters = arrayOf(android.text.InputFilter.LengthFilter(4)) }
-    private val textEta = ui.input("RIDER", "6 chars") {}.apply { filters = arrayOf(android.text.InputFilter.LengthFilter(6)) }
-    private val textLeft = ui.input("ABC1", "4 chars") {}.apply { filters = arrayOf(android.text.InputFilter.LengthFilter(4)) }
+    private val textTurn = textInput("HI", 4)
+    private val textEta = textInput("RIDER", 6)
+    private val textLeft = textInput("ABC1", 4)
 
     override val view: View
 
@@ -48,14 +53,12 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
 
     init {
         val currentCard = ui.card(
+            cap("Selected Icon · Shown For 8 s").apply { gravity = Gravity.CENTER },
             LinearLayout(ui.ctx).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                addView(ui.sectionLabel("Selected Icon").apply { setPadding(0, 0, 0, 0) },
-                    LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-                addView(ui.text("Shown for 8 s", 12f, Palette.MUTED))
+                gravity = Gravity.CENTER
+                addView(ring, LinearLayout.LayoutParams(ui.dp(104), ui.dp(104)))
             },
-            ui.hstack(16, idText, ui.vstack(3, labelText, markText)),
+            ui.vstack(2, idText, markText),
             ui.hstack(
                 8,
                 ui.button("Prev", Ui.Btn.SECONDARY, 48) { select(current - 1, send = false) },
@@ -65,11 +68,12 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
             ),
             ui.hstack(
                 8,
-                ui.button("Looks Right", Ui.Btn.OK, 48) { mark(IconMarks.Mark.RIGHT) },
-                ui.button("Looks Wrong", Ui.Btn.WARN, 48) { mark(IconMarks.Mark.WRONG) },
+                ui.button("Looks Right", Ui.Btn.SECONDARY, 48) { mark(IconMarks.Mark.RIGHT) }.apply { setTextColor(Palette.OK) },
+                ui.button("Looks Wrong", Ui.Btn.SECONDARY, 48) { mark(IconMarks.Mark.WRONG) }.apply { setTextColor(Palette.DANGER) },
                 weighted = true,
             ),
             gapDp = 14,
+            padDp = 18,
             radiusDp = 24,
         )
 
@@ -78,7 +82,10 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
             useDefaultMargins = false
         }
         for (id in 1..LAST_ICON) {
-            val cell = ui.text(id.toString(), 11f, Palette.MUTED, Ui.Weight.BOLD).apply {
+            val cell = android.widget.TextView(ui.ctx).apply {
+                text = id.toString()
+                typeface = DashFonts.numbers
+                textSize = 13f
                 gravity = Gravity.CENTER
                 isClickable = true
                 isFocusable = true
@@ -90,7 +97,7 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
                 GridLayout.spec(GridLayout.UNDEFINED, 1f),
             ).apply {
                 width = 0
-                height = ui.dp(34)
+                height = ui.dp(36)
                 setMargins(ui.dp(3), ui.dp(3), ui.dp(3), ui.dp(3))
             }
             grid.addView(cell, lp)
@@ -98,9 +105,9 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
         }
         val legend = ui.hstack(
             14,
-            legendItem("Right", Palette.OK_BORDER, null),
-            legendItem("Wrong", Palette.MARK_WRONG_BG, null),
-            legendItem("Untested", Palette.INSET, Palette.UNTESTED_BORDER),
+            legendItem("Right", Palette.OK),
+            legendItem("Wrong", Palette.DANGER),
+            legendItem("Untested", Palette.UNTESTED_BORDER),
         )
         val allCard = ui.card(
             LinearLayout(ui.ctx).apply {
@@ -112,29 +119,33 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
             },
             grid,
             legend,
+            radiusDp = 22,
         )
 
         val textCard = ui.card(
             LinearLayout(ui.ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                addView(ui.sectionLabel("Text Test").apply { setPadding(0, 0, 0, 0) },
+                addView(ui.text("Text Test", 15f, Palette.TEXT, Ui.Weight.MEDIUM),
                     LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
                 addView(ui.text("Shown for 15 s", 12f, Palette.MUTED))
             },
-            ui.text("Sends your text into the three number spots under the arrow. Numbers are sent the way navigation sends them (50 as 0050); unused places in text show as *.", 13f, Palette.MUTED),
-            ui.listCard(
-                ui.row("Distance Spot", "Up to 4 characters", textTurn),
-                ui.row("ETA Spot", "Up to 6 characters", textEta),
-                ui.row("Remaining Spot", "Up to 4 characters", textLeft),
+            ui.text("Puts your text in the three number spots under the arrow. Numbers go in the way navigation sends them (50 as 0050); unused places in text show as *.", 12f, Palette.MUTED),
+            ui.hstack(
+                8,
+                ui.vstack(4, cap("Distance"), textTurn),
+                ui.vstack(4, cap("ETA"), textEta),
+                ui.vstack(4, cap("Remaining"), textLeft),
+                weighted = true,
             ),
             ui.button("Send Text", Ui.Btn.PRIMARY, 48) { sendText() },
             gapDp = 12,
-            radiusDp = 24,
+            radiusDp = 22,
         )
 
         view = host.page(
-            ui.vstack(2, ui.title("Dash Test"), ui.text("Check each turn icon on your dash", 13f, Palette.MUTED)),
+            ui.vstack(2, ui.title("Dash Test"), ui.text("Check each turn icon on your dash", 13f, Palette.MUTED))
+                .apply { setPadding(ui.dp(4), 0, 0, 0) },
             currentCard,
             allCard,
             textCard,
@@ -151,12 +162,44 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
         stopCycle()
     }
 
-    private fun legendItem(label: String, fill: Int, stroke: Int?): LinearLayout = LinearLayout(ui.ctx).apply {
+    private fun legendItem(label: String, color: Int): LinearLayout = LinearLayout(ui.ctx).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        addView(View(ui.ctx).apply { background = ui.rounded(fill, 3, stroke) },
-            LinearLayout.LayoutParams(ui.dp(10), ui.dp(10)).apply { marginEnd = ui.dp(6) })
+        addView(View(ui.ctx).apply { background = ui.rounded(color, 4) },
+            LinearLayout.LayoutParams(ui.dp(8), ui.dp(8)).apply { marginEnd = ui.dp(6) })
         addView(ui.text(label, 11f, Palette.MUTED))
+    }
+
+    private fun cap(s: String) = ui.text(s.uppercase(java.util.Locale.US), 11f, Palette.MUTED, Ui.Weight.BOLD).apply { letterSpacing = 0.12f }
+
+    private fun textInput(value: String, max: Int) = ui.input(value, "$max chars") {}.apply {
+        filters = arrayOf(android.text.InputFilter.LengthFilter(max))
+        gravity = Gravity.CENTER
+        minWidth = 0
+    }
+
+    /** Grid cell: rounded tile, a ring when selected, a coloured dot once marked. */
+    private fun cellBackground(selected: Boolean, mark: IconMarks.Mark?): android.graphics.drawable.Drawable {
+        val base = if (selected) {
+            ui.rounded(Palette.ACCENT_BG, 10).apply { setStroke(ui.dp(2), Palette.ACCENT_SOFT) }
+        } else {
+            ui.rounded(Palette.INSET, 10, Palette.UNTESTED_BORDER)
+        }
+        val dotColor = when (mark) {
+            IconMarks.Mark.RIGHT -> Palette.OK
+            IconMarks.Mark.WRONG -> Palette.DANGER
+            null -> return android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(Palette.RIPPLE), base, null)
+        }
+        val dot = android.graphics.drawable.GradientDrawable().apply {
+            shape = android.graphics.drawable.GradientDrawable.OVAL
+            setColor(dotColor)
+        }
+        val layers = android.graphics.drawable.LayerDrawable(arrayOf<android.graphics.drawable.Drawable>(base, dot)).apply {
+            setLayerSize(1, ui.dp(6), ui.dp(6))
+            setLayerGravity(1, Gravity.TOP or Gravity.END)
+            setLayerInset(1, 0, ui.dp(4), ui.dp(4), 0)
+        }
+        return android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(Palette.RIPPLE), layers, null)
     }
 
     private fun select(id: Int, send: Boolean) {
@@ -200,27 +243,27 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
 
     private fun render() {
         val icon = ClusterIcon.fromId(current)
-        idText.text = "#$current"
-        labelText.text = icon?.label ?: "Not In The Icon Table"
+        idText.text = "Icon $current · " + (icon?.label ?: "Not In The Icon Table")
+        ring.set(icon?.let { TurnArt.of(it) }, if (icon == null) null else 500.0)
+        ring.contentDescription = icon?.label ?: "Icon $current"
         val marks = prefs.iconMarks
         markText.text = when (marks[current]) {
             IconMarks.Mark.RIGHT -> "Marked: Looks Right"
             IconMarks.Mark.WRONG -> "Marked: Looks Wrong"
             null -> "Not Tested Yet"
         }
+        markText.setTextColor(when (marks[current]) {
+            IconMarks.Mark.RIGHT -> Palette.OK
+            IconMarks.Mark.WRONG -> Palette.DANGER
+            null -> Palette.MUTED
+        })
         val right = marks.count(IconMarks.Mark.RIGHT)
         val wrong = marks.count(IconMarks.Mark.WRONG)
         countsText.text = "$right Right · $wrong Wrong · ${LAST_ICON - right - wrong} Untested"
         cells.forEachIndexed { i, cell ->
             val id = i + 1
-            val (fill, stroke, fg) = when {
-                id == current -> Triple(Palette.ACCENT, null, Palette.ON_ACCENT)
-                marks[id] == IconMarks.Mark.RIGHT -> Triple(Palette.OK_BORDER, null, Palette.MARK_RIGHT_FG)
-                marks[id] == IconMarks.Mark.WRONG -> Triple(Palette.MARK_WRONG_BG, null, Palette.MARK_WRONG_FG)
-                else -> Triple(Palette.INSET, Palette.UNTESTED_BORDER, Palette.MUTED)
-            }
-            cell.background = ui.pressable(fill, 8, stroke)
-            cell.setTextColor(fg)
+            cell.background = cellBackground(id == current, marks[id])
+            cell.setTextColor(if (id == current) Palette.TEXT else if (marks[id] == null) Palette.MUTED else Palette.TEXT_SOFT)
         }
     }
 
