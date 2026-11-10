@@ -16,6 +16,8 @@ cluster's own protocol (see [docs/PROTOCOL.md](docs/PROTOCOL.md)).
 Unofficial and not affiliated with Suzuki. Use at your own risk, and don't
 fiddle with your phone while riding.
 
+**Website:** [th4rv4.github.io/Zuki_Nav](https://th4rv4.github.io/Zuki_Nav/)
+
 ## Supported models
 
 Every vehicle Suzuki Ride Connect 8.0 can pair with. The model is detected
@@ -93,8 +95,7 @@ unless **Skip Short Rides** is turned off.
 **Start And End Places** (off by default) names where each ride started
 and ended, using the phone's location. It needs location allowed all the
 time, because a ride ends with the ignition off while the app is in the
-background. Fuel economy is not shown: the Gixxer SF 250 dash does not
-send it.
+background. Mileage and range are on the Fuel tab (see below).
 
 ## How the turn arrow is chosen
 
@@ -235,6 +236,18 @@ ble/        GATT client
 service/    foreground service, boot receiver
 ui/         screens (Ride, Trips, Dash Test, Settings, Setup), themes and shared components
 ```
+
+## Support The Developer
+
+Zuki Nav is free and open source, built in spare time on real rides. If it
+made your trips better, you can support its development with a UPI tip:
+
+**UPI ID: `atharvaagnihotri@upi`**
+
+Paste it into GPay, PhonePe, Paytm or any UPI app, or use **Pay With UPI**
+on the [website](https://th4rv4.github.io/Zuki_Nav/#support) from your
+phone. Stars, bug reports and test results from other models help just as
+much.
 
 ## License
 
