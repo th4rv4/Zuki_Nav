@@ -245,8 +245,8 @@ made your trips better, you can support its development with a UPI tip:
 **UPI ID: `atharvaagnihotri@upi`**
 
 Paste it into GPay, PhonePe, Paytm or any UPI app, or use **Pay With UPI**
-on the [website](https://th4rv4.github.io/Zuki_Nav/#support) from your
-phone. Stars, bug reports and test results from other models help just as
+on the [website](https://th4rv4.github.io/Zuki_Nav/#support) or in the
+app (Settings > Updates > About & Support) from your phone. Stars, bug reports and test results from other models help just as
 much.
 
 ## License

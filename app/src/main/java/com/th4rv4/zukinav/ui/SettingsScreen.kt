@@ -122,6 +122,22 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             reload,
         )
 
+        val aboutRow = ui.row(
+            "About & Support", "Version, source code and Support The Developer",
+            trailing = ui.text("›", 20f, Palette.MUTED),
+            leading = ui.iconTile(R.drawable.ic_heart, 32, 16, Palette.ACCENT_END, Accents.withAlpha(Palette.ACCENT_END, 0x24), 10),
+        ).apply {
+            isClickable = true
+            isFocusable = true
+            background = android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(Palette.RIPPLE), null, ui.rounded(android.graphics.Color.WHITE, 8),
+            )
+            setOnClickListener { host.showAbout() }
+        }
+        // Sits in the Updates card, under Check For Updates and Check On Launch.
+        (updates.views.first() as LinearLayout).addView(aboutRow,
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+
         view = host.page(
             ui.title("Settings").apply { setPadding(ui.dp(4), 0, 0, 0) },
             ui.sectionHeader(R.drawable.ic_sec_bike, "Your Bike"),
