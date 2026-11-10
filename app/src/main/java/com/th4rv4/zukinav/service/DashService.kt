@@ -403,6 +403,14 @@ class DashService : Service(), ClusterLink.Listener {
 
     /** Sends a call or message alert 3 times, 200 ms apart, as Ride Connect does. */
     private fun showAlert(alert: Alert) {
+        // Clearing is kept until the dash is back: the status frames sent
+        // after reconnecting carry it, so an indicator lit before the bike
+        // was switched off doesn't stay on.
+        when (alert) {
+            Alert.ClearMissed -> { clearMissedLeft = CLEAR_REPEATS; return }
+            Alert.ClearMessages -> { clearSmsLeft = CLEAR_REPEATS; return }
+            else -> Unit
+        }
         if (link.state != ClusterLink.State.READY) {
             AppLog.d("Dash", "Not connected, alert dropped")
             return
@@ -413,8 +421,7 @@ class DashService : Service(), ClusterLink.Listener {
             is Alert.Answered -> SuzukiFrames.call(alert.caller, ringing = false, whatsapp = alert.whatsapp, mode = mode)
             is Alert.Missed -> SuzukiFrames.missedCall(alert.caller, alert.count, alert.whatsapp, mode)
             is Alert.Message -> SuzukiFrames.message(alert.sender, alert.count, alert.whatsapp, mode)
-            Alert.ClearMissed -> { clearMissedLeft = CLEAR_REPEATS; null }
-            Alert.ClearMessages -> { clearSmsLeft = CLEAR_REPEATS; null }
+            Alert.ClearMissed, Alert.ClearMessages -> null
         } ?: return
         AppLog.d("Dash", "-> ${SuzukiFrames.hex(frame)} (alert)")
         repeat(3) { i -> main.postDelayed({ link.send(frame) }, i * 200L) }
