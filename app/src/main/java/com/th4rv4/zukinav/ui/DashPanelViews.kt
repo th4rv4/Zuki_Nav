@@ -78,7 +78,7 @@ class SpeedGaugeView(ctx: Context) : View(ctx) {
         oval.set(left, top, left + size - 2 * pad, top + size - 2 * pad)
         val shader = LinearGradient(
             oval.left, oval.bottom, oval.right, oval.top,
-            intArrayOf(0xFF2D6BFF.toInt(), 0xFF7FE0FF.toInt(), 0xFFFF4F8B.toInt()),
+            intArrayOf(Palette.ACCENT, Palette.ACCENT_MID, Palette.ACCENT_END),
             floatArrayOf(0f, 0.6f, 1f), Shader.TileMode.CLAMP,
         )
         arc.shader = shader
@@ -151,7 +151,7 @@ class TurnRingView(ctx: Context) : View(ctx) {
         oval.set(left, top, left + size - 2 * pad, top + size - 2 * pad)
         val shader = LinearGradient(
             oval.left, oval.top, oval.right, oval.bottom,
-            0xFF7FE0FF.toInt(), 0xFF2D6BFF.toInt(), Shader.TileMode.CLAMP,
+            Palette.ACCENT_MID, Palette.ACCENT, Shader.TileMode.CLAMP,
         )
         ring.shader = shader
         glow.shader = shader

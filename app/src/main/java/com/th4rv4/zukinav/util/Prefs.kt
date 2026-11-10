@@ -66,10 +66,15 @@ class Prefs(context: Context) {
         get() = sp.getString(K_GREETING, "") ?: ""
         set(v) = sp.edit().putString(K_GREETING, v.trim()).apply()
 
-    /** App colours: [THEME_SYSTEM], [THEME_LIGHT] or [THEME_DARK]. */
+    /** App colours: [THEME_SYSTEM], [THEME_LIGHT], [THEME_DARK] or [THEME_AMOLED]. */
     var theme: Int
         get() = sp.getInt(K_THEME, THEME_SYSTEM)
         set(v) = sp.edit().putInt(K_THEME, v).apply()
+
+    /** Accent preset key, see Accents; "wallpaper" follows the phone's wallpaper colours. */
+    var accent: String
+        get() = sp.getString(K_ACCENT, null) ?: "aurora"
+        set(v) = sp.edit().putString(K_ACCENT, v).apply()
 
     /** Look for a new release when the app opens, at most once a day. */
     var checkUpdatesOnLaunch: Boolean
@@ -150,6 +155,8 @@ class Prefs(context: Context) {
         const val THEME_SYSTEM = 0
         const val THEME_LIGHT = 1
         const val THEME_DARK = 2
+        const val THEME_AMOLED = 3
+        private const val K_ACCENT = "accent"
         private const val K_UPDATE_LAST = "update_last_check"
         private const val K_MSGS = "message_alerts"
     }

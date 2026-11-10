@@ -170,8 +170,8 @@ class RideScreen(host: MainActivity) : Screen(host) {
             linkButton.setTextColor(Palette.DANGER)
         } else {
             linkButton.text = "Connect"
-            linkButton.background = ui.pressable(Palette.ACCENT, 16)
-            linkButton.setTextColor(android.graphics.Color.WHITE)
+            linkButton.background = ui.accentPressable(16)
+            linkButton.setTextColor(Palette.ON_ACCENT)
         }
     }
 

@@ -144,9 +144,9 @@ class DashPanel(private val host: MainActivity) {
         speed.setSpeed(if (live) data?.speedKmh else null)
         val kmh = if (live) data?.speedKmh ?: 0 else 0
         val glowColor = when {
-            kmh > 90 -> 0x61FF4F8B
-            kmh > 45 -> 0x597FE0FF
-            else -> 0x592D6BFF
+            kmh > 90 -> Accents.withAlpha(Palette.ACCENT_END, 0x61)
+            kmh > 45 -> Accents.withAlpha(Palette.ACCENT_MID, 0x59)
+            else -> Accents.withAlpha(Palette.ACCENT, 0x59)
         }
         aura.colors = intArrayOf(glowColor, 0x00000000)
 

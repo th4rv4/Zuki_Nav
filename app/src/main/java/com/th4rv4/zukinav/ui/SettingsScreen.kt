@@ -56,17 +56,30 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
                 ui.segmented("Left", "Right", if (prefs.leftHandTraffic) 0 else 1) { prefs.leftHandTraffic = it == 0 }),
         )
 
-        val look = ui.listCard(
-            ui.row("Theme", null,
-                ui.segmented(listOf("System", "Light", "Dark"), themeIndex(prefs.theme), padDp = 10) { i ->
-                    host.setThemeChoice(
-                        when (i) {
-                            1 -> com.th4rv4.zukinav.util.Prefs.THEME_LIGHT
-                            2 -> com.th4rv4.zukinav.util.Prefs.THEME_DARK
-                            else -> com.th4rv4.zukinav.util.Prefs.THEME_SYSTEM
-                        },
-                    )
-                }),
+        val look = ui.card(
+            ui.text("Theme", 15f, Palette.TEXT, Ui.Weight.MEDIUM),
+            ui.segmented(listOf("System", "Light", "Dark", "AMOLED"), themeIndex(prefs.theme), padDp = 6, fill = true) { i ->
+                host.setThemeChoice(
+                    when (i) {
+                        1 -> com.th4rv4.zukinav.util.Prefs.THEME_LIGHT
+                        2 -> com.th4rv4.zukinav.util.Prefs.THEME_DARK
+                        3 -> com.th4rv4.zukinav.util.Prefs.THEME_AMOLED
+                        else -> com.th4rv4.zukinav.util.Prefs.THEME_SYSTEM
+                    },
+                )
+            },
+            ui.vstack(
+                2,
+                ui.text("Accent", 15f, Palette.TEXT, Ui.Weight.MEDIUM),
+                ui.text(
+                    if (Accents.wallpaperSupported) "Colours for the gauge, rings and buttons. Wallpaper takes them from your phone's wallpaper."
+                    else "Colours for the gauge, rings and buttons",
+                    12f, Palette.MUTED,
+                ),
+            ),
+            ui.accentPicker(prefs.accent) { host.setAccentChoice(it) },
+            ui.text("Fuel and warning colours stay the same in every accent.", 12f, Palette.MUTED),
+            gapDp = 14,
         )
 
         val connection = ui.listCard(
@@ -135,6 +148,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
     private fun themeIndex(t: Int) = when (t) {
         com.th4rv4.zukinav.util.Prefs.THEME_LIGHT -> 1
         com.th4rv4.zukinav.util.Prefs.THEME_DARK -> 2
+        com.th4rv4.zukinav.util.Prefs.THEME_AMOLED -> 3
         else -> 0
     }
 

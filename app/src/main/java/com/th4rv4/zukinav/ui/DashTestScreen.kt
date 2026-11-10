@@ -214,7 +214,7 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
         cells.forEachIndexed { i, cell ->
             val id = i + 1
             val (fill, stroke, fg) = when {
-                id == current -> Triple(Palette.ACCENT, null, android.graphics.Color.WHITE)
+                id == current -> Triple(Palette.ACCENT, null, Palette.ON_ACCENT)
                 marks[id] == IconMarks.Mark.RIGHT -> Triple(Palette.OK_BORDER, null, Palette.MARK_RIGHT_FG)
                 marks[id] == IconMarks.Mark.WRONG -> Triple(Palette.MARK_WRONG_BG, null, Palette.MARK_WRONG_FG)
                 else -> Triple(Palette.INSET, Palette.UNTESTED_BORDER, Palette.MUTED)

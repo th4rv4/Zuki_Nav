@@ -19,18 +19,28 @@ import android.widget.LinearLayout
 import android.widget.Switch
 import android.widget.TextView
 
-/** Zuki Nav colours (dark theme). */
 /**
- * The app's colours. Dark is the default; [apply] switches every colour to
- * the light set before the screens are built.
+ * The app's colours. [apply] picks the theme (Dark, AMOLED or Light) and the
+ * accent before the screens are built.
  */
 object Palette {
     var isLight = false
         private set
+    var isAmoled = false
+        private set
 
     var BG = 0; var SURFACE = 0; var BORDER = 0; var INSET = 0; var INPUT_BORDER = 0; var NAV_BG = 0
     var TEXT = 0; var TEXT_SOFT = 0; var MUTED = 0
+    /** Accent: [ACCENT] is the start colour, [ACCENT_SOFT] the one used for text and icons. */
     var ACCENT = 0; var ACCENT_SOFT = 0; var ACCENT_BG = 0
+    /** The three gauge colours, start to end, and the end of the button gradient. */
+    var ACCENT_MID = 0; var ACCENT_END = 0; var BUTTON_END = 0
+    /** Text on accent buttons. */
+    var ON_ACCENT = 0
+    /** Glow around accent rings and arcs; 0 in Light. */
+    var ACCENT_GLOW = 0
+    /** Background glows (see AuroraBackground); 0 in AMOLED. */
+    var BG_GLOW_1 = 0; var BG_GLOW_2 = 0
     var OK = 0; var OK_BG = 0; var OK_BORDER = 0
     var WARN = 0; var WARN_BG = 0; var WARN_BORDER = 0
     var DANGER = 0; var DANGER_BG = 0; var DANGER_BORDER = 0
@@ -46,46 +56,64 @@ object Palette {
     // Live dash panel on the Ride tab.
     var PANEL_TOP = 0; var PANEL_BOTTOM = 0; var GLASS = 0; var GLASS_BORDER = 0; var TRACK = 0
 
-    init { apply(false) }
+    enum class Mode { DARK, AMOLED, LIGHT }
 
-    fun apply(light: Boolean) {
+    init { apply(null, Mode.DARK, Accents.DEFAULT) }
+
+    fun apply(ctx: Context?, mode: Mode, accentKey: String) {
+        val light = mode == Mode.LIGHT
+        val amoled = mode == Mode.AMOLED
         isLight = light
-        fun c(dark: Long, lightColor: Long) = (if (light) lightColor else dark).toInt()
-        BG = c(0xFF0B0E13, 0xFFF3F5F8)
-        SURFACE = c(0xFF141922, 0xFFFFFFFF)
-        BORDER = c(0xFF222937, 0xFFE1E5EB)
-        INSET = c(0xFF0F141C, 0xFFEEF1F5)
-        INPUT_BORDER = c(0xFF2B3342, 0xFFCDD3DC)
-        NAV_BG = c(0xFF0E1218, 0xFFFFFFFF)
-        TEXT = c(0xFFF2F4F8, 0xFF111723)
-        TEXT_SOFT = c(0xFFC9D0DC, 0xFF2E3746)
-        MUTED = c(0xFF9AA3B5, 0xFF5E6878)
-        ACCENT = c(0xFF2D6BFF, 0xFF2D6BFF)
-        ACCENT_SOFT = c(0xFF6FA0FF, 0xFF1F57E0)
-        ACCENT_BG = c(0xFF121C30, 0xFFE7EEFF)
-        OK = c(0xFF7CE3A6, 0xFF16884A)
-        OK_BG = c(0xFF12291D, 0xFFE3F6EA)
-        OK_BORDER = c(0xFF1F4A31, 0xFFA9DEBE)
-        WARN = c(0xFFFFC966, 0xFF8F5D00)
-        WARN_BG = c(0xFF2A2312, 0xFFFFF3D6)
-        WARN_BORDER = c(0xFF4A3A1A, 0xFFEBCB86)
-        DANGER = c(0xFFFF9B9B, 0xFFC62F2F)
-        DANGER_BG = c(0xFF1C1416, 0xFFFDECEC)
-        DANGER_BORDER = c(0xFF3A2A2A, 0xFFF2B8B8)
-        TILE = c(0xFF1B2433, 0xFFE7EEFF)
-        DIVIDER = c(0xFF1C222C, 0xFFE1E5EB)
-        RIPPLE = c(0x22FFFFFF, 0x1A000000)
-        SWITCH_THUMB_OFF = c(0xFFC9D0DC, 0xFFFFFFFF)
-        MARK_RIGHT_FG = c(0xFFBFF3D4, 0xFF0E5A30)
-        MARK_WRONG_BG = c(0xFF5A4416, 0xFFFBE7B5)
-        MARK_WRONG_FG = c(0xFFFFE1A3, 0xFF6B4A00)
-        UNTESTED_BORDER = c(0xFF3A4352, 0xFFCDD3DC)
-        PANEL_TOP = c(0xFF121826, 0xFFFFFFFF)
-        PANEL_BOTTOM = c(0xFF0B0F17, 0xFFE9EEF8)
-        GLASS = c(0x0DFFFFFF, 0x0A101624)
-        GLASS_BORDER = c(0x17FFFFFF, 0x14101624)
-        TRACK = c(0x17FFFFFF, 0x17101624)
+        isAmoled = amoled
+        fun c(dark: Long, amoledColor: Long, lightColor: Long) =
+            (if (light) lightColor else if (amoled) amoledColor else dark).toInt()
+        BG = c(0xFF070A10, 0xFF000000, 0xFFF2F4F9)
+        SURFACE = c(0x0FFFFFFF, 0xFF0A0B0E, 0xC7FFFFFF)
+        BORDER = c(0x17FFFFFF, 0xFF18191E, 0x12101828)
+        INSET = c(0x0AFFFFFF, 0xFF050506, 0x08101828)
+        INPUT_BORDER = c(0x21FFFFFF, 0xFF1F2026, 0x1F101828)
+        NAV_BG = c(0xFF0A0D14, 0xFF000000, 0xFFF7F8FB)
+        TEXT = c(0xFFEEF2F8, 0xFFF2F4F8, 0xFF0E1422)
+        TEXT_SOFT = c(0xFFC9D0DC, 0xFFC9CFD9, 0xFF2E3746)
+        MUTED = c(0xFF8792A6, 0xFF7C8496, 0xFF667085)
+        OK = c(0xFF4ADE9A, 0xFF4ADE9A, 0xFF16884A)
+        OK_BG = c(0x244ADE9A, 0x244ADE9A, 0xFFE3F6EA)
+        OK_BORDER = c(0x474ADE9A, 0x474ADE9A, 0xFFA9DEBE)
+        WARN = c(0xFFFFC966, 0xFFFFC966, 0xFF8F5D00)
+        WARN_BG = c(0x24FFC966, 0x24FFC966, 0xFFFFF3D6)
+        WARN_BORDER = c(0x47FFC966, 0x47FFC966, 0xFFEBCB86)
+        DANGER = c(0xFFFF7A8A, 0xFFFF7A8A, 0xFFC62F2F)
+        DANGER_BG = c(0x1FFF5A6E, 0x1FFF5A6E, 0xFFFDECEC)
+        DANGER_BORDER = c(0x47FF5A6E, 0x47FF5A6E, 0xFFF2B8B8)
+        TILE = c(0x14FFFFFF, 0xFF121318, 0x0F101828)
+        DIVIDER = c(0x14FFFFFF, 0xFF141519, 0x14101828)
+        RIPPLE = c(0x22FFFFFF, 0x22FFFFFF, 0x1A000000)
+        SWITCH_THUMB_OFF = c(0xFF8792A6, 0xFF7C8496, 0xFFFFFFFF)
+        MARK_RIGHT_FG = c(0xFFBFF3D4, 0xFFBFF3D4, 0xFF0E5A30)
+        MARK_WRONG_BG = c(0x3DFF5A6E, 0x3DFF5A6E, 0xFFFBE0E3)
+        MARK_WRONG_FG = c(0xFFFFB3BD, 0xFFFFB3BD, 0xFFA3192B)
+        UNTESTED_BORDER = c(0x21FFFFFF, 0xFF1F2026, 0x1F101828)
+        PANEL_TOP = SURFACE
+        PANEL_BOTTOM = SURFACE
+        GLASS = c(0x0DFFFFFF, 0xFF0F1014, 0x0A101624)
+        GLASS_BORDER = c(0x17FFFFFF, 0xFF1C1D22, 0x14101624)
+        TRACK = c(0x17FFFFFF, 0xFF16171C, 0x17101624)
+
+        val a = Accents.resolve(ctx, accentKey, light)
+        ACCENT = a[0]
+        ACCENT_MID = a[1]
+        ACCENT_END = a[2]
+        ON_ACCENT = a[3]
+        BUTTON_END = Accents.blend(a[0], a[2], 0.45f)
+        ACCENT_SOFT = if (light) a[0] else a[1]
+        ACCENT_BG = Accents.withAlpha(ACCENT, if (light) 0x1F else 0x2E)
+        ACCENT_GLOW = if (light) 0 else Accents.withAlpha(ACCENT_MID, 0x8C)
+        BG_GLOW_1 = when (mode) { Mode.DARK -> Accents.withAlpha(ACCENT, 0x61); Mode.LIGHT -> Accents.withAlpha(ACCENT, 0x29); Mode.AMOLED -> 0 }
+        BG_GLOW_2 = when (mode) { Mode.DARK -> Accents.withAlpha(ACCENT_END, 0x29); Mode.LIGHT -> Accents.withAlpha(ACCENT_END, 0x1A); Mode.AMOLED -> 0 }
     }
+
+    /** Older callers: Dark or Light with the default accent. */
+    fun apply(light: Boolean) = apply(null, if (light) Mode.LIGHT else Mode.DARK, Accents.DEFAULT)
 }
 
 /** Small view factory so every screen shares one look. Built in code; no AndroidX. */
@@ -105,6 +133,16 @@ class Ui(val ctx: Context) {
             cornerRadius = dp(radiusDp).toFloat()
             if (stroke != null) setStroke(dp(1), stroke)
         }
+
+    /** The accent gradient, start to [Palette.BUTTON_END], left to right. */
+    fun accentGradient(radiusDp: Int): GradientDrawable =
+        GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(Palette.ACCENT, Palette.BUTTON_END)).apply {
+            cornerRadius = dp(radiusDp).toFloat()
+        }
+
+    /** Accent gradient with touch ripple, for main buttons. */
+    fun accentPressable(radiusDp: Int): Drawable =
+        RippleDrawable(ColorStateList.valueOf(Palette.RIPPLE), accentGradient(radiusDp), rounded(Color.WHITE, radiusDp))
 
     /** Background with touch ripple. */
     fun pressable(color: Int, radiusDp: Int, stroke: Int? = null): Drawable =
@@ -249,13 +287,13 @@ class Ui(val ctx: Context) {
             minimumHeight = dp(heightDp)
             setPadding(dp(14), 0, dp(14), 0)
             val (bg, fg, stroke) = when (style) {
-                Btn.PRIMARY -> Triple(Palette.ACCENT, Color.WHITE, null)
+                Btn.PRIMARY -> Triple(Palette.ACCENT, Palette.ON_ACCENT, null)
                 Btn.SECONDARY -> Triple(Palette.SURFACE, Palette.TEXT, Palette.INPUT_BORDER)
                 Btn.DANGER -> Triple(Palette.DANGER_BG, Palette.DANGER, Palette.DANGER_BORDER)
                 Btn.OK -> Triple(Palette.OK_BG, Palette.OK, Palette.OK_BORDER)
                 Btn.WARN -> Triple(Palette.WARN_BG, Palette.WARN, Palette.WARN_BORDER)
             }
-            background = pressable(bg, 16, stroke)
+            background = if (style == Btn.PRIMARY) accentPressable(16) else pressable(bg, 16, stroke)
             setTextColor(fg)
             setOnClickListener { onClick() }
         }
@@ -355,8 +393,8 @@ class Ui(val ctx: Context) {
         }
         fun paint(sel: Int) {
             buttons.forEachIndexed { i, b ->
-                b.setTextColor(if (i == sel) Color.WHITE else Palette.MUTED)
-                b.background = if (i == sel) rounded(Palette.ACCENT, 9) else null
+                b.setTextColor(if (i == sel) Palette.ON_ACCENT else Palette.MUTED)
+                b.background = if (i == sel) accentGradient(9) else null
                 b.isSelected = i == sel
             }
         }
@@ -381,5 +419,44 @@ class Ui(val ctx: Context) {
             LinearLayout.LayoutParams(dp(7), dp(7)).apply { marginEnd = dp(6) },
         )
         addView(text(label, 12f, color, Weight.MEDIUM))
+    }
+
+    /**
+     * Grid of accent swatches, three per row. [onPick] gets the preset key.
+     * The Wallpaper option shows only where the phone supports it.
+     */
+    fun accentPicker(selected: String, onPick: (String) -> Unit): LinearLayout {
+        val keys = ArrayList<String>()
+        if (Accents.wallpaperSupported) keys += Accents.WALLPAPER
+        Accents.presets.forEach { keys += it.key }
+        val grid = vstack(12)
+        keys.chunked(3).forEach { rowKeys ->
+            val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+            for (i in 0 until 3) {
+                val key = rowKeys.getOrNull(i)
+                if (key == null) { row.addView(View(ctx), LinearLayout.LayoutParams(0, 1, 1f)); continue }
+                val a = Accents.resolve(ctx, key, Palette.isLight)
+                val chosen = key == selected
+                val cell = LinearLayout(ctx).apply {
+                    orientation = LinearLayout.VERTICAL
+                    addView(SwatchView(ctx, intArrayOf(a[0], a[1], a[2]), chosen),
+                        LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(56)))
+                    addView(text(Accents.name(key), 12f, if (chosen) Palette.TEXT else Palette.MUTED, if (chosen) Weight.BOLD else Weight.MEDIUM)
+                        .apply { gravity = Gravity.CENTER },
+                        LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(4) })
+                }.apply {
+                    isClickable = true
+                    isFocusable = true
+                    contentDescription = "Accent ${Accents.name(key)}"
+                    isSelected = chosen
+                    background = RippleDrawable(ColorStateList.valueOf(Palette.RIPPLE), null, rounded(Color.WHITE, 14))
+                    setPadding(0, dp(4), 0, dp(4))
+                    setOnClickListener { onPick(key) }
+                }
+                row.addView(cell, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            }
+            grid.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        }
+        return grid
     }
 }

@@ -58,8 +58,9 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         prefs = Prefs(this)
-        val light = isLightTheme()
-        Palette.apply(light)
+        val mode = themeMode()
+        val light = mode == Palette.Mode.LIGHT
+        Palette.apply(this, mode, prefs.accent)
         setTheme(if (light) R.style.Theme_ZukiNav_Light else R.style.Theme_ZukiNav)
         super.onCreate(savedInstanceState)
         ui = Ui(this)
@@ -76,18 +77,33 @@ class MainActivity : Activity() {
         currentTab?.let { outState.putString(STATE_TAB, it.name) }
     }
 
-    private fun isLightTheme(): Boolean = when (prefs.theme) {
-        Prefs.THEME_LIGHT -> true
-        Prefs.THEME_DARK -> false
-        else -> (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) !=
+    private fun themeMode(): Palette.Mode = when (prefs.theme) {
+        Prefs.THEME_LIGHT -> Palette.Mode.LIGHT
+        Prefs.THEME_DARK -> Palette.Mode.DARK
+        Prefs.THEME_AMOLED -> Palette.Mode.AMOLED
+        else -> if ((resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
             android.content.res.Configuration.UI_MODE_NIGHT_YES
+        ) Palette.Mode.DARK else Palette.Mode.LIGHT
     }
 
-    /** Switches between System, Light and Dark; the screen is rebuilt in the new colours. */
+    private fun currentMode(): Palette.Mode = when {
+        Palette.isLight -> Palette.Mode.LIGHT
+        Palette.isAmoled -> Palette.Mode.AMOLED
+        else -> Palette.Mode.DARK
+    }
+
+    /** Switches between System, Light, Dark and AMOLED; the screen is rebuilt in the new colours. */
     fun setThemeChoice(choice: Int) {
         if (prefs.theme == choice) return
         prefs.theme = choice
-        if (isLightTheme() != Palette.isLight) recreate()
+        if (themeMode() != currentMode()) recreate()
+    }
+
+    /** Switches the accent colours; the screen is rebuilt in them. */
+    fun setAccentChoice(key: String) {
+        if (prefs.accent == key) return
+        prefs.accent = key
+        recreate()
     }
 
     @Suppress("DEPRECATION")
@@ -195,7 +211,7 @@ class MainActivity : Activity() {
         }
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Palette.BG)
+            background = AuroraBackground()
             addView(content, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
             addView(View(this@MainActivity).apply { setBackgroundColor(Palette.DIVIDER) },
                 LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ui.dp(1)))
