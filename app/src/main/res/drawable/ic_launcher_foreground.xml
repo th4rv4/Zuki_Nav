@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Scaled into the 66 dp safe zone of an adaptive icon. -->
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.8"
+        android:scaleY="0.8"
+        android:translateY="2">
+        <path
+            android:pathData="M28,76 A32,32 0,1 1,80,76"
+            android:strokeColor="#1AFFFFFF"
+            android:strokeWidth="8"
+            android:strokeLineCap="round"
+            android:fillColor="#00000000" />
+        <path
+            android:pathData="M28,76 A32,32 0,1 1,80,76"
+            android:strokeWidth="8"
+            android:strokeLineCap="round"
+            android:trimPathEnd="0.8"
+            android:fillColor="#00000000">
+            <aapt:attr name="android:strokeColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="22"
+                    android:startY="86"
+                    android:endX="86"
+                    android:endY="22">
+                    <item android:offset="0" android:color="#FF2D6BFF" />
+                    <item android:offset="0.6" android:color="#FF7FE0FF" />
+                    <item android:offset="1" android:color="#FFFF4F8B" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path
+            android:pathData="M54,68 L54,38 M43,49 L54,38 L65,49"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="7"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:fillColor="#00000000" />
+    </group>
+</vector>
