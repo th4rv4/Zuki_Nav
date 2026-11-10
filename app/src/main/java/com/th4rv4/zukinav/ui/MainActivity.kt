@@ -29,7 +29,7 @@ import com.th4rv4.zukinav.util.Places
 import com.th4rv4.zukinav.util.Prefs
 
 /**
- * Hosts the three tabs (Ride, Dash Test, Settings) and the first-run Setup
+ * Hosts the four tabs (Ride, Trips, Test, Settings) and the first-run Setup
  * screen. Owns everything that needs the Activity: permissions, system
  * settings screens, sharing and dialogs.
  */
@@ -42,12 +42,19 @@ class MainActivity : Activity() {
 
     private lateinit var content: FrameLayout
     private lateinit var tabBar: LinearLayout
+    private lateinit var tabDock: FrameLayout
+    private var navInset = 0
+
+    /** Without the tab bar (Setup), the page itself keeps clear of the gesture bar. */
+    private fun padContent() {
+        content.setPadding(0, 0, 0, if (tabDock.visibility == View.VISIBLE) 0 else navInset)
+    }
     private val tabViews = ArrayList<Pair<Tab, LinearLayout>>()
 
     enum class Tab(val label: String, val icon: Int) {
         RIDE("Ride", R.drawable.ic_tab_ride),
         TRIPS("Trips", R.drawable.ic_tab_trips),
-        DASH_TEST("Dash Test", R.drawable.ic_tab_dash),
+        DASH_TEST("Test", R.drawable.ic_tab_dash),
         SETTINGS("Settings", R.drawable.ic_tab_settings),
     }
 
@@ -110,7 +117,7 @@ class MainActivity : Activity() {
     private fun styleSystemBars(light: Boolean) {
         window.decorView.setBackgroundColor(Palette.BG)
         window.statusBarColor = Palette.BG
-        window.navigationBarColor = Palette.NAV_BG
+        window.navigationBarColor = Palette.BG
         if (Build.VERSION.SDK_INT >= 30) {
             val mask = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
                 android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
@@ -190,8 +197,14 @@ class MainActivity : Activity() {
         content = FrameLayout(this)
         tabBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setBackgroundColor(Palette.NAV_BG)
-            setPadding(ui.dp(12), ui.dp(6), ui.dp(12), ui.dp(6))
+            background = ui.rounded(Palette.NAV_BG, 24, Palette.BORDER)
+            elevation = if (Palette.isLight) ui.dp(6).toFloat() else 0f
+            setPadding(ui.dp(6), ui.dp(4), ui.dp(6), ui.dp(4))
+        }
+        tabDock = FrameLayout(this).apply {
+            setPadding(ui.dp(14), ui.dp(6), ui.dp(14), ui.dp(12))
+            clipToPadding = false
+            addView(tabBar, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         }
         for (tab in Tab.entries) {
             val item = LinearLayout(this).apply {
@@ -201,9 +214,9 @@ class MainActivity : Activity() {
                 isClickable = true
                 isFocusable = true
                 contentDescription = tab.label
-                background = ui.pressable(Palette.NAV_BG, 12)
+                background = ui.pressable(Palette.NAV_BG, 20)
                 addView(ui.icon(tab.icon, 22, Palette.MUTED), LinearLayout.LayoutParams(ui.dp(22), ui.dp(22)))
-                addView(ui.text(tab.label, 12f, Palette.MUTED, Ui.Weight.MEDIUM).apply { gravity = Gravity.CENTER })
+                addView(ui.text(tab.label, 11f, Palette.MUTED, Ui.Weight.MEDIUM).apply { gravity = Gravity.CENTER })
                 setOnClickListener { showTab(tab) }
             }
             tabBar.addView(item, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
@@ -213,16 +226,16 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             background = AuroraBackground()
             addView(content, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-            addView(View(this@MainActivity).apply { setBackgroundColor(Palette.DIVIDER) },
-                LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ui.dp(1)))
-            addView(tabBar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            addView(tabDock, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         }
         // Android 15 draws apps edge to edge: keep content clear of the system bars.
         if (Build.VERSION.SDK_INT >= 30) {
             root.setOnApplyWindowInsetsListener { v, insets ->
                 val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.ime())
                 v.setPadding(bars.left, bars.top, bars.right, 0)
-                tabBar.setPadding(ui.dp(12), ui.dp(6), ui.dp(12), ui.dp(6) + bars.bottom)
+                tabDock.setPadding(ui.dp(14), ui.dp(6), ui.dp(14), ui.dp(12) + bars.bottom)
+                navInset = bars.bottom
+                padContent()
                 insets
             }
         }
@@ -253,9 +266,10 @@ class MainActivity : Activity() {
 
     fun showTab(tab: Tab) {
         currentTab = tab
-        tabBar.visibility = View.VISIBLE
+        tabDock.visibility = View.VISIBLE
+        padContent()
         for ((t, item) in tabViews) {
-            val color = if (t == tab) Palette.ACCENT else Palette.MUTED
+            val color = if (t == tab) Palette.ACCENT_SOFT else Palette.MUTED
             (item.getChildAt(0) as android.widget.ImageView).imageTintList = android.content.res.ColorStateList.valueOf(color)
             (item.getChildAt(1) as TextView).apply {
                 setTextColor(color)
@@ -285,7 +299,8 @@ class MainActivity : Activity() {
 
     fun showSetup() {
         currentTab = null
-        tabBar.visibility = View.GONE
+        tabDock.visibility = View.GONE
+        padContent()
         swapTo(screen("setup") { SetupScreen(this) })
     }
 

@@ -30,7 +30,6 @@ class UpdatesSection(private val host: MainActivity) {
     private val card = ui.card().apply { visibility = View.GONE }
 
     val views: List<View> = listOf(
-        ui.sectionLabel("Updates"),
         ui.listCard(
             checkRow,
             ui.switchRow("Check On Launch", "Once a day, when the app opens", prefs.checkUpdatesOnLaunch) {

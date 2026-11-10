@@ -127,14 +127,17 @@ This approach, and the Maps notification layouts, follow
 
 ## App layout
 
-- **Ride**: a live dash panel with the clock, the next turn (its arrow
-  ringed by the distance to the turn, which empties over the last 500 m,
-  like the dash's own bar), a speedometer, fuel or battery cells, ETA and
-  distance left, ODO and Trip A/B. Below it: the ride in progress, what is
-  being sent to the dash, and a Connect/Disconnect button. When the bike is
-  off, the panel keeps the last readings and says when they were synced.
-- **Trips**: saved rides with this month's total, and a Starred filter.
-- **Dash Test**: show any turn icon on the dash, mark it **Looks Right** or
+- **Ride**: the day, time and connection status, and your rider avatar
+  (tap it to pick your initial, an icon or a photo). Below it, a live card
+  with the next turn (its arrow ringed by the distance to the turn, which
+  empties over the last 500 m, like the dash's own bar), a speedometer,
+  fuel or battery cells, and ETA with distance left; then ODO and Trip A/B,
+  the ride in progress, what is being sent to the dash, and a
+  Connect/Disconnect button. When the bike is off, the numbers are the last
+  readings and the screen says when they were synced.
+- **Trips**: this month's distance, rides and riding time, then saved rides
+  grouped by day, with a Starred filter. Each ride opens its details.
+- **Test**: show any turn icon on the dash, mark it **Looks Right** or
   **Looks Wrong** (the next icon follows automatically), see progress for
   all 64 icons, and **Share Results**. **Text Test** sends your own text
   into the number spots under the arrow. Tests only run while Google Maps
@@ -145,9 +148,16 @@ on the dash after "Welcome", and **Startup Greeting** shows a short text for 3
 seconds on the dash's call screen. The dash always puts its own
 "CALLER:" label above it; no other screen can show text. Both are skipped when a route is already running,
 and a route starting mid-animation takes over at once.
-- **Settings**: rider name, speed alert, call and message alerts, traffic
-  side, theme (System, Light or Dark), trip recording, Auto-Connect, Start
-  On Boot, Change Bike, updates, and the log.
+- **Settings**, in groups: Your Bike (Change Bike, rider name), Welcome
+  (startup animation and greeting), Riding (speed alert, traffic side),
+  Calls, Messages, Trips, Appearance, Connection, Updates and
+  Troubleshooting.
+
+**Appearance**: four themes (System, Light, Dark and AMOLED, which is true
+black) and an accent colour for the gauge, rings and buttons: Aurora,
+Ember, Viridian, Ultraviolet, Solar, Glacier, Sakura or Graphite. On
+Android 12 and up, **Wallpaper** takes the colours from your phone's
+wallpaper. Fuel and warning colours are the same in every accent.
 
 ## Updates
 
@@ -210,7 +220,7 @@ protocol/   frame builder, checksum, distance format, icon table, model table (p
 nav/        Maps notification parsing, arrow fingerprinting, listener
 ble/        GATT client
 service/    foreground service, boot receiver
-ui/         screens (Ride, Dash Test, Settings, Setup) and shared components
+ui/         screens (Ride, Trips, Dash Test, Settings, Setup), themes and shared components
 ```
 
 ## License

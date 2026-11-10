@@ -185,6 +185,15 @@ class Ui(val ctx: Context) {
         setPadding(dp(4), dp(4), dp(4), 0)
     }
 
+    /** Accent-coloured section heading with a small icon, e.g. "CALLS". */
+    fun sectionHeader(iconRes: Int, s: String): LinearLayout = LinearLayout(ctx).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(4), dp(10), dp(4), 0)
+        addView(icon(iconRes, 14, Palette.ACCENT_SOFT), LinearLayout.LayoutParams(dp(14), dp(14)).apply { marginEnd = dp(8) })
+        addView(text(s.uppercase(), 12f, Palette.ACCENT_SOFT, Weight.BOLD).apply { letterSpacing = 0.12f })
+    }
+
     fun vstack(gapDp: Int, vararg views: View): LinearLayout = LinearLayout(ctx).apply {
         orientation = LinearLayout.VERTICAL
         if (gapDp > 0) {
