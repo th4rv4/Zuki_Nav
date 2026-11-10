@@ -15,8 +15,11 @@ import com.th4rv4.zukinav.trips.TripStore
 /** One trip: its numbers, and Rename, Star, Share and Delete. */
 class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) {
 
-    private val title = ui.text("", 24f, Palette.TEXT, Ui.Weight.BOLD)
-    private val star = ui.text("", 24f, Palette.ACCENT_SOFT).apply {
+    private val title = ui.text("", 20f, Palette.TEXT, Ui.Weight.BOLD).apply {
+        maxLines = 2
+        ellipsize = android.text.TextUtils.TruncateAt.END
+    }
+    private val star = ui.text("", 24f, Palette.WARN).apply {
         gravity = Gravity.CENTER
         isClickable = true
         isFocusable = true
@@ -24,35 +27,72 @@ class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) 
         setOnClickListener { trip()?.let { TripStore.update(host, it.copy(starred = !it.starred)); render() } }
     }
     private val span = ui.text("", 13f, Palette.MUTED)
-    private val places = ui.vstack(2)
-    private val placesCard = ui.card(places, gapDp = 0, padDp = 14, radiusDp = 16)
+    private val distance = android.widget.TextView(ui.ctx).apply {
+        typeface = DashFonts.numbers
+        textSize = 52f
+        gravity = Gravity.CENTER
+        setTextColor(Palette.TEXT)
+    }
+    private val from = ui.text("", 13f, Palette.MUTED).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END }
+    private val to = ui.text("", 13f, Palette.MUTED).apply {
+        maxLines = 1
+        ellipsize = android.text.TextUtils.TruncateAt.END
+        gravity = Gravity.END
+    }
+    private val placesRow = LinearLayout(ui.ctx).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        addView(from, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        addView(ui.text("→", 13f, Palette.MUTED).apply { setPadding(ui.dp(8), 0, ui.dp(8), 0) })
+        addView(to, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+    }
     private val grid = ui.vstack(8)
+    private val odo = number(16f)
 
     override val view: View
 
     init {
-        val back = ui.text("‹  Trips", 15f, Palette.ACCENT_SOFT, Ui.Weight.MEDIUM).apply {
+        val back = ui.text("‹", 30f, Palette.TEXT).apply {
             isClickable = true
             isFocusable = true
-            setPadding(0, ui.dp(4), ui.dp(12), ui.dp(4))
+            contentDescription = "Back to Trips"
+            setPadding(ui.dp(4), 0, ui.dp(14), ui.dp(4))
             setOnClickListener { host.showTab(MainActivity.Tab.TRIPS) }
         }
         val header = LinearLayout(ui.ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            addView(title, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(back)
+            addView(ui.vstack(2, title, span), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             addView(star)
         }
+        val hero = ui.card(
+            cap("Distance").apply { gravity = Gravity.CENTER },
+            distance,
+            placesRow,
+            gapDp = 4,
+            padDp = 18,
+        )
+        val odoCard = ui.card(
+            LinearLayout(ui.ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(cap("ODO"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+                addView(odo)
+            },
+            padDp = 14,
+            radiusDp = 16,
+        )
         view = host.page(
-            back,
-            ui.vstack(2, header, span),
-            placesCard,
+            header,
+            hero,
             grid,
+            odoCard,
             ui.hstack(
                 8,
-                ui.button("Rename", Ui.Btn.SECONDARY, 46) { rename() },
-                ui.button("Share", Ui.Btn.SECONDARY, 46) { share() },
-                ui.button("Delete", Ui.Btn.DANGER, 46) { delete() },
+                ui.button("Rename", Ui.Btn.SECONDARY, 48) { rename() },
+                ui.button("Delete", Ui.Btn.SECONDARY, 48) { delete() }.apply { setTextColor(Palette.DANGER) },
+                ui.button("Share", Ui.Btn.PRIMARY, 48) { share() },
                 weighted = true,
             ),
         )
@@ -67,35 +107,56 @@ class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) 
         val is24 = DateFormat.is24HourFormat(host)
         title.text = TripFormat.title(t)
         star.text = if (t.starred) "★" else "☆"
+        star.setTextColor(if (t.starred) Palette.WARN else Palette.MUTED)
         star.contentDescription = if (t.starred) "Unstar" else "Star"
         span.text = TripFormat.span(t, is24)
 
-        places.removeAllViews()
-        if (t.startPlace != null || t.endPlace != null) {
-            places.addView(ui.text(t.startPlace ?: "Unknown", 14f, Palette.TEXT_SOFT))
-            places.addView(ui.text("↓", 14f, Palette.MUTED).apply { setPadding(ui.dp(6), 0, 0, 0) })
-            places.addView(ui.text(t.endPlace ?: "Unknown", 14f, Palette.TEXT_SOFT))
-        }
-        placesCard.visibility = if (places.childCount > 0) View.VISIBLE else View.GONE
+        val km = TripFormat.distance(t.distanceKm)
+        distance.text = km
+        distance.post { paintDistance() }
+        placesRow.visibility = if (t.startPlace != null || t.endPlace != null) View.VISIBLE else View.GONE
+        from.text = t.startPlace ?: "Unknown"
+        to.text = t.endPlace ?: "Unknown"
 
         grid.removeAllViews()
         val cells = listOf(
-            "Distance" to TripFormat.distance(t.distanceKm),
             "Moving Time" to TripFormat.duration(t.movingSeconds),
+            "Stopped" to TripFormat.duration(t.durationSeconds - t.movingSeconds),
             "Average Speed" to (t.averageKmh?.let { "${it.toInt()} km/h" } ?: "-"),
             "Top Speed" to "${t.topSpeedKmh} km/h",
-            "ODO" to "${TripFormat.odo(t.startOdo)} → ${TripFormat.odo(t.endOdo)}",
-            "Stopped" to TripFormat.duration(t.durationSeconds - t.movingSeconds),
         )
         cells.chunked(2).forEach { pair ->
             grid.addView(ui.hstack(8, *pair.map { (k, v) -> cell(k, v) }.toTypedArray(), weighted = true))
         }
+        odo.text = "${TripFormat.odo(t.startOdo)} → ${TripFormat.odo(t.endOdo)}"
     }
 
+    /** The distance in the accent gradient, like the speed gauge. */
+    private fun paintDistance() {
+        val w = distance.paint.measureText(distance.text.toString())
+        if (w <= 0f) return
+        val start = (distance.width - w) / 2
+        distance.paint.shader = android.graphics.LinearGradient(
+            start, 0f, start + w, 0f,
+            intArrayOf(Palette.ACCENT_MID, Palette.ACCENT_END), null, android.graphics.Shader.TileMode.CLAMP,
+        )
+        distance.invalidate()
+    }
+
+    private fun number(sizeSp: Float) = android.widget.TextView(ui.ctx).apply {
+        typeface = DashFonts.numbers
+        textSize = sizeSp
+        setTextColor(Palette.TEXT)
+        gravity = Gravity.CENTER
+    }
+
+    private fun cap(s: String) = ui.text(s.uppercase(java.util.Locale.US), 11f, Palette.MUTED, Ui.Weight.BOLD).apply { letterSpacing = 0.12f }
+
     private fun cell(label: String, value: String): View =
-        ui.vstack(4, ui.text(label, 11f, Palette.MUTED), ui.text(value, 17f, Palette.TEXT, Ui.Weight.MEDIUM)).apply {
-            background = ui.rounded(Palette.SURFACE, 14, Palette.BORDER)
-            setPadding(ui.dp(12), ui.dp(12), ui.dp(12), ui.dp(12))
+        ui.vstack(4, cap(label).apply { gravity = Gravity.CENTER }, number(19f).apply { text = value }).apply {
+            gravity = Gravity.CENTER_HORIZONTAL
+            background = ui.rounded(Palette.SURFACE, 16, Palette.BORDER)
+            setPadding(ui.dp(8), ui.dp(12), ui.dp(8), ui.dp(12))
         }
 
     private fun rename() {

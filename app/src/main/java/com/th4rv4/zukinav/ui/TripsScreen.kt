@@ -15,8 +15,9 @@ import java.util.Locale
 class TripsScreen(host: MainActivity) : Screen(host) {
 
     private var starredOnly = false
-    private val month = ui.text("", 15f, Palette.TEXT, Ui.Weight.MEDIUM)
-    private val monthCount = ui.text("", 13f, Palette.MUTED)
+    private val monthKm = stat()
+    private val monthRides = stat()
+    private val monthTime = stat()
     private val monthCard: LinearLayout
     private val list = ui.vstack(10)
     private val empty = ui.text("", 14f, Palette.MUTED).apply {
@@ -29,19 +30,15 @@ class TripsScreen(host: MainActivity) : Screen(host) {
 
     init {
         monthCard = ui.card(
-            ui.text("THIS MONTH", 11f, Palette.MUTED, Ui.Weight.BOLD).apply { letterSpacing = 0.08f },
-            LinearLayout(ui.ctx).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                addView(month, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-                addView(monthCount)
-            },
-            gapDp = 6,
+            cap("This Month").apply { gravity = Gravity.CENTER },
+            ui.hstack(0, column(monthKm, "km"), column(monthRides, "Rides"), column(monthTime, "Riding"), weighted = true),
+            gapDp = 10,
         )
         view = host.page(
-            ui.vstack(2, ui.title("Trips"), ui.text("Saved from the dash, ignition on to ignition off", 13f, Palette.MUTED)),
-            ui.segmented(listOf("All", "Starred"), 0, fill = true) { starredOnly = it == 1; render() },
+            ui.vstack(2, ui.title("Trips"), ui.text("Saved from the dash, ignition on to ignition off", 13f, Palette.MUTED))
+                .apply { setPadding(ui.dp(4), 0, 0, 0) },
             monthCard,
+            ui.segmented(listOf("All", "Starred"), 0, fill = true) { starredOnly = it == 1; render() },
             list,
             empty,
         )
@@ -61,13 +58,22 @@ class TripsScreen(host: MainActivity) : Screen(host) {
     private fun render() {
         val all = TripStore.all(host)
         val (km, n) = TripFormat.monthTotals(all)
-        month.text = TripFormat.distance(km).let { if (n == 0) "0 km" else it }
-        monthCount.text = if (n == 1) "1 ride" else "$n rides"
+        monthKm.text = if (km < 10) String.format(Locale.US, "%.1f", km) else km.toInt().toString()
+        monthRides.text = n.toString()
+        monthTime.text = TripFormat.shortDuration(TripFormat.monthSeconds(all))
         monthCard.visibility = if (all.isEmpty()) View.GONE else View.VISIBLE
 
         val shown = if (starredOnly) all.filter { it.starred } else all
         list.removeAllViews()
-        shown.forEach { list.addView(row(it)) }
+        var lastDay: String? = null
+        shown.forEach { t ->
+            val day = TripFormat.day(t.start)
+            if (day != lastDay) {
+                list.addView(cap(day).apply { setPadding(ui.dp(4), if (lastDay == null) 0 else ui.dp(6), 0, 0) })
+                lastDay = day
+            }
+            list.addView(row(t))
+        }
         empty.visibility = if (shown.isEmpty()) View.VISIBLE else View.GONE
         empty.text = when {
             starredOnly && all.isNotEmpty() -> "No starred trips. Star a trip to keep it; older trips are removed after 300 rides."
@@ -76,30 +82,50 @@ class TripsScreen(host: MainActivity) : Screen(host) {
         }
     }
 
+    private fun stat() = android.widget.TextView(ui.ctx).apply {
+        typeface = DashFonts.numbers
+        textSize = 24f
+        setTextColor(Palette.TEXT)
+        gravity = Gravity.CENTER
+    }
+
+    private fun cap(s: String) = ui.text(s.uppercase(Locale.US), 11f, Palette.MUTED, Ui.Weight.BOLD).apply { letterSpacing = 0.12f }
+
+    private fun column(value: android.widget.TextView, label: String): LinearLayout =
+        ui.vstack(0, value, cap(label).apply { gravity = Gravity.CENTER }).apply { gravity = Gravity.CENTER_HORIZONTAL }
+
     private fun row(t: Trip): View {
         val is24 = DateFormat.is24HourFormat(host)
         val title = LinearLayout(ui.ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            addView(ui.text(TripFormat.title(t), 15f, Palette.TEXT, Ui.Weight.MEDIUM).apply {
-                maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
-            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            if (t.starred) addView(ui.text("★", 16f, Palette.ACCENT_SOFT))
+            addView(ui.vstack(
+                2,
+                ui.text(TripFormat.title(t), 15f, Palette.TEXT, Ui.Weight.MEDIUM).apply {
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                },
+                ui.text(TripFormat.time(t.start, is24) + " – " + TripFormat.time(t.end, is24), 12f, Palette.MUTED),
+            ), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            if (t.starred) addView(ui.text("★", 18f, Palette.WARN))
         }
-        val detail = ui.text(
-            String.format(
-                Locale.US, "%s · %s · %s",
-                TripFormat.whenStarted(t.start, is24), TripFormat.distance(t.distanceKm), TripFormat.duration(t.durationSeconds),
-            ),
-            13f, Palette.MUTED,
+        val distance = if (t.distanceKm < 1.0) String.format(Locale.US, "%.2f", t.distanceKm) else String.format(Locale.US, "%.1f", t.distanceKm)
+        val numbers = ui.hstack(
+            0,
+            column(small(distance), "km"),
+            column(small(TripFormat.shortDuration(t.durationSeconds)), "Time"),
+            column(small(t.topSpeedKmh.toString()), "Top"),
+            weighted = true,
         )
-        return ui.vstack(3, title, detail).apply {
-            background = ui.pressable(Palette.SURFACE, 16, Palette.BORDER)
-            setPadding(ui.dp(14), ui.dp(12), ui.dp(14), ui.dp(12))
+        return ui.vstack(12, title, numbers).apply {
+            background = ui.pressable(Palette.SURFACE, 18, Palette.BORDER)
+            setPadding(ui.dp(16), ui.dp(14), ui.dp(16), ui.dp(14))
             isClickable = true
             isFocusable = true
+            contentDescription = TripFormat.title(t) + ", " + TripFormat.distance(t.distanceKm)
             setOnClickListener { host.showTrip(t.id) }
         }
     }
+
+    private fun small(s: String) = stat().apply { text = s; textSize = 19f }
 }

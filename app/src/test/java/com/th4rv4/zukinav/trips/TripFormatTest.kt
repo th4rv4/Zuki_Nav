@@ -17,6 +17,10 @@ class TripFormatTest {
         assertEquals("2 h", TripFormat.duration(7200))
         assertEquals("38 min", TripFormat.duration(2280))
         assertEquals("45 s", TripFormat.duration(45))
+        assertEquals("2h 35m", TripFormat.shortDuration(9300))
+        assertEquals("46m", TripFormat.shortDuration(2760))
+        assertEquals("2h", TripFormat.shortDuration(7200))
+        assertEquals("11h", TripFormat.shortDuration(40500))
     }
 
     @Test fun distances() {
@@ -46,5 +50,6 @@ class TripFormatTest {
         val (km, n) = TripFormat.monthTotals(trips, ist, today)
         assertEquals(76.1, km, 0.001)
         assertEquals(2, n)
+        assertEquals(7200L, TripFormat.monthSeconds(trips, ist, today))
     }
 }

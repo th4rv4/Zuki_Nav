@@ -22,6 +22,18 @@ object TripFormat {
         }
     }
 
+    /** Compact form for small cards: "2h 35m", "46m", "11h". */
+    fun shortDuration(seconds: Long): String {
+        val s = seconds.coerceAtLeast(0)
+        val h = s / 3600
+        val m = (s % 3600) / 60
+        return when {
+            h >= 10 || (h > 0 && m == 0L) -> "${h}h"
+            h > 0 -> "${h}h ${m}m"
+            else -> "${m}m"
+        }
+    }
+
     /** "61.3 km", "800 m". */
     fun distance(km: Double): String =
         if (km < 1.0) "${Math.round(km * 1000 / 100) * 100} m" else String.format(Locale.US, "%.1f km", km)
@@ -68,6 +80,11 @@ object TripFormat {
         val mine = trips.filter { date(it.start, zone).let { d -> d.year == today.year && d.month == today.month } }
         return mine.sumOf { it.distanceKm } to mine.size
     }
+
+    /** Total ride time, start to end, of rides that started this calendar month. */
+    fun monthSeconds(trips: List<Trip>, zone: ZoneId = ZoneId.systemDefault(), today: LocalDate = LocalDate.now(zone)): Long =
+        trips.filter { date(it.start, zone).let { d -> d.year == today.year && d.month == today.month } }
+            .sumOf { it.durationSeconds }
 
     /** Plain text for sharing a trip. */
     fun shareText(t: Trip, is24h: Boolean, zone: ZoneId = ZoneId.systemDefault(), today: LocalDate = LocalDate.now(zone)): String =
