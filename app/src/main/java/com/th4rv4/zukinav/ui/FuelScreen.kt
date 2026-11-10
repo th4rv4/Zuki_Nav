@@ -67,20 +67,7 @@ class FuelScreen(host: MainActivity) : Screen(host) {
     override val view: View
 
     init {
-        val back = ui.text("‹", 30f, Palette.TEXT).apply {
-            isClickable = true
-            isFocusable = true
-            contentDescription = "Back"
-            setPadding(ui.dp(4), 0, ui.dp(14), ui.dp(4))
-            setOnClickListener { host.closeFuel() }
-        }
-        val header = LinearLayout(ui.ctx).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            addView(back)
-            addView(ui.vstack(2, ui.text("Fuel", 22f, Palette.TEXT, Ui.Weight.BOLD), subtitle),
-                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        }
+        val header = ui.vstack(2, ui.title("Fuel"), subtitle).apply { setPadding(ui.dp(4), 0, 0, 0) }
         val hero = ui.card(cap("Range Left").apply { gravity = Gravity.CENTER }, rangeText, rangeNote, gapDp = 4, padDp = 18)
         val stats = ui.hstack(
             8,

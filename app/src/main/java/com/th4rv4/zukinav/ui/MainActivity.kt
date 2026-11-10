@@ -29,7 +29,7 @@ import com.th4rv4.zukinav.util.Places
 import com.th4rv4.zukinav.util.Prefs
 
 /**
- * Hosts the four tabs (Ride, Trips, Test, Settings) and the first-run Setup
+ * Hosts the five tabs (Ride, Trips, Fuel, Test, Settings) and the first-run Setup
  * screen. Owns everything that needs the Activity: permissions, system
  * settings screens, sharing and dialogs.
  */
@@ -54,6 +54,7 @@ class MainActivity : Activity() {
     enum class Tab(val label: String, val icon: Int) {
         RIDE("Ride", R.drawable.ic_tab_ride),
         TRIPS("Trips", R.drawable.ic_tab_trips),
+        FUEL("Fuel", R.drawable.ic_fuel),
         DASH_TEST("Test", R.drawable.ic_tab_dash),
         SETTINGS("Settings", R.drawable.ic_tab_settings),
     }
@@ -202,7 +203,6 @@ class MainActivity : Activity() {
     @Deprecated("Back from Setup returns to the tabs")
     override fun onBackPressed() {
         if (current is TripDetailScreen) showTab(Tab.TRIPS)
-        else if (current is FuelScreen) closeFuel()
         else if (current is SetupScreen && setupComplete()) showTab(Tab.RIDE) else {
             @Suppress("DEPRECATION")
             super.onBackPressed()
@@ -299,21 +299,15 @@ class MainActivity : Activity() {
             when (tab) {
                 Tab.RIDE -> screen("ride") { RideScreen(this) }
                 Tab.TRIPS -> screen("trips") { TripsScreen(this) }
+                Tab.FUEL -> screen("fuel") { FuelScreen(this) }
                 Tab.DASH_TEST -> screen("dash") { DashTestScreen(this) }
                 Tab.SETTINGS -> screen("settings") { SettingsScreen(this) }
             },
         )
     }
 
-    private var fuelFrom: Tab = Tab.RIDE
-
-    /** Opens the Fuel screen; Back returns to the tab it was opened from. */
-    fun showFuel() {
-        fuelFrom = currentTab ?: Tab.RIDE
-        swapTo(screen("fuel") { FuelScreen(this) })
-    }
-
-    fun closeFuel() = showTab(fuelFrom)
+    /** Opens the Fuel tab, e.g. from the fuel cells on the Ride tab. */
+    fun showFuel() = showTab(Tab.FUEL)
 
     /** Opens one trip's details, with the Trips tab still selected. */
     fun showTrip(id: Long) {

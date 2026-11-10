@@ -158,7 +158,7 @@ a notification) for the litres and the amount paid; both are optional.
 From full tank to full tank it works out km/l and cost per km, and it
 learns how many km you ride on each fuel bar to show the range left next to
 the fuel cells, with a warning below a limit you set. Everything is on the
-**Fuel** screen (tap the fuel cells). Tank Size and Reserve come from your
+**Fuel** tab (or tap the fuel cells on the Ride tab). Tank Size and Reserve come from your
 model and can be changed in Settings > Fuel. It is worked out from the bars
 and the ODO rather than a fuel sensor, so the first tank is an estimate and
 range only learns while the app is connected: keep the phone connected on
