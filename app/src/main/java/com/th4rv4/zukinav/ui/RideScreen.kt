@@ -9,6 +9,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.th4rv4.zukinav.ble.ClusterLink
+import com.th4rv4.zukinav.fuel.FuelStore
 import com.th4rv4.zukinav.nav.NavRepository
 import com.th4rv4.zukinav.nav.NavSnapshot
 import com.th4rv4.zukinav.service.DashService
@@ -37,6 +38,20 @@ class RideScreen(host: MainActivity) : Screen(host) {
 
     private val navListener: (NavSnapshot?) -> Unit = { refresh() }
     private val stateListener: () -> Unit = { view.post { refresh() } }
+    private val fuelListener: () -> Unit = { refresh() }
+
+    private val lowRangeTitle = ui.text("", 14f, Palette.WARN, Ui.Weight.BOLD)
+    private val lowRangeCard = ui.card(
+        lowRangeTitle,
+        ui.text("Below your Low Range Warning. Tap for Fuel.", 12f, Palette.TEXT_SOFT),
+        gapDp = 2,
+        padDp = 14,
+    ).apply {
+        background = ui.pressable(Palette.WARN_BG, 20, Palette.WARN_BORDER)
+        isClickable = true
+        isFocusable = true
+        setOnClickListener { host.showFuel() }
+    }
 
     override val view: View
 
@@ -80,10 +95,11 @@ class RideScreen(host: MainActivity) : Screen(host) {
             ui.row("Arrow Source", trailing = sourceValue),
         )
 
-        view = host.page(header, panel.view, panel.chips, rideCard, statusCard, linkButton)
+        view = host.page(header, lowRangeCard, panel.view, panel.chips, rideCard, statusCard, linkButton)
     }
 
     override fun onShow() {
+        FuelStore.addListener(fuelListener)
         NavRepository.addListener(navListener)
         DashService.addStateListener(stateListener)
         refresh()
@@ -92,6 +108,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
 
     override fun onHide() {
         NavRepository.removeListener(navListener)
+        FuelStore.removeListener(fuelListener)
         DashService.removeStateListener(stateListener)
         view.removeCallbacks(clockTick)
     }
@@ -126,11 +143,16 @@ class RideScreen(host: MainActivity) : Screen(host) {
             " · " + formatTime(LocalTime.now())
         val live = DashService.liveBike
         val data = live ?: prefs.lastBike
+        val range = data?.takeIf { it.fuelBars != null }?.let { FuelStore.range(host, it.odoKm) }
+        val low = prefs.lowRangeKm
+        lowRangeCard.visibility = if (range != null && low > 0 && range.km < low) View.VISIBLE else View.GONE
+        lowRangeTitle.text = "Low Range · ≈ ${range?.km ?: 0} km"
         panel.render(
             nav = nav,
             data = data,
             live = live != null,
             etaText = nav?.eta?.let { formatTime(it) },
+            range = range,
             syncNote = when {
                 live != null -> null
                 data != null -> "Last synced ${formatWhen(prefs.lastBikeAt)}"

@@ -22,6 +22,8 @@ import android.text.format.DateFormat
 import com.th4rv4.zukinav.R
 import com.th4rv4.zukinav.alerts.Alert
 import com.th4rv4.zukinav.ble.ClusterLink
+import com.th4rv4.zukinav.fuel.FuelStore
+import com.th4rv4.zukinav.fuel.Refill
 import com.th4rv4.zukinav.nav.NavRepository
 import com.th4rv4.zukinav.nav.NavSnapshot
 import com.th4rv4.zukinav.protocol.BikeData
@@ -261,6 +263,7 @@ class DashService : Service(), ClusterLink.Listener {
 
     private fun onBikeData(data: BikeData) {
         TripLog.onReading(this, data)
+        data.fuelBars?.let { bars -> FuelStore.onReading(this, data.odoKm, bars)?.let { askAboutRefill(it) } }
         val changed = data.copy(speedKmh = 0) != bike?.copy(speedKmh = 0)
         val speedChanged = data.speedKmh != bike?.speedKmh
         bike = data
@@ -484,6 +487,33 @@ class DashService : Service(), ClusterLink.Listener {
         getSystemService(NotificationManager::class.java).notify(NOTIF_ID, buildNotification())
     }
 
+    /** "Refuelled?" notification; tapping it opens the refill form. */
+    private fun askAboutRefill(r: Refill) {
+        if (!prefs.askAtRefill) return
+        val nm = getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(
+            NotificationChannel(REFILL_CHANNEL, "Refills", NotificationManager.IMPORTANCE_DEFAULT),
+        )
+        val open = PendingIntent.getActivity(
+            this, 2,
+            Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_REFILL, r.id)
+                .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val n = Notification.Builder(this, REFILL_CHANNEL)
+            .setSmallIcon(R.drawable.ic_stat_nav)
+            .setContentTitle("Refuelled?")
+            .setContentText("Fuel went from ${r.barsBefore} to ${r.barsAfter} bars at ${r.odoKm} km. Tap to add litres and amount paid.")
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .build()
+        try {
+            nm.notify(REFILL_NOTIF_ID, n)
+        } catch (e: SecurityException) {
+            AppLog.d("Fuel", "Cannot show the refill notification: $e")
+        }
+    }
+
     private fun buildNotification(): Notification {
         val open = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
@@ -515,6 +545,8 @@ class DashService : Service(), ClusterLink.Listener {
     companion object {
         private const val CHANNEL = "dash_link"
         private const val NOTIF_ID = 17
+        private const val REFILL_CHANNEL = "refills"
+        const val REFILL_NOTIF_ID = 18
         private const val CONNECT_TIMEOUT_MS = 20_000L
         /** Fast reconnect attempts for this long after losing the bike. */
         private const val FAST_WINDOW_MS = 5 * 60_000L

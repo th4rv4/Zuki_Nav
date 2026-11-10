@@ -153,6 +153,17 @@ and a route starting mid-animation takes over at once.
   Calls, Messages, Trips, Appearance, Connection, Updates and
   Troubleshooting.
 
+**Fuel**: Zuki Nav notices a refill when the fuel bars go up and asks (in
+a notification) for the litres and the amount paid; both are optional.
+From full tank to full tank it works out km/l and cost per km, and it
+learns how many km you ride on each fuel bar to show the range left next to
+the fuel cells, with a warning below a limit you set. Everything is on the
+**Fuel** screen (tap the fuel cells). Tank Size and Reserve come from your
+model and can be changed in Settings > Fuel. It is worked out from the bars
+and the ODO rather than a fuel sensor, so the first tank is an estimate and
+range only learns while the app is connected: keep the phone connected on
+long rides for the best numbers.
+
 **Appearance**: four themes (System, Light, Dark and AMOLED, which is true
 black) and an accent colour for the gauge, rings and buttons: Aurora,
 Ember, Viridian, Ultraviolet, Solar, Glacier, Sakura or Graphite. On

@@ -8,6 +8,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.th4rv4.zukinav.R
+import com.th4rv4.zukinav.fuel.Range
 import com.th4rv4.zukinav.nav.NavSnapshot
 import com.th4rv4.zukinav.protocol.BikeData
 import java.util.Locale
@@ -31,6 +32,8 @@ class DashPanel(private val host: MainActivity) {
 
     private val fuelIcon = ImageView(ui.ctx)
     private val fuel = FuelCellsView(ui.ctx)
+    private val rangeText = numberText(17f, Palette.TEXT)
+    private val rangeUnit = label("KM")
     private val fuelRow: LinearLayout
 
     private val eta = numberText(17f, Palette.TEXT)
@@ -66,6 +69,14 @@ class DashPanel(private val host: MainActivity) {
             gravity = Gravity.CENTER_VERTICAL
             addView(fuelIcon, LinearLayout.LayoutParams(ui.dp(20), ui.dp(20)).apply { marginEnd = ui.dp(10) })
             addView(fuel, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(rangeText, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = ui.dp(12) })
+            addView(rangeUnit, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = ui.dp(4) })
+            isClickable = true
+            isFocusable = true
+            background = android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(Palette.RIPPLE), null, ui.rounded(android.graphics.Color.WHITE, 10),
+            )
+            setOnClickListener { host.showFuel() }
         }
         content.addView(fuelRow)
 
@@ -93,7 +104,7 @@ class DashPanel(private val host: MainActivity) {
      * [live] is true while readings come from the dash; [data] may be the
      * last saved reading. [syncNote] explains where the numbers come from.
      */
-    fun render(nav: NavSnapshot?, data: BikeData?, live: Boolean, etaText: String?, syncNote: String?) {
+    fun render(nav: NavSnapshot?, data: BikeData?, live: Boolean, etaText: String?, syncNote: String?, range: Range?) {
 
         val art = nav?.let { TurnArt.of(it.icon) }
         turn.set(art, nav?.metersToTurn)
@@ -119,7 +130,12 @@ class DashPanel(private val host: MainActivity) {
             fuelIcon.setImageResource(if (battery != null) R.drawable.ic_battery else R.drawable.ic_fuel)
             fuelIcon.setColorFilter(fuel.levelColor)
             fuelRow.contentDescription = if (battery != null) "Battery $battery%" else
-                "Fuel $filled of ${BikeData.MAX_FUEL_BARS} bars"
+                "Fuel $filled of ${BikeData.MAX_FUEL_BARS} bars" + (range?.let { ", about ${it.km} km left. Opens Fuel." } ?: "")
+            val showRange = battery == null && range != null
+            rangeText.visibility = if (showRange) View.VISIBLE else View.GONE
+            rangeUnit.visibility = rangeText.visibility
+            rangeText.text = range?.let { "≈ ${it.km}" } ?: ""
+            fuelRow.isClickable = battery == null
         }
 
         etaRow.visibility = if (nav == null) View.GONE else View.VISIBLE

@@ -77,6 +77,23 @@ class MainActivity : Activity() {
         val reopen = savedInstanceState?.getString(STATE_TAB)?.let { n -> Tab.entries.firstOrNull { it.name == n } }
         if (setupComplete()) showTab(reopen ?: Tab.RIDE) else showSetup()
         checkForUpdateIfDue()
+        openRefillFrom(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        openRefillFrom(intent)
+    }
+
+    /** From the "Refuelled?" notification: opens that refill's form. */
+    private fun openRefillFrom(intent: Intent?) {
+        val id = intent?.getLongExtra(EXTRA_REFILL, -1L) ?: -1L
+        if (id < 0) return
+        intent?.removeExtra(EXTRA_REFILL)
+        getSystemService(android.app.NotificationManager::class.java).cancel(DashService.REFILL_NOTIF_ID)
+        val refill = com.th4rv4.zukinav.fuel.FuelStore.refills(this).firstOrNull { it.id == id } ?: return
+        window.decorView.post { RefillSheet(this, refill).show() }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -185,6 +202,7 @@ class MainActivity : Activity() {
     @Deprecated("Back from Setup returns to the tabs")
     override fun onBackPressed() {
         if (current is TripDetailScreen) showTab(Tab.TRIPS)
+        else if (current is FuelScreen) closeFuel()
         else if (current is SetupScreen && setupComplete()) showTab(Tab.RIDE) else {
             @Suppress("DEPRECATION")
             super.onBackPressed()
@@ -286,6 +304,16 @@ class MainActivity : Activity() {
             },
         )
     }
+
+    private var fuelFrom: Tab = Tab.RIDE
+
+    /** Opens the Fuel screen; Back returns to the tab it was opened from. */
+    fun showFuel() {
+        fuelFrom = currentTab ?: Tab.RIDE
+        swapTo(screen("fuel") { FuelScreen(this) })
+    }
+
+    fun closeFuel() = showTab(fuelFrom)
 
     /** Opens one trip's details, with the Trips tab still selected. */
     fun showTrip(id: Long) {
@@ -501,11 +529,13 @@ class MainActivity : Activity() {
 
     fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
 
-    private companion object {
-        const val REQ_LOCATION = 2
-        const val REQ_LOCATION_BG = 3
-        const val STATE_TAB = "tab"
-        const val REQ_AVATAR = 4
+    companion object {
+        /** Opens the refill form for this refill id (from the "Refuelled?" notification). */
+        const val EXTRA_REFILL = "refill"
+        private const val REQ_LOCATION = 2
+        private const val REQ_LOCATION_BG = 3
+        private const val STATE_TAB = "tab"
+        private const val REQ_AVATAR = 4
     }
 }
 

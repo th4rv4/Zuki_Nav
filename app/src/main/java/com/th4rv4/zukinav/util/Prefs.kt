@@ -71,6 +71,26 @@ class Prefs(context: Context) {
         get() = sp.getInt(K_THEME, THEME_SYSTEM)
         set(v) = sp.edit().putInt(K_THEME, v).apply()
 
+    /** Fuel tank size in litres; 0 or less uses the bike model's. */
+    var fuelTank: Float
+        get() = sp.getFloat(K_FUEL_TANK, 0f)
+        set(v) = sp.edit().putFloat(K_FUEL_TANK, v).apply()
+
+    /** Fuel left when the last bar blinks, in litres; 0 or less uses the model's. */
+    var fuelReserve: Float
+        get() = sp.getFloat(K_FUEL_RESERVE, 0f)
+        set(v) = sp.edit().putFloat(K_FUEL_RESERVE, v).apply()
+
+    /** Ask for litres and amount paid after a refill. */
+    var askAtRefill: Boolean
+        get() = sp.getBoolean(K_FUEL_ASK, true)
+        set(v) = sp.edit().putBoolean(K_FUEL_ASK, v).apply()
+
+    /** Warn on the Ride tab when range drops below this many km; 0 for never. */
+    var lowRangeKm: Int
+        get() = sp.getInt(K_FUEL_LOW, 30)
+        set(v) = sp.edit().putInt(K_FUEL_LOW, v).apply()
+
     /** Rider avatar: "initial", an icon key such as "helmet", or "photo". */
     var avatar: String
         get() = sp.getString(K_AVATAR, null) ?: "initial"
@@ -163,6 +183,10 @@ class Prefs(context: Context) {
         const val THEME_AMOLED = 3
         private const val K_ACCENT = "accent"
         private const val K_AVATAR = "avatar"
+        private const val K_FUEL_TANK = "fuel_tank"
+        private const val K_FUEL_RESERVE = "fuel_reserve"
+        private const val K_FUEL_ASK = "fuel_ask_at_refill"
+        private const val K_FUEL_LOW = "fuel_low_range_km"
         private const val K_UPDATE_LAST = "update_last_check"
         private const val K_MSGS = "message_alerts"
     }

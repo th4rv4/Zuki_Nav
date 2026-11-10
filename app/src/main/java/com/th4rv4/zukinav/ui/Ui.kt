@@ -358,7 +358,7 @@ class Ui(val ctx: Context) {
             minimumHeight = dp(boxDp)
         }
 
-    fun input(value: String, hint: String, numeric: Boolean = false, onChange: (String) -> Unit): EditText =
+    fun input(value: String, hint: String, numeric: Boolean = false, decimal: Boolean = false, onChange: (String) -> Unit): EditText =
         EditText(ctx).apply {
             setText(value)
             this.hint = hint
@@ -370,7 +370,9 @@ class Ui(val ctx: Context) {
             minWidth = dp(120)
             gravity = Gravity.END or Gravity.CENTER_VERTICAL
             isSingleLine = true
-            inputType = if (numeric) {
+            inputType = if (decimal) {
+                android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+            } else if (numeric) {
                 android.text.InputType.TYPE_CLASS_NUMBER
             } else {
                 android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_WORDS
@@ -471,5 +473,33 @@ class Ui(val ctx: Context) {
             grid.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         }
         return grid
+    }
+
+    /**
+     * A sheet that slides up from the bottom, with a grab handle, holding
+     * [views]. Returns the dialog, already shown.
+     */
+    fun sheet(vararg views: View): android.app.Dialog {
+        val dialog = android.app.Dialog(ctx)
+        dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
+        val body = vstack(14, *views).apply {
+            setPadding(dp(20), dp(10), dp(20), dp(20))
+            background = GradientDrawable().apply {
+                setColor(Palette.SHEET)
+                val r = dp(26).toFloat()
+                cornerRadii = floatArrayOf(r, r, r, r, 0f, 0f, 0f, 0f)
+            }
+            addView(View(ctx).apply { background = rounded(Palette.BORDER, 3) }, 0,
+                LinearLayout.LayoutParams(dp(36), dp(4)).apply { gravity = Gravity.CENTER_HORIZONTAL })
+        }
+        dialog.setContentView(android.widget.ScrollView(ctx).apply { addView(body) })
+        dialog.window?.apply {
+            setBackgroundDrawable(android.graphics.drawable.ColorDrawable(0))
+            setGravity(Gravity.BOTTOM)
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        }
+        dialog.show()
+        return dialog
     }
 }
