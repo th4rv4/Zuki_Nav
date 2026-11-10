@@ -133,11 +133,25 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
             radiusDp = 24,
         )
 
+        fun style(label: String, s: DashService.GreetingStyle) =
+            ui.button(label, Ui.Btn.SECONDARY, 46) { previewGreeting(s) }
+        val greetingCard = ui.card(
+            ui.sectionLabel("Greeting Style Test").apply { setPadding(0, 0, 0, 0) },
+            ui.text("Shows your Startup Greeting on each dash screen that can show text, then closes it after 3 s. Note the label above the text, whether it closes, and whether any icon is left behind.", 13f, Palette.MUTED),
+            ui.hstack(8, style("Call", DashService.GreetingStyle.CALL),
+                style("WhatsApp Call", DashService.GreetingStyle.WHATSAPP_CALL), weighted = true),
+            ui.hstack(8, style("Message", DashService.GreetingStyle.MESSAGE),
+                style("Missed Call", DashService.GreetingStyle.MISSED_CALL), weighted = true),
+            gapDp = 12,
+            radiusDp = 24,
+        )
+
         view = host.page(
             ui.vstack(2, ui.title("Dash Test"), ui.text("Check each turn icon on your dash", 13f, Palette.MUTED)),
             currentCard,
             allCard,
             textCard,
+            greetingCard,
             ui.text(ICON_WARNING, 12f, Palette.WARN),
             ui.hstack(8, cycleButton, ui.button("Share Results", Ui.Btn.SECONDARY) { share() }, weighted = true),
         )
@@ -175,6 +189,14 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
             host.toast(NAVIGATING)
             stopCycle()
         }
+    }
+
+    private fun previewGreeting(style: DashService.GreetingStyle) {
+        if (DashService.linkState != ClusterLink.State.READY) {
+            host.toast("Connect to the bike first")
+            return
+        }
+        if (!DashService.previewGreeting(style)) host.toast(NAVIGATING)
     }
 
     private fun sendText() {

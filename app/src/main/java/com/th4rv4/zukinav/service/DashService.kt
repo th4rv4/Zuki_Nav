@@ -370,12 +370,31 @@ class DashService : Service(), ClusterLink.Listener {
     private fun showGreeting(mode: SuzukiFrames.Checksum) {
         greetingPending = false
         if (NavRepository.current != null) return
-        val text = prefs.startupGreeting
-        val show = SuzukiFrames.call(text, ringing = true, mode = mode)
-        val close = SuzukiFrames.call(text, ringing = false, mode = mode)
-        AppLog.d("Dash", "-> ${SuzukiFrames.hex(show)} (greeting)")
+        showGreetingAs(GreetingStyle.CALL, prefs.startupGreeting, mode)
+    }
+
+    /** Dash screens that can show the greeting text; Dash Test previews each. */
+    enum class GreetingStyle { CALL, WHATSAPP_CALL, MESSAGE, MISSED_CALL }
+
+    private fun showGreetingAs(style: GreetingStyle, text: String, mode: SuzukiFrames.Checksum) {
+        val show = when (style) {
+            GreetingStyle.CALL -> SuzukiFrames.call(text, ringing = true, mode = mode)
+            GreetingStyle.WHATSAPP_CALL -> SuzukiFrames.call(text, ringing = true, whatsapp = true, mode = mode)
+            GreetingStyle.MESSAGE -> SuzukiFrames.message(text, 1, mode = mode)
+            GreetingStyle.MISSED_CALL -> SuzukiFrames.missedCall(text, 1, mode = mode)
+        }
+        AppLog.d("Dash", "-> ${SuzukiFrames.hex(show)} (greeting, $style)")
         repeat(3) { i -> main.postDelayed({ link.send(show) }, i * 200L) }
-        repeat(3) { i -> main.postDelayed({ link.send(close) }, GREETING_MS + i * 200L) }
+        // Close it after a moment: calls are marked answered, message and
+        // missed-call screens have their indicator cleared.
+        when (style) {
+            GreetingStyle.CALL, GreetingStyle.WHATSAPP_CALL -> {
+                val close = SuzukiFrames.call(text, ringing = false, whatsapp = style == GreetingStyle.WHATSAPP_CALL, mode = mode)
+                repeat(3) { i -> main.postDelayed({ link.send(close) }, GREETING_MS + i * 200L) }
+            }
+            GreetingStyle.MESSAGE -> main.postDelayed({ clearSmsLeft = CLEAR_REPEATS }, GREETING_MS)
+            GreetingStyle.MISSED_CALL -> main.postDelayed({ clearMissedLeft = CLEAR_REPEATS }, GREETING_MS)
+        }
     }
 
     /** Nav screen with dots in the number spots: the dash has no blank character. */
@@ -538,6 +557,17 @@ class DashService : Service(), ClusterLink.Listener {
                 s.testFrame = { m -> s.iconTestFrame(iconId, m) }
                 s.testUntil = System.currentTimeMillis() + 8_000
                 AppLog.d("Dash", "Testing icon $iconId (${ClusterIcon.fromId(iconId)?.label ?: "unlisted"})")
+            }
+            return true
+        }
+
+        /** Shows the greeting (or "Hello") in [style], then closes it. False while a route is active. */
+        fun previewGreeting(style: GreetingStyle): Boolean {
+            val s = instance ?: return false
+            if (NavRepository.current != null) return false
+            s.main.post {
+                val mode = ClusterModels.fromBleName(s.link.deviceName ?: s.prefs.clusterName).checksum
+                s.showGreetingAs(style, s.prefs.startupGreeting.ifBlank { "Hello" }, mode)
             }
             return true
         }
