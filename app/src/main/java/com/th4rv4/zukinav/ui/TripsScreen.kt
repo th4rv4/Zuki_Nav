@@ -40,7 +40,7 @@ class TripsScreen(host: MainActivity) : Screen(host) {
         )
         view = host.page(
             ui.vstack(2, ui.title("Trips"), ui.text("Saved from the dash, ignition on to ignition off", 13f, Palette.MUTED)),
-            ui.segmented("All", "Starred", 0) { starredOnly = it == 1; render() },
+            ui.segmented(listOf("All", "Starred"), 0, fill = true) { starredOnly = it == 1; render() },
             monthCard,
             list,
             empty,

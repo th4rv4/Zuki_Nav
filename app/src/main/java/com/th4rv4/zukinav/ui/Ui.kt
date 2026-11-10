@@ -337,7 +337,8 @@ class Ui(val ctx: Context) {
         segmented(listOf(left, right), selected, onPick = onPick)
 
     /** Segmented control; [onPick] gets the index of the chosen option. */
-    fun segmented(labels: List<String>, selected: Int, padDp: Int = 14, onPick: (Int) -> Unit): LinearLayout {
+    /** [fill]: the options share the full width equally, for a control on its own line. */
+    fun segmented(labels: List<String>, selected: Int, padDp: Int = 14, fill: Boolean = false, onPick: (Int) -> Unit): LinearLayout {
         val box = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             background = rounded(Palette.INSET, 12, Palette.INPUT_BORDER)
@@ -361,7 +362,11 @@ class Ui(val ctx: Context) {
         }
         buttons.forEachIndexed { i, b ->
             b.setOnClickListener { paint(i); onPick(i) }
-            box.addView(b)
+            if (fill) {
+                box.addView(b, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            } else {
+                box.addView(b)
+            }
         }
         paint(selected)
         return box
