@@ -136,7 +136,9 @@ This approach, and the Maps notification layouts, follow
   Connect/Disconnect button. When the bike is off, the numbers are the last
   readings and the screen says when they were synced.
 - **Trips**: this month's distance, rides and riding time, then saved rides
-  grouped by day, with a Starred filter. Each ride opens its details.
+  grouped by day, with a Starred filter. Each ride opens its details. Trip
+  Settings (Record Trips, Skip Short Rides, Start And End Places) are at the
+  bottom.
 - **Test**: show any turn icon on the dash, mark it **Looks Right** or
   **Looks Wrong** (the next icon follows automatically), see progress for
   all 64 icons, and **Share Results**. **Text Test** sends your own text
@@ -150,8 +152,8 @@ seconds on the dash's call screen. The dash always puts its own
 and a route starting mid-animation takes over at once.
 - **Settings**, in groups: Your Bike (Change Bike, rider name), Welcome
   (startup animation and greeting), Riding (speed alert, traffic side),
-  Calls, Messages, Trips, Appearance, Connection, Updates and
-  Troubleshooting.
+  Calls, Messages, Appearance, Connection, Updates and Troubleshooting.
+  Trip and fuel settings sit at the bottom of the Trips and Fuel tabs.
 
 **Fuel**: Zuki Nav notices a refill when the fuel bars go up and asks (in
 a notification) for the litres and the amount paid; both are optional.
@@ -159,7 +161,7 @@ From full tank to full tank it works out km/l and cost per km, and it
 learns how many km you ride on each fuel bar to show the range left next to
 the fuel cells, with a warning below a limit you set. Everything is on the
 **Fuel** tab (or tap the fuel cells on the Ride tab). Tank Size and Reserve come from your
-model and can be changed in Settings > Fuel. It is worked out from the bars
+model and can be changed under Fuel Settings on the Fuel tab. It is worked out from the bars
 and the ODO rather than a fuel sensor, so the first tank is an estimate and
 range only learns while the app is connected: keep the phone connected on
 long rides for the best numbers.

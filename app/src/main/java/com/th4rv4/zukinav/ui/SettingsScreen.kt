@@ -4,14 +4,10 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
-import android.widget.Switch
 import android.widget.TextView
 import com.th4rv4.zukinav.R
-import com.th4rv4.zukinav.fuel.FuelStore
 import com.th4rv4.zukinav.nav.MapsIconTemplates
 import com.th4rv4.zukinav.protocol.ClusterModels
-import com.th4rv4.zukinav.trips.TripLog
-import com.th4rv4.zukinav.util.Places
 
 /** Dash, connection and troubleshooting settings. */
 class SettingsScreen(host: MainActivity) : Screen(host) {
@@ -24,13 +20,6 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         filters = arrayOf(android.text.InputFilter.LengthFilter(20))
     }
 
-    private val placesRow = ui.switchRow(
-        "Start And End Places",
-        "Names where each ride starts and ends. Needs location, allowed all the time.",
-        prefs.tripPlaces && Places.hasPermission(host),
-    ) { on -> setTripPlaces(on) }
-    private val placesSwitch = placesRow.getChildAt(placesRow.childCount - 1) as Switch
-    private var syncingPlaces = false
 
     override val view: View
 
@@ -123,51 +112,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             },
         )
 
-        val trips = ui.listCard(
-            ui.switchRow("Record Trips", "Save each ride, ignition on to ignition off", prefs.recordTrips) {
-                prefs.recordTrips = it
-                if (!it) TripLog.stopRecording(host)
-            },
-            ui.switchRow("Skip Short Rides", "Don't save rides under ${(TripLog.SHORT_RIDE_KM * 1000).toInt()} m", prefs.skipShortTrips) {
-                prefs.skipShortTrips = it
-            },
-            placesRow,
-        )
 
-        val model = FuelStore.modelSpec(host)
-        fun litresInput(value: Float, default: Double?, save: (Float) -> Unit) =
-            ui.input(if (value > 0f) FuelFormat.litres(value.toDouble()) else "", default?.let { FuelFormat.litres(it) + " L" } ?: "Auto",
-                decimal = true) { save(it.replace(',', '.').toFloatOrNull()?.takeIf { v -> v > 0f } ?: 0f) }
-                .apply { filters = arrayOf(android.text.InputFilter.LengthFilter(5)) }
-        val resetLearning = ui.navRow("Reset Learned Range") {
-            confirm("Reset Learned Range?", "Range goes back to the estimate from the tank size and learns again. Refills and mileage are kept.") {
-                FuelStore.resetLearning(host)
-                host.toast("Learned range reset")
-            }
-        }
-        val deleteFuel = ui.navRow("Delete All Fuel Data") {
-            confirm("Delete All Fuel Data?", "Every refill, the mileage history and the learned range will be removed.") {
-                FuelStore.deleteAll(host)
-                host.toast("Fuel data deleted")
-            }
-        }
-        listOf(resetLearning, deleteFuel).forEach { (it.getChildAt(0) as LinearLayout).getChildAt(0).let { t -> (t as TextView).setTextColor(Palette.DANGER) } }
-        val fuel = ui.listCard(
-            ui.navRow("Open Fuel") { host.showFuel() },
-            ui.row("Tank Size", "Litres. Empty uses your bike's" + (model?.let { " (${FuelFormat.litres(it.tankLitres)} L)" } ?: ""),
-                litresInput(prefs.fuelTank, model?.tankLitres) { prefs.fuelTank = it }),
-            ui.row("Reserve", "Litres left when the last bar blinks" + (model?.let { " (${FuelFormat.litres(it.reserveLitres)} L)" } ?: ""),
-                litresInput(prefs.fuelReserve, model?.reserveLitres) { prefs.fuelReserve = it }),
-            ui.switchRow("Ask At Refill", "Litres and amount paid, after the fuel bars go up", prefs.askAtRefill) {
-                prefs.askAtRefill = it
-            },
-            ui.row("Low Range Warning", "km, on the Ride tab. Empty to turn off",
-                ui.input(prefs.lowRangeKm.takeIf { it > 0 }?.toString() ?: "", "Off", numeric = true) {
-                    prefs.lowRangeKm = it.toIntOrNull()?.coerceIn(0, 999) ?: 0
-                }),
-            resetLearning,
-            deleteFuel,
-        )
 
         val reload = ui.navRow("Reload Maps Arrows", "Tap To Load") { reloadArrows() }
         arrowsRow = reload.getChildAt(reload.childCount - 1) as? TextView
@@ -191,13 +136,6 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             calls,
             ui.sectionHeader(R.drawable.ic_sec_message, "Messages"),
             messages,
-            ui.sectionHeader(R.drawable.ic_sec_route, "Trips"),
-            trips,
-            ui.sectionHeader(R.drawable.ic_fuel, "Fuel"),
-            fuel,
-            ui.text("Mileage and range are worked out from the fuel bars and ODO, so they are rough on the first tank " +
-                "and only learn while the app is connected. Keep the phone connected on long rides for the best numbers.",
-                12f, Palette.MUTED).apply { setPadding(ui.dp(4), 0, ui.dp(4), 0) },
             ui.sectionHeader(R.drawable.ic_sec_palette, "Appearance"),
             look,
             ui.sectionHeader(R.drawable.ic_sec_link, "Connection"),
@@ -216,8 +154,6 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         if (riderInput.text.toString().trim() != prefs.riderName) riderInput.setText(prefs.riderName)
         val name = prefs.clusterName
         updates.onShow()
-        // Location may have been taken away in Android's settings.
-        if (!host.askingLocation) showPlaces(prefs.tripPlaces && Places.hasPermission(host))
         bikeName.text = if (name == null) "No Bike Chosen" else ClusterModels.fromBleName(name).displayName
         bikeDetail.text = if (name == null) "Pair your bike to get started" else "$name · Paired"
     }
@@ -231,32 +167,6 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         com.th4rv4.zukinav.util.Prefs.THEME_DARK -> 2
         com.th4rv4.zukinav.util.Prefs.THEME_AMOLED -> 3
         else -> 0
-    }
-
-    private fun setTripPlaces(on: Boolean) {
-        if (syncingPlaces) return
-        if (!on) { prefs.tripPlaces = false; return }
-        host.requestTripLocation { granted ->
-            prefs.tripPlaces = granted
-            showPlaces(granted)
-            if (!granted) host.toast("Start And End Places needs location allowed all the time")
-        }
-    }
-
-    private fun showPlaces(on: Boolean) {
-        if (placesSwitch.isChecked == on) return
-        syncingPlaces = true
-        placesSwitch.isChecked = on
-        syncingPlaces = false
-    }
-
-    private fun confirm(title: String, message: String, action: () -> Unit) {
-        android.app.AlertDialog.Builder(host, host.dialogTheme)
-            .setTitle(title)
-            .setMessage(message)
-            .setPositiveButton("Confirm") { _, _ -> action() }
-            .setNegativeButton("Cancel", null)
-            .show()
     }
 
     private fun reloadArrows() {

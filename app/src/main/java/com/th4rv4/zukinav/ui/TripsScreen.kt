@@ -5,10 +5,13 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import android.widget.Switch
+import com.th4rv4.zukinav.R
 import com.th4rv4.zukinav.trips.Trip
 import com.th4rv4.zukinav.trips.TripFormat
 import com.th4rv4.zukinav.trips.TripLog
 import com.th4rv4.zukinav.trips.TripStore
+import com.th4rv4.zukinav.util.Places
 import java.util.Locale
 
 /** Trips tab: every saved ride, newest first, with a Starred filter. */
@@ -26,6 +29,14 @@ class TripsScreen(host: MainActivity) : Screen(host) {
     }
     private val changed: () -> Unit = { render() }
 
+    private val placesRow = ui.switchRow(
+        "Start And End Places",
+        "Names where each ride starts and ends. Needs location, allowed all the time.",
+        prefs.tripPlaces && Places.hasPermission(host),
+    ) { on -> setTripPlaces(on) }
+    private val placesSwitch = placesRow.getChildAt(placesRow.childCount - 1) as Switch
+    private var syncingPlaces = false
+
     override val view: View
 
     init {
@@ -41,6 +52,18 @@ class TripsScreen(host: MainActivity) : Screen(host) {
             ui.segmented(listOf("All", "Starred"), 0, fill = true) { starredOnly = it == 1; render() },
             list,
             empty,
+            ui.sectionHeader(R.drawable.ic_sec_route, "Trip Settings"),
+            ui.listCard(
+                ui.switchRow("Record Trips", "Save each ride, ignition on to ignition off", prefs.recordTrips) {
+                    prefs.recordTrips = it
+                    if (!it) TripLog.stopRecording(host)
+                    render()
+                },
+                ui.switchRow("Skip Short Rides", "Don't save rides under ${(TripLog.SHORT_RIDE_KM * 1000).toInt()} m", prefs.skipShortTrips) {
+                    prefs.skipShortTrips = it
+                },
+                placesRow,
+            ),
         )
     }
 
@@ -48,7 +71,26 @@ class TripsScreen(host: MainActivity) : Screen(host) {
         TripStore.addListener(changed)
         // A ride left open while the app was closed is saved now.
         TripLog.finishIfIdle(host)
+        // Location may have been taken away in Android's settings.
+        if (!host.askingLocation) showPlaces(prefs.tripPlaces && Places.hasPermission(host))
         render()
+    }
+
+    private fun setTripPlaces(on: Boolean) {
+        if (syncingPlaces) return
+        if (!on) { prefs.tripPlaces = false; return }
+        host.requestTripLocation { granted ->
+            prefs.tripPlaces = granted
+            showPlaces(granted)
+            if (!granted) host.toast("Start And End Places needs location allowed all the time")
+        }
+    }
+
+    private fun showPlaces(on: Boolean) {
+        if (placesSwitch.isChecked == on) return
+        syncingPlaces = true
+        placesSwitch.isChecked = on
+        syncingPlaces = false
     }
 
     override fun onHide() {

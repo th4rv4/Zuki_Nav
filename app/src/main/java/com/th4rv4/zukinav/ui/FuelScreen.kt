@@ -120,11 +120,13 @@ class FuelScreen(host: MainActivity) : Screen(host) {
             stats,
             chartCard,
             barsCard,
-            note,
             cap("Refills").apply { setPadding(ui.dp(4), ui.dp(6), 0, 0) },
             refillCard,
             empty,
             ui.button("Add Refill", Ui.Btn.SECONDARY, 48) { RefillSheet(host, null).show() },
+            ui.sectionHeader(com.th4rv4.zukinav.R.drawable.ic_fuel, "Fuel Settings"),
+            settingsCard(),
+            note,
         )
         listOf(hero, stats, chartCard, barsCard).forEach { petrolViews += it }
     }
@@ -192,6 +194,53 @@ class FuelScreen(host: MainActivity) : Screen(host) {
             val texts = getChildAt(0) as LinearLayout
             texts.addView(ui.text(detail, 12f, if (r.answered) Palette.MUTED else Palette.WARN))
         }
+    }
+
+    private fun settingsCard(): LinearLayout {
+        val model = FuelStore.modelSpec(host)
+        fun litresInput(value: Float, default: Double?, save: (Float) -> Unit) =
+            ui.input(if (value > 0f) FuelFormat.litres(value.toDouble()) else "", default?.let { FuelFormat.litres(it) + " L" } ?: "Auto",
+                decimal = true) {
+                save(it.replace(',', '.').toFloatOrNull()?.takeIf { v -> v > 0f } ?: 0f)
+                render()
+            }.apply { filters = arrayOf(android.text.InputFilter.LengthFilter(5)) }
+        val resetLearning = ui.navRow("Reset Learned Range") {
+            confirm("Reset Learned Range?", "Range goes back to the estimate from the tank size and learns again. Refills and mileage are kept.") {
+                FuelStore.resetLearning(host)
+                host.toast("Learned range reset")
+            }
+        }
+        val deleteFuel = ui.navRow("Delete All Fuel Data") {
+            confirm("Delete All Fuel Data?", "Every refill, the mileage history and the learned range will be removed.") {
+                FuelStore.deleteAll(host)
+                host.toast("Fuel data deleted")
+            }
+        }
+        listOf(resetLearning, deleteFuel).forEach { ((it.getChildAt(0) as LinearLayout).getChildAt(0) as TextView).setTextColor(Palette.DANGER) }
+        return ui.listCard(
+            ui.row("Tank Size", "Litres. Empty uses your bike's" + (model?.let { " (${FuelFormat.litres(it.tankLitres)} L)" } ?: ""),
+                litresInput(prefs.fuelTank, model?.tankLitres) { prefs.fuelTank = it }),
+            ui.row("Reserve", "Litres left when the last bar blinks" + (model?.let { " (${FuelFormat.litres(it.reserveLitres)} L)" } ?: ""),
+                litresInput(prefs.fuelReserve, model?.reserveLitres) { prefs.fuelReserve = it }),
+            ui.switchRow("Ask At Refill", "Litres and amount paid, after the fuel bars go up", prefs.askAtRefill) {
+                prefs.askAtRefill = it
+            },
+            ui.row("Low Range Warning", "km, on the Ride tab. Empty to turn off",
+                ui.input(prefs.lowRangeKm.takeIf { it > 0 }?.toString() ?: "", "Off", numeric = true) {
+                    prefs.lowRangeKm = it.toIntOrNull()?.coerceIn(0, 999) ?: 0
+                }),
+            resetLearning,
+            deleteFuel,
+        )
+    }
+
+    private fun confirm(title: String, message: String, action: () -> Unit) {
+        AlertDialog.Builder(host, host.dialogTheme)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton("Confirm") { _, _ -> action() }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun gradientText(t: TextView) {
