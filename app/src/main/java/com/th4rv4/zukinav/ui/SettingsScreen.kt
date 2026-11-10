@@ -42,6 +42,9 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             ui.switchRow("Message Alerts", "New WhatsApp and SMS messages", prefs.messageAlerts) {
                 prefs.messageAlerts = it
             },
+            ui.switchRow("Skip Business SMS", "Bank, OTP, government and promo senders, like AD-HPGOVT", prefs.skipBusinessSms) {
+                prefs.skipBusinessSms = it
+            },
             ui.switchRow("Startup Animation", "Spins the arrow on the dash after Welcome. Skipped during a route.", prefs.startupAnimation) {
                 prefs.startupAnimation = it
             },

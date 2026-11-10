@@ -45,6 +45,8 @@ sealed interface Alert {
 class AlertTracker(
     /** Package of the phone's default SMS app, if known. */
     private val defaultSmsPackage: () -> String? = { null },
+    /** Leave out SMS from bank, OTP, government and promo senders. */
+    private val skipBusinessSms: () -> Boolean = { false },
 ) {
 
     private class Call(val caller: String, val pkg: String, val whatsapp: Boolean, var answered: Boolean)
@@ -192,6 +194,7 @@ class AlertTracker(
 
     private fun onMessage(n: Notice, out: MutableList<Alert>) {
         val sender = senderName(n) ?: return
+        if (!isWhatsApp(n.pkg) && skipBusinessSms() && isBusinessSender(sender)) return
         val content = "$sender\u0000${n.text.orEmpty()}"
         // Messaging apps repost the same notification when anything changes;
         // only a different last message counts as new.
@@ -238,6 +241,19 @@ class AlertTracker(
         )
 
         fun isWhatsApp(pkg: String): Boolean = pkg in WHATSAPP_PACKAGES
+
+        /**
+         * Indian business SMS come from registered headers: two letters, a
+         * dash and a 6-character name, sometimes ending in -S, -P, -T or -G
+         * ("AD-HPGOVT-S", "VM-HDFCBK"). Short codes ("56767") count too.
+         */
+        fun isBusinessSender(sender: String): Boolean {
+            val s = sender.trim()
+            return BUSINESS_HEADER.matches(s) || SHORT_CODE.matches(s)
+        }
+
+        private val BUSINESS_HEADER = Regex("""(?i)[A-Z]{2}-[A-Z0-9]{3,9}(-[SPTG])?""")
+        private val SHORT_CODE = Regex("""\d{3,6}""")
 
         private val INCOMING_WORDS = Regex("""\bincoming\b""")
         private val MISSED_WORDS = Regex("""\bmissed\s+(voice\s+|video\s+)?calls?\b""")

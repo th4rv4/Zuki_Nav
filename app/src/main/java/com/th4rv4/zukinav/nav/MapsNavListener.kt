@@ -36,9 +36,10 @@ class MapsNavListener : NotificationListenerService() {
     private val arrowCache = HashMap<Int, ClusterIcon>()
 
     private val main = Handler(Looper.getMainLooper())
-    private val alerts = AlertTracker(defaultSmsPackage = {
-        try { Telephony.Sms.getDefaultSmsPackage(this) } catch (_: Exception) { null }
-    })
+    private val alerts = AlertTracker(
+        defaultSmsPackage = { try { Telephony.Sms.getDefaultSmsPackage(this) } catch (_: Exception) { null } },
+        skipBusinessSms = { prefs.skipBusinessSms },
+    )
     private val alertTick = object : Runnable {
         override fun run() {
             deliver(alerts.tick(System.currentTimeMillis()))

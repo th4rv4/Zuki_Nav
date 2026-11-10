@@ -78,4 +78,23 @@ class AlertTrackerTest {
         // A WhatsApp message that mentions a missed call is still a message.
         assertEquals(listOf(Alert.Message("Mom", 1, true)), t.posted(msg("a", "Mom", "I missed call you"), 0))
     }
+
+    @Test fun businessSenders() {
+        listOf("AD-HPGOVT-S", "VM-HDFCBK", "JD-ICICIT-T", "ax-amazon", "56767").forEach {
+            assertTrue(it, AlertTracker.isBusinessSender(it))
+        }
+        listOf("Mom", "+91 98765 43210", "Raj Kumar", "9876543210").forEach {
+            assertTrue(it, !AlertTracker.isBusinessSender(it))
+        }
+    }
+
+    @Test fun skipsBusinessSmsOnlyWhenAsked() {
+        val sms = Notice("s", "com.google.android.apps.messaging", "msg", 0, null, "AD-HPGOVT-S", "Update", false, false)
+        assertEquals(1, AlertTracker().posted(sms, 0).size)
+        val t = AlertTracker(skipBusinessSms = { true })
+        assertTrue(t.posted(sms, 0).isEmpty())
+        // People still come through, and WhatsApp is never filtered.
+        assertEquals(1, t.posted(sms.copy(key = "p", title = "Mom"), 0).size)
+        assertEquals(1, t.posted(msg("w", "VM-HDFCBK", "hi"), 0).size)
+    }
 }

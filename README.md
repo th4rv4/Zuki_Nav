@@ -61,6 +61,11 @@ especially results from **Icon Test → Cycle All**.
   caller's name
 - New WhatsApp and SMS messages, with the sender's name and unread count
 
+**Skip Business SMS** (off by default) leaves out SMS from registered
+business senders, such as banks, OTPs, government and promotions
+(`AD-HPGOVT-S`, `VM-HDFCBK`), so only messages from people reach the
+dash.
+
 Calls and messages are read from the phone's notifications, through the
 same Notification Access that reads Google Maps; no extra permission is
 needed. When you clear the missed-call or message notifications on the
