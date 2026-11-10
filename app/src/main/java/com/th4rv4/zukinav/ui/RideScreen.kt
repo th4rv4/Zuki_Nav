@@ -199,8 +199,10 @@ class RideScreen(host: MainActivity) : Screen(host) {
             when (state) {
                 ClusterLink.State.READY -> ui.pill("Connected", Palette.OK, Palette.OK_BG)
                 ClusterLink.State.CONNECTING -> ui.pill("Waiting", Palette.WARN, Palette.WARN_BG)
-                ClusterLink.State.DISCONNECTED ->
-                    ui.pill(if (running) "Not Connected" else "Stopped", Palette.MUTED, Palette.INSET)
+                ClusterLink.State.DISCONNECTED -> when {
+                    running && DashService.bluetoothOff -> ui.pill("Bluetooth Off", Palette.WARN, Palette.WARN_BG)
+                    else -> ui.pill(if (running) "Not Connected" else "Stopped", Palette.MUTED, Palette.INSET)
+                }
             },
         )
 

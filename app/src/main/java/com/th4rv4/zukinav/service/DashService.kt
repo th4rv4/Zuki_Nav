@@ -6,8 +6,12 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
@@ -81,6 +85,21 @@ class DashService : Service(), ClusterLink.Listener {
 
     private val navListener: (NavSnapshot?) -> Unit = { updateNotification() }
 
+    /**
+     * Follows the phone's Bluetooth switch. When it goes off the link is
+     * closed straight away (Android doesn't always report the drop, which
+     * left the app looking connected); when it comes back on, the app
+     * reconnects by itself.
+     */
+    private val bluetoothReceiver = object : BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) {
+            when (i.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1)) {
+                BluetoothAdapter.STATE_TURNING_OFF, BluetoothAdapter.STATE_OFF -> main.post { onBluetoothOff() }
+                BluetoothAdapter.STATE_ON -> main.post { onBluetoothOn() }
+            }
+        }
+    }
+
     /** Latest fuel, ODO and trip readings from the dash, while connected. */
     @Volatile private var bike: BikeData? = null
 
@@ -91,6 +110,10 @@ class DashService : Service(), ClusterLink.Listener {
         prefs = Prefs(this)
         link = ClusterLink(this, this)
         instance = this
+        bluetoothOff = !isBluetoothOn()
+        val filter = IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(bluetoothReceiver, filter, RECEIVER_NOT_EXPORTED)
+        else registerReceiver(bluetoothReceiver, filter)
         NavRepository.addListener(navListener)
         TripLog.finishIfIdle(this)
     }
@@ -110,6 +133,7 @@ class DashService : Service(), ClusterLink.Listener {
     override fun onDestroy() {
         if (bike != null) TripLog.onDisconnected(this)
         instance = null
+        try { unregisterReceiver(bluetoothReceiver) } catch (_: Exception) {}
         main.removeCallbacksAndMessages(null)
         NavRepository.removeListener(navListener)
         link.release()
@@ -119,8 +143,33 @@ class DashService : Service(), ClusterLink.Listener {
 
     // ---- connection -------------------------------------------------------
 
+    private fun isBluetoothOn(): Boolean =
+        (getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter?.isEnabled == true
+
+    private fun onBluetoothOff() {
+        if (bluetoothOff) return
+        bluetoothOff = true
+        AppLog.d("Dash", "Bluetooth turned off, waiting for it to come back")
+        main.removeCallbacks(connectTimeout)
+        link.disconnect()
+        updateNotification()
+        notifyState()
+    }
+
+    private fun onBluetoothOn() {
+        if (!bluetoothOff) return
+        bluetoothOff = false
+        retries = 0
+        AppLog.d("Dash", "Bluetooth back on, reconnecting")
+        // Give the Bluetooth stack a moment to settle.
+        main.postDelayed({ connectIfNeeded() }, 1_500)
+        updateNotification()
+        notifyState()
+    }
+
     private fun connectIfNeeded() {
         if (link.state != ClusterLink.State.DISCONNECTED) return
+        if (bluetoothOff) return
         val addr = prefs.clusterAddress
         if (addr == null) {
             AppLog.d("Dash", "No cluster chosen yet")
@@ -157,7 +206,9 @@ class DashService : Service(), ClusterLink.Listener {
                     bike = null
                     main.removeCallbacks(loop)
                     main.removeCallbacks(connectTimeout)
-                    if (prefs.autoConnect && instance != null) {
+                    if (bluetoothOff) {
+                        AppLog.d("Dash", "Waiting for Bluetooth")
+                    } else if (prefs.autoConnect && instance != null) {
                         // 2 s, 4 s, 8 s, then every 15 s while the bike is off.
                         val delay = minOf(2_000L shl retries.coerceAtMost(3), 15_000L)
                         retries++
@@ -400,7 +451,10 @@ class DashService : Service(), ClusterLink.Listener {
             this, 1, Intent(this, DashService::class.java).setAction(ACTION_STOP), PendingIntent.FLAG_IMMUTABLE,
         )
         val nav = NavRepository.current
-        val title = when (link.state) {
+        val title = when {
+            bluetoothOff -> "Bluetooth Is Off"
+            else -> null
+        } ?: when (link.state) {
             ClusterLink.State.READY -> "Connected To Dash"
             ClusterLink.State.CONNECTING -> "Waiting For Bike"
             ClusterLink.State.DISCONNECTED -> "Not Connected"
@@ -437,6 +491,10 @@ class DashService : Service(), ClusterLink.Listener {
         const val ACTION_STOP = "com.th4rv4.zukinav.STOP"
 
         @Volatile var instance: DashService? = null
+
+        /** The phone's Bluetooth is off; the link waits and reconnects when it is back. */
+        @Volatile var bluetoothOff = false
+            private set
             private set
 
         private val stateListeners = CopyOnWriteArrayList<() -> Unit>()
