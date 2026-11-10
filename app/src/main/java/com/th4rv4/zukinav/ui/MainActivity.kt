@@ -79,6 +79,11 @@ class MainActivity : Activity() {
         if (setupComplete()) showTab(reopen ?: Tab.RIDE) else showSetup()
         checkForUpdateIfDue()
         openRefillFrom(intent)
+        // Kept for the whole time the app is open, so the Bluetooth popup also
+        // closes when Bluetooth is turned on from Android's own prompt.
+        val filter = android.content.IntentFilter(android.bluetooth.BluetoothAdapter.ACTION_STATE_CHANGED)
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(bluetoothReceiver, filter, RECEIVER_NOT_EXPORTED)
+        else registerReceiver(bluetoothReceiver, filter)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -148,6 +153,8 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        try { unregisterReceiver(bluetoothReceiver) } catch (_: Exception) {}
+        bluetoothSheet?.dismiss()
         Updater.removeListener(launchCheckListener)
         super.onDestroy()
     }
@@ -192,12 +199,87 @@ class MainActivity : Activity() {
         super.onResume()
         resumed = true
         current?.onShow()
+        checkBluetooth()
     }
 
     override fun onPause() {
         resumed = false
         current?.onHide()
         super.onPause()
+    }
+
+    // ---- Bluetooth off popup ----------------------------------------------
+
+    private var bluetoothSheet: android.app.Dialog? = null
+
+    /** "Not Now" hides the popup until Bluetooth is next switched off. */
+    private var bluetoothSnoozed = false
+
+    private val bluetoothReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context, intent: Intent) {
+            when (intent.getIntExtra(android.bluetooth.BluetoothAdapter.EXTRA_STATE, -1)) {
+                android.bluetooth.BluetoothAdapter.STATE_ON -> {
+                    bluetoothSheet?.dismiss()
+                    current?.onShow()
+                }
+                android.bluetooth.BluetoothAdapter.STATE_OFF -> {
+                    bluetoothSnoozed = false
+                    if (resumed) checkBluetooth()
+                }
+            }
+        }
+    }
+
+    private fun bluetoothOn(): Boolean {
+        val adapter = getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter ?: return true
+        return adapter.isEnabled
+    }
+
+    /** Asks to turn Bluetooth on while it is off; closes on its own once it is on. */
+    private fun checkBluetooth() {
+        if (bluetoothOn()) { bluetoothSheet?.dismiss(); return }
+        if (bluetoothSnoozed || bluetoothSheet != null || isFinishing) return
+        val icon = ui.iconTile(R.drawable.ic_bluetooth, 60, 30, Palette.ACCENT_SOFT, Palette.ACCENT_BG, 30)
+        val iconRow = LinearLayout(this).apply {
+            gravity = Gravity.CENTER
+            addView(icon, LinearLayout.LayoutParams(ui.dp(60), ui.dp(60)))
+        }
+        lateinit var sheet: android.app.Dialog
+        sheet = ui.sheet(
+            iconRow,
+            ui.vstack(
+                4,
+                ui.text("Bluetooth Is Off", 18f, Palette.TEXT, Ui.Weight.BOLD).apply { gravity = Gravity.CENTER },
+                ui.text("Zuki Nav needs Bluetooth to talk to your dash. This closes by itself once it's on.", 13f, Palette.MUTED)
+                    .apply { gravity = Gravity.CENTER },
+            ),
+            ui.button("Turn On Bluetooth", Ui.Btn.PRIMARY, 50) { turnOnBluetooth() },
+            ui.button("Not Now", Ui.Btn.SECONDARY, 48) {
+                bluetoothSnoozed = true
+                sheet.dismiss()
+            },
+        )
+        sheet.setOnDismissListener { bluetoothSheet = null }
+        bluetoothSheet = sheet
+    }
+
+    /** Android's own "turn on Bluetooth?" prompt, or Bluetooth settings where that is not allowed. */
+    @android.annotation.SuppressLint("MissingPermission")
+    private fun turnOnBluetooth() {
+        val canAsk = Build.VERSION.SDK_INT < 31 || granted(Manifest.permission.BLUETOOTH_CONNECT)
+        try {
+            if (canAsk) {
+                startActivity(Intent(android.bluetooth.BluetoothAdapter.ACTION_REQUEST_ENABLE))
+            } else {
+                startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+            }
+        } catch (e: Exception) {
+            try {
+                startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+            } catch (e2: Exception) {
+                toast("Turn Bluetooth on from Quick Settings")
+            }
+        }
     }
 
     @Deprecated("Back from Setup returns to the tabs")
