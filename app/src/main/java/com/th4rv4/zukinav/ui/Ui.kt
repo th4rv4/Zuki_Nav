@@ -29,6 +29,8 @@ object Palette {
     var isAmoled = false
         private set
 
+    /** Opaque surface for sheets and dialogs. */
+    var SHEET = 0
     var BG = 0; var SURFACE = 0; var BORDER = 0; var INSET = 0; var INPUT_BORDER = 0; var NAV_BG = 0
     var TEXT = 0; var TEXT_SOFT = 0; var MUTED = 0
     /** Accent: [ACCENT] is the start colour, [ACCENT_SOFT] the one used for text and icons. */
@@ -72,6 +74,7 @@ object Palette {
         BORDER = c(0x17FFFFFF, 0xFF18191E, 0x12101828)
         INSET = c(0x0AFFFFFF, 0xFF050506, 0x08101828)
         INPUT_BORDER = c(0x21FFFFFF, 0xFF1F2026, 0x1F101828)
+        SHEET = c(0xFF0D111A, 0xFF0A0B0E, 0xFFFFFFFF)
         NAV_BG = c(0xFF0A0D14, 0xFF000000, 0xFFF7F8FB)
         TEXT = c(0xFFEEF2F8, 0xFFF2F4F8, 0xFF0E1422)
         TEXT_SOFT = c(0xFFC9D0DC, 0xFFC9CFD9, 0xFF2E3746)

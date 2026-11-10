@@ -450,12 +450,47 @@ class MainActivity : Activity() {
         scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
     }
 
+    /** Opens the system picture picker for the rider avatar. */
+    fun pickAvatarPhoto() {
+        val pick = if (Build.VERSION.SDK_INT >= 33) {
+            Intent(android.provider.MediaStore.ACTION_PICK_IMAGES)
+        } else {
+            Intent(Intent.ACTION_GET_CONTENT).setType("image/*").addCategory(Intent.CATEGORY_OPENABLE)
+        }
+        try {
+            @Suppress("DEPRECATION")
+            startActivityForResult(pick, REQ_AVATAR)
+        } catch (e: Exception) {
+            toast("No picture picker found")
+        }
+    }
+
+    @Deprecated("Picture picker result")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQ_AVATAR || resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        Thread {
+            val ok = Avatars.savePhoto(this, uri)
+            runOnUiThread {
+                if (ok) {
+                    prefs.avatar = Avatars.PHOTO
+                    current?.onShow()
+                } else {
+                    toast("Could not use that picture")
+                }
+            }
+        }.start()
+    }
+
     fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
 
     private companion object {
         const val REQ_LOCATION = 2
         const val REQ_LOCATION_BG = 3
         const val STATE_TAB = "tab"
+        const val REQ_AVATAR = 4
     }
 }
 

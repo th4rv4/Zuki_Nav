@@ -71,6 +71,11 @@ class Prefs(context: Context) {
         get() = sp.getInt(K_THEME, THEME_SYSTEM)
         set(v) = sp.edit().putInt(K_THEME, v).apply()
 
+    /** Rider avatar: "initial", an icon key such as "helmet", or "photo". */
+    var avatar: String
+        get() = sp.getString(K_AVATAR, null) ?: "initial"
+        set(v) = sp.edit().putString(K_AVATAR, v).apply()
+
     /** Accent preset key, see Accents; "wallpaper" follows the phone's wallpaper colours. */
     var accent: String
         get() = sp.getString(K_ACCENT, null) ?: "aurora"
@@ -157,6 +162,7 @@ class Prefs(context: Context) {
         const val THEME_DARK = 2
         const val THEME_AMOLED = 3
         private const val K_ACCENT = "accent"
+        private const val K_AVATAR = "avatar"
         private const val K_UPDATE_LAST = "update_last_check"
         private const val K_MSGS = "message_alerts"
     }

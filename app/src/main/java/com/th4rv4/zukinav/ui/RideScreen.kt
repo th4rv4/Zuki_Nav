@@ -8,7 +8,6 @@ import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
-import com.th4rv4.zukinav.R
 import com.th4rv4.zukinav.ble.ClusterLink
 import com.th4rv4.zukinav.nav.NavRepository
 import com.th4rv4.zukinav.nav.NavSnapshot
@@ -33,6 +32,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
 
     private val sendingValue = ui.text("", 13f, Palette.MUTED)
     private val sourceValue = ui.text("", 13f, Palette.TEXT_SOFT)
+    private val avatar = AvatarView(host.ui.ctx)
     private val linkButton: Button = ui.button("Connect") { toggleLink() }
 
     private val navListener: (NavSnapshot?) -> Unit = { refresh() }
@@ -41,15 +41,10 @@ class RideScreen(host: MainActivity) : Screen(host) {
     override val view: View
 
     init {
-        val settingsButton = LinearLayout(ui.ctx).apply {
-            gravity = Gravity.CENTER
+        avatar.apply {
             isClickable = true
             isFocusable = true
-            contentDescription = "Open Settings"
-            background = ui.pressable(Palette.SURFACE, 22, Palette.BORDER)
-            addView(ui.icon(R.drawable.ic_tab_settings, 20, Palette.TEXT_SOFT), LinearLayout.LayoutParams(ui.dp(20), ui.dp(20)))
-            setOnClickListener { host.showTab(MainActivity.Tab.SETTINGS) }
-            layoutParams = LinearLayout.LayoutParams(ui.dp(44), ui.dp(44))
+            setOnClickListener { AvatarSheet(host, onPhoto = { host.pickAvatarPhoto() }, onSaved = { refresh() }).show() }
         }
         val titleRow = LinearLayout(ui.ctx).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -62,7 +57,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(ui.dp(4), 0, 0, 0)
             addView(ui.vstack(2, dateLine, titleRow), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            addView(settingsButton, LinearLayout.LayoutParams(ui.dp(44), ui.dp(44)))
+            addView(avatar, LinearLayout.LayoutParams(ui.dp(46), ui.dp(46)))
         }
 
         rideCard = ui.card(
@@ -125,6 +120,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
             },
         )
 
+        avatar.show(prefs.avatar, prefs.riderName)
         val nav = NavRepository.current
         dateLine.text = LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE", Locale.US)).uppercase(Locale.US) +
             " · " + formatTime(LocalTime.now())
