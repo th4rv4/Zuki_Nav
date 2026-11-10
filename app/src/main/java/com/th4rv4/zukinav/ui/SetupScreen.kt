@@ -19,6 +19,7 @@ import com.th4rv4.zukinav.util.AppLog
 @SuppressLint("MissingPermission") // Scanning starts only after hasBlePermissions().
 class SetupScreen(host: MainActivity) : Screen(host) {
 
+    private val progress = ProgressRingView(host.ui.ctx)
     private val checklist = LinearLayout(host.ui.ctx).apply { orientation = LinearLayout.VERTICAL }
     private val scanState = FrameLayout(host.ui.ctx)
     private val results = LinearLayout(host.ui.ctx).apply { orientation = LinearLayout.VERTICAL }
@@ -31,16 +32,25 @@ class SetupScreen(host: MainActivity) : Screen(host) {
     override val view: View
 
     init {
+        val head = LinearLayout(ui.ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(progress, LinearLayout.LayoutParams(ui.dp(58), ui.dp(58)).apply { marginEnd = ui.dp(14) })
+            addView(ui.vstack(
+                2,
+                ui.text("FIRST RUN", 11f, Palette.ACCENT_SOFT, Ui.Weight.BOLD).apply { letterSpacing = 0.14f },
+                ui.title("Set Up Zuki Nav"),
+            ))
+        }
         val intro = ui.vstack(
-            6,
-            ui.text("FIRST RUN", 12f, Palette.ACCENT_SOFT, Ui.Weight.BOLD).apply { letterSpacing = 0.1f },
-            ui.title("Set Up Zuki Nav"),
+            10,
+            head,
             ui.text("A few things, once. After this the app connects to your bike on its own.", 14f, Palette.MUTED),
         ).apply { setPadding(ui.dp(4), 0, ui.dp(4), 0) }
 
         val nameCard = ui.card(
             ui.text("Your Name", 16f, Palette.TEXT, Ui.Weight.MEDIUM),
-            ui.text("The dash greets you with it when it connects. Optional, and you can change it later in Settings.", 13f, Palette.MUTED),
+            ui.text("The dash greets you with it when it connects. Optional.", 13f, Palette.MUTED),
             ui.input(prefs.riderName, "Rider Name") { prefs.riderName = it }.apply {
                 gravity = Gravity.START or Gravity.CENTER_VERTICAL
                 filters = arrayOf(android.text.InputFilter.LengthFilter(MAX_NAME))
@@ -55,7 +65,7 @@ class SetupScreen(host: MainActivity) : Screen(host) {
                     LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
                 addView(scanState)
             },
-            ui.text("Turn the ignition on and close Suzuki Ride Connect. Your bike shows up below with its model.", 13f, Palette.MUTED),
+            ui.text("Turn the ignition on. Your bike shows up below with its model.", 13f, Palette.MUTED),
             results,
             scanButton,
             ui.text("Works with Suzuki Ride Connect models sold in India.", 12f, Palette.MUTED),
@@ -81,24 +91,27 @@ class SetupScreen(host: MainActivity) : Screen(host) {
         val maps = host.mapsInstalled()
         val rcInstalled = host.isInstalled(RIDE_CONNECT_PKG)
 
+        val paired = prefs.clusterAddress != null
+        progress.set(listOf(ble, listener, maps, paired).count { it }, 4)
+
         val card = ui.listCard(
             ui.row(
                 "Nearby Devices", "To find and talk to the dash",
                 if (ble) ui.text("Allowed", 13f, Palette.OK) else smallButton("Grant") { host.requestBlePermissions() },
-                ui.badge(if (ble) Ui.Badge.Done else Ui.Badge.Todo),
-            ),
-            ui.row(
-                "Notification Access", "To read Google Maps directions",
-                if (listener) ui.text("Allowed", 13f, Palette.OK) else smallButton("Grant") { host.openListenerSettings() },
-                ui.badge(if (listener) Ui.Badge.Done else Ui.Badge.Todo),
+                ui.badge(if (ble) Ui.Badge.Done else Ui.Badge.Step(1)),
             ),
             ui.row(
                 "Google Maps", if (maps) "Turn arrows are read from Maps" else "Install Google Maps to navigate",
                 ui.text(if (maps) "Ready" else "Missing", 13f, if (maps) Palette.OK else Palette.WARN),
-                ui.badge(if (maps) Ui.Badge.Done else Ui.Badge.Todo),
+                ui.badge(if (maps) Ui.Badge.Done else Ui.Badge.Step(2)),
             ),
             ui.row(
-                "Close Suzuki Ride Connect", "The dash takes one phone at a time",
+                "Notification Access", "To read Maps directions",
+                if (listener) ui.text("Allowed", 13f, Palette.OK) else smallButton("Grant") { host.openListenerSettings() },
+                ui.badge(if (listener) Ui.Badge.Done else Ui.Badge.Step(3)),
+            ),
+            ui.row(
+                "Close Ride Connect", "The dash takes one phone at a time",
                 if (rcInstalled) smallButton("Force Stop", primary = false) { host.openAppInfo(RIDE_CONNECT_PKG) }
                 else ui.text("Not Installed", 13f, Palette.OK),
                 ui.badge(if (rcInstalled) Ui.Badge.Step(4) else Ui.Badge.Done),
@@ -141,7 +154,8 @@ class SetupScreen(host: MainActivity) : Screen(host) {
             isClickable = true
             isFocusable = true
             contentDescription = "Pair ${model.displayName}"
-            background = ui.pressable(if (chosen) Palette.ACCENT_BG else Palette.INSET, 16, if (chosen) Palette.ACCENT else Palette.INPUT_BORDER)
+            background = ui.pressable(if (chosen) Palette.ACCENT_BG else Palette.INSET, 16,
+                if (chosen) Palette.ACCENT else Accents.withAlpha(Palette.ACCENT_SOFT, 0x8C))
             setPadding(ui.dp(14), ui.dp(14), ui.dp(14), ui.dp(14))
             addView(ui.icon(R.drawable.ic_bike, 24, Palette.ACCENT_SOFT),
                 LinearLayout.LayoutParams(ui.dp(24), ui.dp(24)).apply { marginEnd = ui.dp(12) })
@@ -222,5 +236,55 @@ class SetupScreen(host: MainActivity) : Screen(host) {
         const val RIDE_CONNECT_PKG = "suzuki.com.suzuki"
         /** The dash shows up to 20 characters. */
         const val MAX_NAME = 20
+    }
+}
+
+/** Ring that fills with the setup steps done, with "done/total" inside. */
+class ProgressRingView(ctx: android.content.Context) : View(ctx) {
+    private val d = ctx.resources.displayMetrics.density
+    private val track = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        style = android.graphics.Paint.Style.STROKE
+        strokeWidth = 5 * d
+    }
+    private val arc = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        style = android.graphics.Paint.Style.STROKE
+        strokeWidth = 5 * d
+        strokeCap = android.graphics.Paint.Cap.ROUND
+    }
+    private val label = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = android.graphics.Paint.Align.CENTER
+        typeface = DashFonts.numbers
+    }
+    private val oval = android.graphics.RectF()
+    private var done = 0
+    private var total = 4
+
+    init {
+        if (!Palette.isLight) {
+            setLayerType(LAYER_TYPE_SOFTWARE, null)
+            arc.setShadowLayer(5 * d, 0f, 0f, Palette.ACCENT_GLOW)
+        }
+    }
+
+    fun set(done: Int, total: Int) {
+        this.done = done
+        this.total = total
+        contentDescription = "$done of $total setup steps done"
+        invalidate()
+    }
+
+    override fun onDraw(canvas: android.graphics.Canvas) {
+        val pad = 6 * d
+        oval.set(pad, pad, width - pad, height - pad)
+        track.color = Palette.TRACK
+        canvas.drawOval(oval, track)
+        if (done > 0) {
+            arc.shader = android.graphics.LinearGradient(oval.left, oval.bottom, oval.right, oval.top,
+                Palette.ACCENT, Palette.ACCENT_MID, android.graphics.Shader.TileMode.CLAMP)
+            canvas.drawArc(oval, -90f, 360f * done / total, false, arc)
+        }
+        label.color = Palette.TEXT
+        label.textSize = height * 0.28f
+        canvas.drawText("$done/$total", width / 2f, height / 2f - (label.descent() + label.ascent()) / 2, label)
     }
 }

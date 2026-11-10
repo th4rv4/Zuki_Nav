@@ -308,15 +308,16 @@ class Ui(val ctx: Context) {
     }
 
     /** Round status badge: a tick, a "!" or a step number. */
-    fun badge(kind: Badge): TextView = text("", 14f, Palette.TEXT, Weight.BOLD).apply {
+    fun badge(kind: Badge): TextView = text("", 12f, Palette.TEXT, Weight.BOLD).apply {
         gravity = Gravity.CENTER
-        layoutParams = LinearLayout.LayoutParams(dp(28), dp(28))
-        setWidth(dp(28))
-        setHeight(dp(28))
+        layoutParams = LinearLayout.LayoutParams(dp(26), dp(26))
+        setWidth(dp(26))
+        setHeight(dp(26))
+        setLineSpacing(0f, 1f)
         when (kind) {
-            is Badge.Done -> { text = "✓"; setTextColor(Palette.OK); background = rounded(Palette.OK_BG, 14) }
-            is Badge.Todo -> { text = "!"; setTextColor(Palette.WARN); background = rounded(Palette.WARN_BG, 14) }
-            is Badge.Step -> { text = kind.n.toString(); setTextColor(Palette.MUTED); background = rounded(Palette.TILE, 14) }
+            is Badge.Done -> { text = "✓"; setTextColor(Palette.OK); background = rounded(Palette.OK_BG, 13) }
+            is Badge.Todo -> { text = "!"; setTextColor(Palette.WARN); background = rounded(Palette.WARN_BG, 13) }
+            is Badge.Step -> { text = kind.n.toString(); setTextColor(Palette.MUTED); background = rounded(Color.TRANSPARENT, 13, Palette.INPUT_BORDER) }
         }
     }
 
