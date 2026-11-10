@@ -32,7 +32,7 @@ private fun withAlpha(color: Int, alpha: Float) =
     Color.argb((Color.alpha(color) * alpha).roundToInt(), Color.red(color), Color.green(color), Color.blue(color))
 
 /**
- * Speedometer: a 270° arc that fills from blue through cyan to pink, with a
+ * Speedometer: a 270° arc that fills through the three accent colours, with a
  * soft glow, and the speed in large digits. Null speed shows "--".
  */
 class SpeedGaugeView(ctx: Context) : View(ctx) {
@@ -91,7 +91,7 @@ class SpeedGaugeView(ctx: Context) : View(ctx) {
         val sweep = 270f * (shown / max).coerceIn(0f, 1f)
         if (sweep > 0.5f) {
             glow.alpha = 150
-            canvas.drawArc(oval, 135f, sweep, false, glow)
+            if (!Palette.isLight) canvas.drawArc(oval, 135f, sweep, false, glow)
             canvas.drawArc(oval, 135f, sweep, false, arc)
         }
         val cx = oval.centerX()
@@ -112,10 +112,10 @@ class SpeedGaugeView(ctx: Context) : View(ctx) {
  */
 class TurnRingView(ctx: Context) : View(ctx) {
 
-    private val stroke = ctx.dpf(7f)
+    private val stroke = ctx.dpf(5f)
     private val track = strokePaint(stroke)
     private val ring = strokePaint(stroke)
-    private val glow = strokePaint(stroke).apply { maskFilter = BlurMaskFilter(ctx.dpf(5f), BlurMaskFilter.Blur.NORMAL) }
+    private val glow = strokePaint(stroke).apply { maskFilter = BlurMaskFilter(ctx.dpf(4f), BlurMaskFilter.Blur.NORMAL) }
     private val inner = Paint(Paint.ANTI_ALIAS_FLAG)
     private val innerEdge = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = ctx.dpf(1f) }
     private val dot = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -145,7 +145,7 @@ class TurnRingView(ctx: Context) : View(ctx) {
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         val size = min(w, h).toFloat()
-        val pad = stroke / 2 + context.dpf(5f)
+        val pad = stroke / 2 + context.dpf(3f)
         val left = (w - size) / 2 + pad
         val top = (h - size) / 2 + pad
         oval.set(left, top, left + size - 2 * pad, top + size - 2 * pad)
@@ -163,12 +163,12 @@ class TurnRingView(ctx: Context) : View(ctx) {
         val sweep = 360f * shown
         if (sweep > 0.5f) {
             glow.alpha = 150
-            canvas.drawArc(oval, -90f, sweep, false, glow)
+            if (!Palette.isLight) canvas.drawArc(oval, -90f, sweep, false, glow)
             canvas.drawArc(oval, -90f, sweep, false, ring)
         }
         val cx = oval.centerX()
         val cy = oval.centerY()
-        val r = oval.width() / 2 - stroke * 1.6f
+        val r = oval.width() / 2 - stroke * 1.5f
         inner.color = Palette.GLASS
         innerEdge.color = Palette.GLASS_BORDER
         canvas.drawCircle(cx, cy, r, inner)
@@ -199,8 +199,8 @@ class TurnRingView(ctx: Context) : View(ctx) {
 class FuelCellsView(ctx: Context) : View(ctx) {
 
     private val gap = ctx.dpf(5f)
-    private val cellHeight = ctx.dpf(14f)
-    private val radius = ctx.dpf(5f)
+    private val cellHeight = ctx.dpf(9f)
+    private val radius = ctx.dpf(4.5f)
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply { maskFilter = BlurMaskFilter(ctx.dpf(6f), BlurMaskFilter.Blur.NORMAL) }
     private val shine = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -264,7 +264,7 @@ class FuelCellsView(ctx: Context) : View(ctx) {
             rect.set(left, top, left + cellW, top + cellHeight)
             if (i < filled) {
                 glow.color = withAlpha(color, 0.55f * pulse)
-                canvas.drawRoundRect(rect, radius, radius, glow)
+                if (!Palette.isLight) canvas.drawRoundRect(rect, radius, radius, glow)
                 fill.color = withAlpha(color, pulse)
                 canvas.drawRoundRect(rect, radius, radius, fill)
                 shine.shader = LinearGradient(0f, rect.top, 0f, rect.centerY(), 0x59FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP)

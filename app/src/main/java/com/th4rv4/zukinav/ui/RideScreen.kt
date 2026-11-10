@@ -12,10 +12,10 @@ import com.th4rv4.zukinav.R
 import com.th4rv4.zukinav.ble.ClusterLink
 import com.th4rv4.zukinav.nav.NavRepository
 import com.th4rv4.zukinav.nav.NavSnapshot
-import com.th4rv4.zukinav.protocol.ClusterModels
 import com.th4rv4.zukinav.service.DashService
 import com.th4rv4.zukinav.trips.TripFormat
 import com.th4rv4.zukinav.trips.TripLog
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -25,7 +25,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
 
     private val panel = DashPanel(host)
     private val statusSlot = FrameLayout(host.ui.ctx)
-    private val iconValue = ui.text("", 13f, Palette.TEXT_SOFT)
+    private val dateLine = ui.text("", 11f, Palette.MUTED, Ui.Weight.BOLD).apply { letterSpacing = 0.1f }
 
     private val rideValue = ui.text("", 16f, Palette.TEXT, Ui.Weight.MEDIUM)
     private val rideTop = ui.text("", 13f, Palette.MUTED)
@@ -33,7 +33,6 @@ class RideScreen(host: MainActivity) : Screen(host) {
 
     private val sendingValue = ui.text("", 13f, Palette.MUTED)
     private val sourceValue = ui.text("", 13f, Palette.TEXT_SOFT)
-    private val modelValue = ui.text("", 13f, Palette.TEXT_SOFT)
     private val linkButton: Button = ui.button("Connect") { toggleLink() }
 
     private val navListener: (NavSnapshot?) -> Unit = { refresh() }
@@ -52,11 +51,17 @@ class RideScreen(host: MainActivity) : Screen(host) {
             setOnClickListener { host.showTab(MainActivity.Tab.SETTINGS) }
             layoutParams = LinearLayout.LayoutParams(ui.dp(44), ui.dp(44))
         }
+        val titleRow = LinearLayout(ui.ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(ui.title("Ride"), LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginEnd = ui.dp(10) })
+            addView(statusSlot)
+        }
         val header = LinearLayout(ui.ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            addView(ui.title("Zuki Nav"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            addView(statusSlot, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginEnd = ui.dp(10) })
+            setPadding(ui.dp(4), 0, 0, 0)
+            addView(ui.vstack(2, dateLine, titleRow), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             addView(settingsButton, LinearLayout.LayoutParams(ui.dp(44), ui.dp(44)))
         }
 
@@ -78,11 +83,9 @@ class RideScreen(host: MainActivity) : Screen(host) {
         val statusCard = ui.listCard(
             ui.row("Sending To Dash", trailing = sendingValue),
             ui.row("Arrow Source", trailing = sourceValue),
-            ui.row("Bike Model", trailing = modelValue),
-            ui.row("Dash Icon", trailing = iconValue),
         )
 
-        view = host.page(header, panel.view, rideCard, statusCard, linkButton)
+        view = host.page(header, panel.view, panel.chips, rideCard, statusCard, linkButton)
     }
 
     override fun onShow() {
@@ -107,7 +110,6 @@ class RideScreen(host: MainActivity) : Screen(host) {
 
     private fun refresh() {
         val name = prefs.clusterName
-        val model = ClusterModels.fromBleName(name)
         val state = DashService.linkState
         val running = DashService.instance != null
 
@@ -124,14 +126,14 @@ class RideScreen(host: MainActivity) : Screen(host) {
         )
 
         val nav = NavRepository.current
-        iconValue.text = nav?.icon?.let { "#${model.adjustIcon(it.id)}" } ?: "-"
+        dateLine.text = LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE", Locale.US)).uppercase(Locale.US) +
+            " · " + formatTime(LocalTime.now())
         val live = DashService.liveBike
         val data = live ?: prefs.lastBike
         panel.render(
             nav = nav,
             data = data,
             live = live != null,
-            clockText = formatTime(LocalTime.now()),
             etaText = nav?.eta?.let { formatTime(it) },
             syncNote = when {
                 live != null -> null
@@ -154,7 +156,6 @@ class RideScreen(host: MainActivity) : Screen(host) {
             null -> "-"
             else -> "None"
         }
-        modelValue.text = if (name == null) "-" else model.displayName
 
         val ride = if (prefs.recordTrips) TripLog.active(host) else null
         rideCard.visibility = if (ride == null) View.GONE else View.VISIBLE
@@ -164,15 +165,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
             rideTop.text = "Top ${ride.topSpeed} km/h"
         }
 
-        if (running) {
-            linkButton.text = "Disconnect"
-            linkButton.background = ui.pressable(Palette.DANGER_BG, 16, Palette.DANGER_BORDER)
-            linkButton.setTextColor(Palette.DANGER)
-        } else {
-            linkButton.text = "Connect"
-            linkButton.background = ui.accentPressable(16)
-            linkButton.setTextColor(Palette.ON_ACCENT)
-        }
+        linkButton.text = if (running) "Disconnect" else "Connect"
     }
 
     private fun formatWhen(ms: Long): String {
