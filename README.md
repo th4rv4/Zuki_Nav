@@ -144,6 +144,7 @@ This approach, and the Maps notification layouts, follow
   Monitor graph of the last 30 minutes with your limits drawn in, the ride's
   highest and average temperature and time above Hot, the hottest point of
   recent trips, and Thermal Settings (see Engine temperature below).
+- **Service**: maintenance reminders (see Maintenance below).
 - **Dash Test** (Settings > Troubleshooting): show any turn icon on the dash, mark it **Looks Right** or
   **Looks Wrong** (the next icon follows automatically), see progress for
   all 64 icons, and **Share Results**. **Text Test** sends your own text
@@ -158,8 +159,8 @@ and a route starting mid-animation or mid-greeting takes over at once.
 - **Settings**, in groups: Your Bike (Change Bike, rider name), Welcome
   (startup animation and greeting), Riding (speed alert, traffic side),
   Calls, Messages, Appearance, Connection, Updates and Troubleshooting
-  (with Dash Test). Trip, fuel and engine settings sit at the bottom of the
-  Trips, Fuel and Thermals tabs.
+  (with Dash Test). Trip, fuel, engine and maintenance settings sit at the
+  bottom of the Trips, Fuel, Thermals and Service tabs.
 
 **Fuel**: Zuki Nav notices a refill when the fuel bars go up and asks (in
 a notification) for the litres and the amount paid; both are optional.
@@ -171,6 +172,16 @@ model and can be changed under Fuel Settings on the Fuel tab. It is worked out f
 and the ODO rather than a fuel sensor, so the first tank is an estimate and
 range only learns while the app is connected: keep the phone connected on
 long rides for the best numbers.
+
+**Maintenance**: the Service tab keeps reminders for Chain Clean & Lube
+(every 500 km to start with), General Service (set the interval from your
+owner's manual) and any of your own, each due every so many km, months, or
+both. They count from the ODO on the dash, so km ridden without the app are
+caught up the next time the bike connects. A phone notification arrives when
+one is close (Remind Me Early, 50 km by default, or a week before a date) and
+again when it's due, with **Mark Done** and **Snooze 100 km** buttons.
+Month-based reminders are checked twice a day even when the bike isn't
+connected.
 
 **Engine temperature**: the dash sends the engine temperature in °C (Suzuki's
 own app receives it but never shows it). Zuki Nav shows it on the Ride tab as

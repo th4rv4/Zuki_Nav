@@ -56,6 +56,7 @@ class MainActivity : Activity() {
         TRIPS("Trips", R.drawable.ic_tab_trips),
         FUEL("Fuel", R.drawable.ic_fuel),
         THERMALS("Thermals", R.drawable.ic_engine_temp),
+        MAINTENANCE("Service", R.drawable.ic_sec_wrench),
         SETTINGS("Settings", R.drawable.ic_tab_settings),
     }
 
@@ -79,6 +80,8 @@ class MainActivity : Activity() {
         if (setupComplete()) showTab(reopen ?: Tab.RIDE) else showSetup()
         checkForUpdateIfDue()
         openRefillFrom(intent)
+        openMaintenanceFrom(intent)
+        com.th4rv4.zukinav.maint.MaintNotifier.schedule(this)
         // Kept for the whole time the app is open, so the Bluetooth popup also
         // closes when Bluetooth is turned on from Android's own prompt.
         val filter = android.content.IntentFilter(android.bluetooth.BluetoothAdapter.ACTION_STATE_CHANGED)
@@ -90,6 +93,14 @@ class MainActivity : Activity() {
         super.onNewIntent(intent)
         setIntent(intent)
         openRefillFrom(intent)
+        openMaintenanceFrom(intent)
+    }
+
+    /** From a maintenance reminder notification: opens the Service tab. */
+    private fun openMaintenanceFrom(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_MAINTENANCE, false) != true) return
+        intent.removeExtra(EXTRA_MAINTENANCE)
+        if (setupComplete()) showTab(Tab.MAINTENANCE)
     }
 
     /** From the "Refuelled?" notification: opens that refill's form. */
@@ -384,6 +395,7 @@ class MainActivity : Activity() {
                 Tab.TRIPS -> screen("trips") { TripsScreen(this) }
                 Tab.FUEL -> screen("fuel") { FuelScreen(this) }
                 Tab.THERMALS -> screen("thermals") { ThermalsScreen(this) }
+                Tab.MAINTENANCE -> screen("maintenance") { MaintenanceScreen(this) }
                 Tab.SETTINGS -> screen("settings") { SettingsScreen(this) }
             },
         )
@@ -615,6 +627,7 @@ class MainActivity : Activity() {
     companion object {
         /** Opens the refill form for this refill id (from the "Refuelled?" notification). */
         const val EXTRA_REFILL = "refill"
+        const val EXTRA_MAINTENANCE = "maintenance"
         private const val REQ_LOCATION = 2
         private const val REQ_LOCATION_BG = 3
         private const val STATE_TAB = "tab"

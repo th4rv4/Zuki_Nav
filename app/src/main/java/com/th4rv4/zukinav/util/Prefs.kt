@@ -91,6 +91,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_ALERT_HOT, false)
         set(v) = sp.edit().putBoolean(K_ALERT_HOT, v).apply()
 
+    /** Maintenance reminders notify this many km before they are due. */
+    var maintEarlyKm: Int
+        get() = sp.getInt(K_MAINT_EARLY, 50)
+        set(v) = sp.edit().putInt(K_MAINT_EARLY, v).apply()
+
     /** Seconds the startup greeting stays on the dash, one of [MESSAGE_SECONDS]. */
     var greetingSeconds: Int
         get() = seconds(K_GREETING_SECS)
@@ -230,6 +235,7 @@ class Prefs(context: Context) {
         private const val K_ALERT_WARM = "alert_warmed_up_dash"
         private const val K_ALERT_HOT = "alert_overheat_dash"
         private const val K_GREETING_SECS = "greeting_seconds"
+        private const val K_MAINT_EARLY = "maint_early_km"
         private const val K_ALERT_WARM_SECS = "alert_warmed_up_seconds"
         private const val K_ALERT_HOT_SECS = "alert_overheat_seconds"
         private const val K_FUEL_RESERVE = "fuel_reserve"

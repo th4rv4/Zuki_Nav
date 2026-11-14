@@ -24,6 +24,8 @@ import com.th4rv4.zukinav.alerts.Alert
 import com.th4rv4.zukinav.ble.ClusterLink
 import com.th4rv4.zukinav.fuel.FuelStore
 import com.th4rv4.zukinav.fuel.Refill
+import com.th4rv4.zukinav.maint.MaintNotifier
+import com.th4rv4.zukinav.maint.MaintStore
 import com.th4rv4.zukinav.nav.NavRepository
 import com.th4rv4.zukinav.nav.NavSnapshot
 import com.th4rv4.zukinav.protocol.BikeData
@@ -274,6 +276,7 @@ class DashService : Service(), ClusterLink.Listener {
     private fun onBikeData(data: BikeData) {
         TripLog.onReading(this, data)
         data.fuelBars?.let { bars -> FuelStore.onReading(this, data.odoKm, bars)?.let { askAboutRefill(it) } }
+        if (data.odoKm > 0) MaintNotifier.show(this, MaintStore.onOdo(this, data.odoKm))
         data.engineTempC?.let { c ->
             val events = Thermals.onReading(c, System.currentTimeMillis(), prefs.engineWarmC, prefs.engineHotC)
             if (ThermalSession.Event.OVERHEAT in events && prefs.overheatDashAlert) {

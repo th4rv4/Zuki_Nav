@@ -3,6 +3,7 @@ package com.th4rv4.zukinav.service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.th4rv4.zukinav.maint.MaintNotifier
 import com.th4rv4.zukinav.util.Prefs
 
 /**
@@ -12,6 +13,7 @@ import com.th4rv4.zukinav.util.Prefs
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED && intent.action != Intent.ACTION_MY_PACKAGE_REPLACED) return
+        MaintNotifier.schedule(context)
         val prefs = Prefs(context)
         if (prefs.startOnBoot && prefs.clusterAddress != null && DashService.hasConnectPermission(context)) {
             DashService.start(context)
