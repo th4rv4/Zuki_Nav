@@ -173,7 +173,7 @@ and the ODO rather than a fuel sensor, so the first tank is an estimate and
 range only learns while the app is connected: keep the phone connected on
 long rides for the best numbers.
 
-**Maintenance**: the Service tab keeps reminders for Chain Clean & Lube
+**Maintenance**: the Service tab keeps reminders for Chain Maintenance
 (every 500 km to start with), General Service (set the interval from your
 owner's manual) and any of your own, each due every so many km, months, or
 both. They count from the ODO on the dash, so km ridden without the app are
@@ -181,7 +181,10 @@ caught up the next time the bike connects. A phone notification arrives when
 one is close (Remind Me Early, 50 km by default, or a week before a date) and
 again when it's due, with **Mark Done** and **Snooze 100 km** buttons.
 Month-based reminders are checked twice a day even when the bike isn't
-connected.
+connected. Each reminder has its own on/off switch. Chain Maintenance
+and General Service start off: turn one on when you've just done that job,
+and it counts from the ODO at that moment (or from a Last Done At you
+entered). Off means it isn't tracked at all.
 
 **Engine temperature**: the dash sends the engine temperature in °C (Suzuki's
 own app receives it but never shows it). Zuki Nav shows it on the Ride tab as

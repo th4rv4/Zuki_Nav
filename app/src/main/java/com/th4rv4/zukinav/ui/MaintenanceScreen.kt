@@ -14,7 +14,7 @@ import com.th4rv4.zukinav.service.DashService
 import java.util.Locale
 
 /**
- * Maintenance: chain lube, service and the rider's own reminders, counted
+ * Maintenance: chain, service and the rider's own reminders, counted
  * from the dash's ODO and/or by months, with a phone notification when one
  * is close or due.
  */
@@ -76,7 +76,7 @@ class MaintenanceScreen(host: MainActivity) : Screen(host) {
 
     private fun card(r: Reminder, st: com.th4rv4.zukinav.maint.Status): View {
         val (fg, bg) = when {
-            !r.active -> Palette.MUTED to Palette.INSET
+            !r.active || !r.enabled -> Palette.MUTED to Palette.INSET
             st.due -> Palette.DANGER to Palette.DANGER_BG
             st.soon -> Palette.WARN to Palette.WARN_BG
             else -> Palette.OK to Palette.OK_BG
@@ -92,16 +92,50 @@ class MaintenanceScreen(host: MainActivity) : Screen(host) {
             addView(ui.vstack(2, ui.text(r.name, 15f, Palette.TEXT, Ui.Weight.MEDIUM), ui.text(describe(r), 12f, Palette.MUTED)),
                 LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = ui.dp(8) })
             addView(chip)
+            addView(onSwitch(r), LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                .apply { marginStart = ui.dp(6) })
         }
         val views = arrayListOf<View>(top)
-        if (r.active) views += bar(st.fraction, if (st.due || st.soon) fg else Palette.ACCENT)
-        views += ui.hstack(
-            8,
-            ui.button("Mark Done", Ui.Btn.SECONDARY, 40) { confirmDone(r) },
-            ui.button(if (r.active) "Edit" else "Set Interval", Ui.Btn.SECONDARY, 40) { ReminderSheet(host, r).show() },
-            weighted = true,
-        )
+        val edit = ui.button(if (r.active) "Edit" else "Set Interval", Ui.Btn.SECONDARY, 40) { ReminderSheet(host, r).show() }
+        if (r.enabled) {
+            if (r.active) views += bar(st.fraction, if (st.due || st.soon) fg else Palette.ACCENT)
+            views += ui.hstack(8, ui.button("Mark Done", Ui.Btn.SECONDARY, 40) { confirmDone(r) }, edit, weighted = true)
+        } else {
+            views += edit
+        }
         return ui.card(*views.toTypedArray(), gapDp = 10, padDp = 14)
+    }
+
+    private fun onSwitch(r: Reminder): View = android.widget.Switch(ui.ctx).apply {
+        isChecked = r.enabled
+        contentDescription = "Track ${r.name}"
+        thumbTintList = android.content.res.ColorStateList(
+            arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
+            intArrayOf(android.graphics.Color.WHITE, Palette.SWITCH_THUMB_OFF),
+        )
+        trackTintList = android.content.res.ColorStateList(
+            arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
+            intArrayOf(Palette.ACCENT, Palette.INPUT_BORDER),
+        )
+        setOnCheckedChangeListener { _, on ->
+            MaintStore.setEnabled(host, r.id, on)
+            if (!on) {
+                host.getSystemService(android.app.NotificationManager::class.java)
+                    .cancel(com.th4rv4.zukinav.maint.MaintNotifier.notifyId(r.id))
+            } else {
+                val odo = MaintStore.state(host).odoKm
+                val from = MaintStore.state(host).reminders.firstOrNull { it.id == r.id }?.lastKm
+                host.toast(
+                    when {
+                        from == null -> "${r.name} starts counting at the next ODO reading from the dash"
+                        from == odo -> "${r.name} counts from ${MaintBook.km(from)} km"
+                        else -> "${r.name} counts from your Last Done At, ${MaintBook.km(from)} km"
+                    },
+                )
+                // A Last Done At entered while off can already be close or due.
+                com.th4rv4.zukinav.maint.MaintNotifier.show(host, MaintStore.checkNow(host))
+            }
+        }
     }
 
     private fun describe(r: Reminder): String {
@@ -110,6 +144,7 @@ class MaintenanceScreen(host: MainActivity) : Screen(host) {
             r.everyMonths.takeIf { it > 0 }?.let { if (it == 1) "1 month" else "$it months" },
         )
         if (every.isEmpty()) return "No interval set yet"
+        if (!r.enabled) return "Every ${every.joinToString(" or ")}\nOff. Turn on to start counting from now"
         val last = r.lastKm?.let { " · last at ${MaintBook.km(it)}" }.orEmpty()
         return "Every ${every.joinToString(" or ")}$last"
     }
@@ -142,10 +177,10 @@ class ReminderSheet(private val host: MainActivity, private val reminder: Remind
 
     fun show() {
         val r = reminder
-        val name = field(r?.name ?: "", "Chain Clean & Lube", numeric = false)
+        val name = field(r?.name ?: "", "Air Filter", numeric = false)
         val km = field(r?.everyKm?.takeIf { it > 0 }?.toString() ?: "", "Off", numeric = true)
         val months = field(r?.everyMonths?.takeIf { it > 0 }?.toString() ?: "", "Off", numeric = true)
-        val last = field(r?.lastKm?.toString() ?: "", "Current ODO", numeric = true)
+        val last = field(r?.lastKm?.toString() ?: "", if (r != null && !r.enabled) "When turned on" else "Current ODO", numeric = true)
 
         val views = ArrayList<View>()
         views += ui.vstack(
@@ -187,7 +222,8 @@ class ReminderSheet(private val host: MainActivity, private val reminder: Remind
             return false
         }
         val r = reminder
-        val lastKm = typedLast ?: r?.lastKm ?: odo
+        // An off reminder only gets a start if one is typed; otherwise it starts when turned on.
+        val lastKm = if (r != null && !r.enabled) typedLast else typedLast ?: r?.lastKm ?: odo
         // A new start point (or a new reminder) restarts the month count too.
         val restart = r == null || typedLast != r.lastKm
         MaintStore.save(

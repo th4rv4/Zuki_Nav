@@ -20,6 +20,8 @@ data class Reminder(
     val stage: Int = 0,
     /** Snoozed until the ODO reaches this. */
     val snoozeUntilKm: Int? = null,
+    /** Off: not tracked at all. Turning it on starts counting from that moment. */
+    val enabled: Boolean = true,
 ) {
     /** Has an interval set, so it can come due. */
     val active: Boolean get() = everyKm > 0 || everyMonths > 0
@@ -56,8 +58,10 @@ object MaintBook {
     private const val DAY = 86_400_000L
 
     fun defaults(): List<Reminder> = listOf(
-        Reminder(CHAIN_ID, "Chain Clean & Lube", everyKm = 500),
-        Reminder(SERVICE_ID, "General Service"),
+        // Off until the rider turns them on, so they start counting from the
+        // right moment rather than from the day the app was installed.
+        Reminder(CHAIN_ID, "Chain Maintenance", everyKm = 500, enabled = false),
+        Reminder(SERVICE_ID, "General Service", enabled = false),
     )
 
     fun dueAt(r: Reminder): Long? {
@@ -70,6 +74,7 @@ object MaintBook {
     }
 
     fun status(r: Reminder, odoKm: Int?, now: Long, earlyKm: Int): Status {
+        if (!r.enabled) return Status(null, null, due = false, soon = false, soonByKm = false, fraction = 0f)
         val leftKm = if (r.everyKm > 0 && r.lastKm != null && odoKm != null) r.lastKm + r.everyKm - odoKm else null
         val dueAt = dueAt(r)
         val leftDays = dueAt?.let { Math.floorDiv(it - now, DAY).toInt() }
@@ -83,11 +88,11 @@ object MaintBook {
         return Status(leftKm, leftDays, due, soon, soonByKm, maxOf(kmFrac, timeFrac).coerceIn(0f, 1f))
     }
 
-    /** A new ODO reading: reminders that never had a start begin counting from here. */
+    /** A new ODO reading: reminders that are on but have no start yet begin counting from here. */
     fun onOdo(s: MaintState, odoKm: Int, now: Long): MaintState = s.copy(
         odoKm = odoKm,
         reminders = s.reminders.map { r ->
-            if (r.lastKm == null) r.copy(lastKm = odoKm, lastAt = r.lastAt ?: now) else r
+            if (r.enabled && r.lastKm == null) r.copy(lastKm = odoKm, lastAt = r.lastAt ?: now) else r
         },
     )
 
@@ -96,7 +101,7 @@ object MaintBook {
         val alerts = ArrayList<Alert>()
         val next = s.reminders.map { start ->
             var r = start
-            if (!r.active) return@map r
+            if (!r.active || !r.enabled) return@map r
             r.snoozeUntilKm?.let { until ->
                 if (s.odoKm == null || s.odoKm < until) return@map r
                 // Snooze over: remind again that it is due.
@@ -112,6 +117,14 @@ object MaintBook {
         return s.copy(reminders = next) to alerts
     }
 
+    /**
+     * On: counting starts now, from [odoKm] (or the next ODO reading), unless
+     * a Last Done At was entered while it was off. Off: forgets the count.
+     */
+    fun setEnabled(r: Reminder, on: Boolean, odoKm: Int?, now: Long): Reminder =
+        if (on) r.copy(enabled = true, lastKm = r.lastKm ?: odoKm, lastAt = r.lastAt ?: now, stage = 0, snoozeUntilKm = null)
+        else r.copy(enabled = false, lastKm = null, lastAt = null, stage = 0, snoozeUntilKm = null)
+
     /** Done at [odoKm] (or the last known ODO): counting starts again. */
     fun done(r: Reminder, odoKm: Int?, now: Long): Reminder =
         r.copy(lastKm = odoKm ?: r.lastKm, lastAt = now, stage = 0, snoozeUntilKm = null)
@@ -125,6 +138,7 @@ object MaintBook {
     /** Short state for the chip: "DUE IN 54 KM", "486 KM OVER", "DUE IN 5 DAYS", "2,514 KM". */
     fun chip(r: Reminder, st: Status): String = when {
         !r.active -> "SET INTERVAL"
+        !r.enabled -> "OFF"
         st.leftKm != null && st.leftKm <= 0 -> if (st.leftKm == 0) "DUE NOW" else "${km(-st.leftKm)} KM OVER"
         st.due -> "OVERDUE"
         st.soonByKm -> "DUE IN ${km(st.leftKm!!)} KM"

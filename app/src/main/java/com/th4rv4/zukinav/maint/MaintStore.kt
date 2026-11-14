@@ -55,9 +55,19 @@ object MaintStore {
 
     /** Adds or replaces a reminder. Changing it starts its notifications afresh. */
     fun save(ctx: Context, r: Reminder) = change(ctx) { s ->
-        val fixed = r.copy(stage = 0, snoozeUntilKm = null, lastAt = r.lastAt ?: System.currentTimeMillis())
+        val old = s.reminders.firstOrNull { it.id == r.id }
+        val on = old?.enabled ?: true
+        val fixed = r.copy(
+            enabled = on, stage = 0, snoozeUntilKm = null,
+            lastAt = if (r.lastKm == null && !on) null else r.lastAt ?: System.currentTimeMillis(),
+        )
         val list = if (s.reminders.any { it.id == r.id }) s.reminders.map { if (it.id == r.id) fixed else it } else s.reminders + fixed
         s.copy(reminders = list)
+    }
+
+    /** On starts counting from the current ODO; off stops tracking it. */
+    fun setEnabled(ctx: Context, id: Long, on: Boolean) = change(ctx) { s ->
+        s.copy(reminders = s.reminders.map { if (it.id == id) MaintBook.setEnabled(it, on, s.odoKm, System.currentTimeMillis()) else it })
     }
 
     fun delete(ctx: Context, id: Long) = change(ctx) { s -> s.copy(reminders = s.reminders.filter { it.id != id }) }
@@ -129,6 +139,7 @@ object MaintStore {
                     r.lastAt?.let { put("lastAt", it) }
                     put("stage", r.stage)
                     r.snoozeUntilKm?.let { put("snooze", it) }
+                    put("on", r.enabled)
                 })
             }
         })
@@ -138,16 +149,27 @@ object MaintStore {
         val arr = o.optJSONArray("reminders") ?: JSONArray()
         val list = (0 until arr.length()).map { i ->
             val r = arr.getJSONObject(i)
-            Reminder(
+            val rem = Reminder(
                 id = r.getLong("id"),
-                name = r.optString("name", "Reminder"),
+                // v1.5.0 called the chain reminder Chain Clean & Lube.
+                name = r.optString("name", "Reminder").let {
+                    if (it == "Chain Clean & Lube" && r.optLong("id") == MaintBook.CHAIN_ID) "Chain Maintenance" else it
+                },
                 everyKm = r.optInt("km", 0),
                 everyMonths = r.optInt("months", 0),
                 lastKm = if (r.has("lastKm")) r.getInt("lastKm") else null,
                 lastAt = if (r.has("lastAt")) r.getLong("lastAt") else null,
                 stage = r.optInt("stage", 0),
                 snoozeUntilKm = if (r.has("snooze")) r.getInt("snooze") else null,
+                enabled = r.optBoolean("on", true),
             )
+            // v1.5.0 had no on/off switch and started the built-in reminders
+            // counting from the day the app was installed: start them off instead.
+            if (!r.has("on") && (rem.id == MaintBook.CHAIN_ID || rem.id == MaintBook.SERVICE_ID)) {
+                MaintBook.setEnabled(rem, false, null, 0L)
+            } else {
+                rem
+            }
         }
         return MaintState(list, if (o.has("odo")) o.getInt("odo") else null)
     }
