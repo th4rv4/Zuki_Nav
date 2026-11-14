@@ -178,7 +178,7 @@ and a route starting mid-animation or mid-greeting takes over at once.
   greeting), **Calls** (dash alerts and Reject Unknown Callers),
   **Messages**, **Appearance**, **Connect
   Automatically** (a switch: reconnect on ignition and after the phone
-  restarts), **Backup & Restore**, **Updates**, **Troubleshooting** (Dash Test, what is being sent
+  restarts), **Wake On Ignition**, **Backup & Restore**, **Updates**, **Troubleshooting** (Dash Test, what is being sent
   to the dash, traffic side, Reload Maps Arrows and the log) and **About &
   Support**. Trip, fuel, engine and maintenance settings sit at the bottom of
   the Trips tab and each part of the Bike tab.
@@ -193,6 +193,15 @@ model and can be changed under Fuel Settings on the Fuel tab. It is worked out f
 and the ODO rather than a fuel sensor, so the first tank is an estimate and
 range only learns while the app is connected: keep the phone connected on
 long rides for the best numbers.
+
+**Battery while parked**: after the bike goes off, Zuki Nav reconnects
+quickly for 5 minutes, then waits quietly with a quick check every 2
+minutes, and after an hour only uses Android's low-power wait. On Android 12
+and newer, **Wake On Ignition** (Settings, set up once with the ignition on)
+registers the bike with Android, so the phone's own Bluetooth watches for it:
+Zuki Nav then stops completely while the bike is parked and Android wakes it
+when the ignition comes on. Bluetooth has to stay on. Opening the app always
+connects straight away.
 
 **Backup & Restore** (Settings) saves everything Zuki Nav keeps, trips and
 routes, fuel, reminders, your avatar and all settings including the saved

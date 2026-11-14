@@ -24,6 +24,11 @@
 
     <!-- Checking GitHub for new releases and installing them. -->
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Wake On Ignition: Android watches for the bike and wakes the app. -->
+    <uses-permission android:name="android.permission.REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE" />
+    <uses-permission android:name="android.permission.REQUEST_COMPANION_START_FOREGROUND_SERVICES_FROM_BACKGROUND" />
+    <uses-feature android:name="android.software.companion_device_setup" android:required="false" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Lets the app read Google Maps' drawables to build its arrow templates. -->
@@ -66,6 +71,15 @@
         <receiver
             android:name=".update.InstallReceiver"
             android:exported="false" />
+
+        <service
+            android:name=".service.BikePresenceService"
+            android:exported="true"
+            android:permission="android.permission.BIND_COMPANION_DEVICE_SERVICE">
+            <intent-filter>
+                <action android:name="android.companion.CompanionDeviceService" />
+            </intent-filter>
+        </service>
 
         <provider
             android:name=".ui.ShareFileProvider"

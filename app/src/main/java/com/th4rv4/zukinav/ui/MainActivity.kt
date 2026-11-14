@@ -641,6 +641,13 @@ class MainActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_WAKE) {
+            val cb = wakeCallback
+            wakeCallback = null
+            val ok = resultCode == RESULT_OK && com.th4rv4.zukinav.service.Wake.startWatching(this)
+            cb?.invoke(ok)
+            return
+        }
         if (requestCode == REQ_BACKUP_CREATE || requestCode == REQ_BACKUP_OPEN) {
             val cb = fileCallback
             fileCallback = null
@@ -665,6 +672,18 @@ class MainActivity : Activity() {
     fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
 
     private var fileCallback: ((android.net.Uri?) -> Unit)? = null
+    private var wakeCallback: ((Boolean) -> Unit)? = null
+
+    /** Wake On Ignition: Android's one-time prompt to register the bike. */
+    fun setUpWake(onDone: (Boolean) -> Unit) {
+        wakeCallback = onDone
+        com.th4rv4.zukinav.service.Wake.setUp(this, REQ_WAKE) { ok ->
+            if (!ok) {
+                wakeCallback = null
+                onDone(false)
+            }
+        }
+    }
 
     /** Android's folder picker, for where backups go. */
     fun chooseBackupFolder(onPicked: (android.net.Uri?) -> Unit) {
@@ -713,6 +732,7 @@ class MainActivity : Activity() {
         private const val REQ_AVATAR = 4
         private const val REQ_BACKUP_CREATE = 5
         private const val REQ_BACKUP_OPEN = 6
+        private const val REQ_WAKE = 7
     }
 }
 

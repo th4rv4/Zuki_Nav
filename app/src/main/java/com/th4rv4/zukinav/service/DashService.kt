@@ -82,6 +82,7 @@ class DashService : Service(), ClusterLink.Listener {
     /** In battery-saving mode, alternate a quick direct try with a quiet wait. */
     private var directTurn = true
     private var slowLogged = false
+    private var deepLogged = false
     private var lastConnectWasBackground = false
     private var lastNavHex: String? = null
     private var statusLogged = false
@@ -183,6 +184,7 @@ class DashService : Service(), ClusterLink.Listener {
         retries = 0
         lostAt = System.currentTimeMillis()
         slowLogged = false
+        deepLogged = false
         directTurn = true
         AppLog.d("Dash", "Bluetooth back on, reconnecting")
         // Give the Bluetooth stack a moment to settle.
@@ -210,11 +212,24 @@ class DashService : Service(), ClusterLink.Listener {
         // direct try every couple of minutes (the background connect alone
         // can take minutes to notice the bike).
         val slow = isSaving()
+        // Wake On Ignition: Android watches for the bike, so stop until it does.
+        if (slow && prefs.autoConnect && Wake.isSetUp(this)) {
+            AppLog.d("Dash", "No bike for ${FAST_WINDOW_MS / 60_000} min, sleeping until Android sees it again")
+            link.disconnect()
+            stopSelf()
+            return
+        }
+        // Deep sleep: after an hour parked, only Android's low-power wait.
+        val deep = lostAt > 0 && System.currentTimeMillis() - lostAt > DEEP_SLEEP_MS
         if (slow && !slowLogged) {
             AppLog.d("Dash", "No bike for ${FAST_WINDOW_MS / 60_000} min, saving battery: waiting quietly, quick check every 2 min")
             slowLogged = true
         }
-        val background = slow && !directTurn
+        if (deep && !deepLogged) {
+            AppLog.d("Dash", "No bike for ${DEEP_SLEEP_MS / 60_000} min, deep sleep: low-power wait only")
+            deepLogged = true
+        }
+        val background = slow && (deep || !directTurn)
         if (slow) directTurn = !directTurn
         lastConnectWasBackground = background
         link.connect(addr, background = background)
@@ -234,6 +249,7 @@ class DashService : Service(), ClusterLink.Listener {
                     retries = 0
                     lostAt = 0
                     slowLogged = false
+                    deepLogged = false
                     directTurn = true
                     lastNavHex = null
                     statusLogged = false
@@ -636,6 +652,8 @@ class DashService : Service(), ClusterLink.Listener {
         private const val FAST_WINDOW_MS = 5 * 60_000L
         /** Then a quiet background wait of this long between quick direct tries. */
         private const val SLOW_WAIT_MS = 2 * 60_000L
+        /** After this long parked, no more quick direct tries. */
+        private const val DEEP_SLEEP_MS = 60 * 60_000L
         private const val CLEAR_REPEATS = 3
 
         /** Compass arrows clockwise from north: one turn of the spinning arrow. */

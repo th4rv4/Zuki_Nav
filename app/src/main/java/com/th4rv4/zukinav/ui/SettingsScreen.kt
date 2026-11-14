@@ -24,6 +24,9 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
     private val riderName = ui.text("", 16f, Palette.TEXT, Ui.Weight.MEDIUM)
     private val riderDetail = ui.text("", 12f, Palette.MUTED)
     private val summaries = HashMap<String, TextView>()
+    private var wakeRow: View? = null
+    private val wakeSummary = ui.text("", 12f, Palette.MUTED)
+    private val wakeAction = ui.text("", 12f, Palette.ON_ACCENT, Ui.Weight.BOLD)
 
     override val view: View
 
@@ -41,6 +44,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             setOnClickListener { host.showSettingsPage(PAGE_RIDER) }
         }
 
+        wakeRow = if (com.th4rv4.zukinav.service.Wake.supported(host)) wakeRow() else null
         val connect = ui.switchRow(
             "Connect Automatically", "On ignition and after the phone restarts",
             prefs.autoConnect,
@@ -61,6 +65,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             ui.listCard(
                 menuRow(PAGE_APPEARANCE, R.drawable.ic_sec_palette, "Appearance"),
                 connect,
+                *listOfNotNull(wakeRow).toTypedArray(),
                 menuRow(PAGE_BACKUP, R.drawable.ic_set_backup, "Backup & Restore"),
                 menuRow(PAGE_UPDATES, R.drawable.ic_sec_download, "Updates"),
             ),
@@ -74,6 +79,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
     }
 
     override fun onShow() {
+        if (wakeRow != null) showWake()
         avatar.show(prefs.avatar, prefs.riderName)
         riderName.text = prefs.riderName.ifBlank { "Rider" }
         val bike = prefs.clusterName
@@ -92,6 +98,74 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         summaries[PAGE_UPDATES]?.text = "Installed v${host.versionName()}"
         summaries[PAGE_BACKUP]?.text = if (prefs.backupLastAt > 0) "Last backup " + whenText(prefs.backupLastAt) else "No backup yet"
         summaries[PAGE_TROUBLESHOOTING]?.text = "Dash Test, arrows, logs"
+    }
+
+    /** Wake On Ignition: Set Up, or On with a tap to turn it off. */
+    private fun wakeRow(): View = LinearLayout(ui.ctx).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        minimumHeight = ui.dp(60)
+        setPadding(0, ui.dp(8), 0, ui.dp(8))
+        isClickable = true
+        isFocusable = true
+        background = android.graphics.drawable.RippleDrawable(
+            android.content.res.ColorStateList.valueOf(Palette.RIPPLE), null, ui.rounded(android.graphics.Color.WHITE, 8),
+        )
+        addView(icon(R.drawable.ic_set_wake), iconParams())
+        addView(
+            ui.vstack(2, ui.text("Wake On Ignition", 15f, Palette.TEXT, Ui.Weight.MEDIUM), wakeSummary),
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f),
+        )
+        addView(wakeAction)
+        setOnClickListener { onWakeTap() }
+    }
+
+    private fun showWake() {
+        val on = com.th4rv4.zukinav.service.Wake.isSetUp(host)
+        wakeSummary.text = if (on) "On · the app sleeps while the bike is parked" else "Saves battery while the bike is parked"
+        wakeSummary.setTextColor(if (on) Palette.OK else Palette.MUTED)
+        wakeAction.text = if (on) "›" else "Set Up"
+        wakeAction.textSize = if (on) 20f else 12f
+        wakeAction.setTextColor(if (on) Palette.MUTED else Palette.ON_ACCENT)
+        wakeAction.background = if (on) null else ui.accentGradient(9)
+        wakeAction.setPadding(if (on) 0 else ui.dp(10), ui.dp(5), if (on) 0 else ui.dp(10), ui.dp(5))
+    }
+
+    private fun onWakeTap() {
+        val wake = com.th4rv4.zukinav.service.Wake
+        if (wake.isSetUp(host)) {
+            android.app.AlertDialog.Builder(host, host.dialogTheme)
+                .setTitle("Wake On Ignition")
+                .setMessage(
+                    "While the bike is parked, Zuki Nav stops completely. Android watches for your bike with the phone's own " +
+                        "Bluetooth and wakes Zuki Nav when the ignition comes on. Bluetooth has to stay on for this.",
+                )
+                .setPositiveButton("OK", null)
+                .setNegativeButton("Turn Off") { _, _ ->
+                    wake.turnOff(host)
+                    showWake()
+                }
+                .show()
+            return
+        }
+        if (prefs.clusterAddress == null) {
+            host.toast("Set up your bike first")
+            return
+        }
+        android.app.AlertDialog.Builder(host, host.dialogTheme)
+            .setTitle("Turn The Ignition On")
+            .setMessage(
+                "Android needs to see your bike once. Turn the ignition on, then tap Continue and allow Zuki Nav to " +
+                    "access it. After that, Zuki Nav sleeps while the bike is parked and wakes when you turn it on.",
+            )
+            .setPositiveButton("Continue") { _, _ ->
+                host.setUpWake { ok ->
+                    showWake()
+                    host.toast(if (ok) "Wake On Ignition is on" else "Couldn't set it up. Is the ignition on?")
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     /** One menu row: icon, title, a short summary of what's set, and ›. */
