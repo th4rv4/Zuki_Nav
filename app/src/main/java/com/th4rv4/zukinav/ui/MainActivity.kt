@@ -676,13 +676,22 @@ class MainActivity : Activity() {
 
     /** Wake On Ignition: Android's one-time prompt to register the bike. */
     fun setUpWake(onDone: (Boolean) -> Unit) {
-        wakeCallback = onDone
-        com.th4rv4.zukinav.service.Wake.setUp(this, REQ_WAKE) { ok ->
-            if (!ok) {
-                wakeCallback = null
-                onDone(false)
-            }
+        val service = com.th4rv4.zukinav.service.DashService
+        // While connected the dash stops advertising and Android can't list it.
+        service.holdForSetup(true)
+        val finish: (Boolean) -> Unit = { ok ->
+            service.holdForSetup(false)
+            onDone(ok)
         }
+        wakeCallback = finish
+        content.postDelayed({
+            com.th4rv4.zukinav.service.Wake.setUp(this, REQ_WAKE) { ok ->
+                if (!ok) {
+                    wakeCallback = null
+                    finish(false)
+                }
+            }
+        }, 2_500)
     }
 
     /** Android's folder picker, for where backups go. */

@@ -155,8 +155,9 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         android.app.AlertDialog.Builder(host, host.dialogTheme)
             .setTitle("Turn The Ignition On")
             .setMessage(
-                "Android needs to see your bike once. Turn the ignition on, then tap Continue and allow Zuki Nav to " +
-                    "access it. After that, Zuki Nav sleeps while the bike is parked and wakes when you turn it on.",
+                "Android needs to see your bike once. Turn the ignition on and tap Continue: Zuki Nav lets go of the dash " +
+                    "for a moment so Android can find it, then shows your bike in a list. Pick it and allow access. " +
+                    "After that, Zuki Nav sleeps while the bike is parked and wakes when you turn it on.",
             )
             .setPositiveButton("Continue") { _, _ ->
                 host.setUpWake { ok ->

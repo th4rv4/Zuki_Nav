@@ -53,13 +53,25 @@ object Wake {
      */
     @Suppress("DEPRECATION")
     fun setUp(activity: Activity, requestCode: Int, onDone: (Boolean) -> Unit) {
-        val addr = Prefs(activity).clusterAddress
+        val prefs = Prefs(activity)
+        val addr = prefs.clusterAddress
         val m = cdm(activity)
         if (addr == null || m == null || Build.VERSION.SDK_INT < 31) { onDone(false); return }
-        val filter = BluetoothLeDeviceFilter.Builder()
-            .setScanFilter(ScanFilter.Builder().setDeviceAddress(addr.uppercase()).build())
-            .build()
-        val request = AssociationRequest.Builder().addDeviceFilter(filter).setSingleDevice(true).build()
+        // By address, and by the dash's name in case it advertises a different address.
+        val builder = AssociationRequest.Builder()
+            .addDeviceFilter(
+                BluetoothLeDeviceFilter.Builder()
+                    .setScanFilter(ScanFilter.Builder().setDeviceAddress(addr.uppercase()).build())
+                    .build(),
+            )
+        prefs.clusterName?.takeIf { it.isNotBlank() }?.let { name ->
+            builder.addDeviceFilter(
+                BluetoothLeDeviceFilter.Builder()
+                    .setNamePattern(java.util.regex.Pattern.compile(java.util.regex.Pattern.quote(name)))
+                    .build(),
+            )
+        }
+        val request = builder.build()
         val callback = object : CompanionDeviceManager.Callback() {
             override fun onAssociationPending(sender: IntentSender) = show(sender)
 

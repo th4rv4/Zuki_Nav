@@ -60,6 +60,27 @@ class RideScreen(host: MainActivity) : Screen(host) {
         setOnClickListener { host.showFuel() }
     }
 
+    private val bondedCard = ui.card(
+        ui.text("Bike Paired In Android Settings", 14f, Palette.WARN, Ui.Weight.BOLD),
+        ui.text(
+            "The dash won't let Zuki Nav connect while the bike is paired in your phone's Bluetooth settings. " +
+                "Tap here, open the bike there and tap Forget (or Unpair).",
+            12f, Palette.TEXT_SOFT,
+        ),
+        gapDp = 2,
+        padDp = 14,
+    ).apply {
+        background = ui.pressable(Palette.WARN_BG, 20, Palette.WARN_BORDER)
+        isClickable = true
+        isFocusable = true
+        setOnClickListener {
+            try {
+                host.startActivity(android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS))
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     override val view: View
 
     init {
@@ -98,7 +119,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
         }
 
 
-        view = host.page(header, engineHotCard, lowRangeCard, panel.view, panel.chips, rideCard, linkButton)
+        view = host.page(header, bondedCard, engineHotCard, lowRangeCard, panel.view, panel.chips, rideCard, linkButton)
     }
 
     override fun onShow() {
@@ -151,6 +172,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
         val engine = live?.engineTempC
         val hot = engine != null && EngineState.of(engine, prefs.engineWarmC, prefs.engineHotC) == EngineState.HOT
         engineHotCard.visibility = if (hot) View.VISIBLE else View.GONE
+        bondedCard.visibility = if (DashService.isBikeBonded(host)) View.VISIBLE else View.GONE
         engineHotTitle.text = "Engine Hot · ${engine ?: 0} °C"
         val low = prefs.lowRangeKm
         lowRangeCard.visibility = if (range != null && low > 0 && range.km < low) View.VISIBLE else View.GONE

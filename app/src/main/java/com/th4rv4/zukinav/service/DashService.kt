@@ -193,9 +193,18 @@ class DashService : Service(), ClusterLink.Listener {
         notifyState()
     }
 
+    /** True while Wake On Ignition is being set up: the dash only shows up in Android's list when nothing is connected to it. */
+    private var setupHold = false
+    private val releaseHold = Runnable { holdForSetup(false) }
+    private var bondLogged = false
+
     private fun connectIfNeeded() {
         if (link.state != ClusterLink.State.DISCONNECTED) return
-        if (bluetoothOff) return
+        if (bluetoothOff || setupHold) return
+        if (isBikeBonded(this) && !bondLogged) {
+            AppLog.d("Dash", "The bike is paired in Android's Bluetooth settings; the dash refuses the app while it is. Forget it there.")
+            bondLogged = true
+        }
         val addr = prefs.clusterAddress
         if (addr == null) {
             AppLog.d("Dash", "No cluster chosen yet")
@@ -740,6 +749,44 @@ class DashService : Service(), ClusterLink.Listener {
 
         fun stop(ctx: Context) {
             ctx.startService(Intent(ctx, DashService::class.java).setAction(ACTION_STOP))
+        }
+
+        /**
+         * Wake On Ignition setup: let go of the dash so it advertises and
+         * Android can find it, then reconnect when [hold] is false again.
+         */
+        fun holdForSetup(hold: Boolean) {
+            val s = instance ?: return
+            s.main.post {
+                s.setupHold = hold
+                s.main.removeCallbacks(s.releaseHold)
+                if (hold) {
+                    AppLog.d("Wake", "Letting go of the dash so Android can find it")
+                    s.main.removeCallbacks(s.connectTimeout)
+                    s.link.disconnect()
+                    // Never stay let go for long, whatever happens to the setup.
+                    s.main.postDelayed(s.releaseHold, 2 * 60_000L)
+                } else {
+                    s.retries = 0
+                    s.lostAt = System.currentTimeMillis()
+                    s.connectIfNeeded()
+                }
+            }
+        }
+
+        /**
+         * True if the bike is paired in Android's Bluetooth settings. The dash
+         * then refuses Zuki Nav's connection, so the app asks to forget it.
+         */
+        fun isBikeBonded(ctx: Context): Boolean {
+            if (!hasConnectPermission(ctx)) return false
+            val addr = Prefs(ctx).clusterAddress ?: return false
+            return try {
+                val adapter = (ctx.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)?.adapter ?: return false
+                adapter.bondedDevices?.any { it.address.equals(addr, ignoreCase = true) } == true
+            } catch (e: SecurityException) {
+                false
+            }
         }
 
         /** Shows a call or message alert on the dash, if it is connected. */
