@@ -403,9 +403,25 @@ class Ui(val ctx: Context) {
         }
     }
 
+    /** "ⓘ How Accurate Is This?": one quiet line that opens the full explanation. */
+    fun infoNote(label: String, onClick: () -> Unit): LinearLayout = LinearLayout(ctx).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(4), dp(6), dp(4), dp(6))
+        isClickable = true
+        isFocusable = true
+        contentDescription = label
+        addView(text("ⓘ", 15f, Palette.ACCENT_SOFT), LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+        ).apply { marginEnd = dp(8) })
+        addView(text(label, 13f, Palette.ACCENT_SOFT, Weight.MEDIUM))
+        setOnClickListener { onClick() }
+    }
+
     /** Segmented control; [onPick] gets the index of the chosen option. */
     /** [fill]: the options share the full width equally, for a control on its own line. */
-    fun segmented(labels: List<String>, selected: Int, padDp: Int = 14, fill: Boolean = false, onPick: (Int) -> Unit): LinearLayout {
+    /** [stay]: false keeps the highlight where it was, for a switcher that opens another page. */
+    fun segmented(labels: List<String>, selected: Int, padDp: Int = 14, fill: Boolean = false, stay: Boolean = true, onPick: (Int) -> Unit): LinearLayout {
         val box = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             background = rounded(Palette.INSET, 12, Palette.INPUT_BORDER)
@@ -428,7 +444,7 @@ class Ui(val ctx: Context) {
             }
         }
         buttons.forEachIndexed { i, b ->
-            b.setOnClickListener { paint(i); onPick(i) }
+            b.setOnClickListener { if (stay) paint(i); onPick(i) }
             if (fill) {
                 box.addView(b, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             } else {

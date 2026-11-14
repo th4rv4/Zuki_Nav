@@ -32,8 +32,6 @@ class RideScreen(host: MainActivity) : Screen(host) {
     private val rideTop = ui.text("", 13f, Palette.MUTED)
     private val rideCard: LinearLayout
 
-    private val sendingValue = ui.text("", 13f, Palette.MUTED)
-    private val sourceValue = ui.text("", 13f, Palette.TEXT_SOFT)
     private val avatar = AvatarView(host.ui.ctx)
     private val linkButton: Button = ui.button("Connect") { toggleLink() }
 
@@ -99,12 +97,8 @@ class RideScreen(host: MainActivity) : Screen(host) {
             setOnClickListener { host.showTab(MainActivity.Tab.TRIPS) }
         }
 
-        val statusCard = ui.listCard(
-            ui.row("Sending To Dash", trailing = sendingValue),
-            ui.row("Arrow Source", trailing = sourceValue),
-        )
 
-        view = host.page(header, engineHotCard, lowRangeCard, panel.view, panel.chips, rideCard, statusCard, linkButton)
+        view = host.page(header, engineHotCard, lowRangeCard, panel.view, panel.chips, rideCard, linkButton)
     }
 
     override fun onShow() {
@@ -174,20 +168,6 @@ class RideScreen(host: MainActivity) : Screen(host) {
                 else -> "Pair your bike in Settings to get started."
             },
         )
-
-        sendingValue.text = when {
-            state != ClusterLink.State.READY -> "Not Connected"
-            nav != null -> "Every 200 ms"
-            else -> "Clock Only"
-        }
-        sendingValue.setTextColor(if (state == ClusterLink.State.READY) Palette.OK else Palette.MUTED)
-        sourceValue.text = when (nav?.iconSource) {
-            "maps-icon" -> "Maps Arrow"
-            "text" -> "Instruction Text"
-            "previous" -> "Previous Turn"
-            null -> "-"
-            else -> "None"
-        }
 
         val ride = if (prefs.recordTrips) TripLog.active(host) else null
         rideCard.visibility = if (ride == null) View.GONE else View.VISIBLE

@@ -146,9 +146,9 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
         val back = ui.text("‹", 30f, Palette.TEXT).apply {
             isClickable = true
             isFocusable = true
-            contentDescription = "Back to Settings"
+            contentDescription = "Back to Troubleshooting"
             setPadding(ui.dp(4), 0, ui.dp(14), ui.dp(4))
-            setOnClickListener { host.showTab(MainActivity.Tab.SETTINGS) }
+            setOnClickListener { host.showSettingsPage(SettingsScreen.PAGE_TROUBLESHOOTING) }
         }
         val header = LinearLayout(ui.ctx).apply {
             orientation = LinearLayout.HORIZONTAL

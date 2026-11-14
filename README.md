@@ -149,34 +149,38 @@ This approach, and the Maps notification layouts, follow
   with the next turn (its arrow ringed by the distance to the turn, which
   empties over the last 500 m, like the dash's own bar), a speedometer,
   fuel or battery cells, engine temperature, and ETA with distance left; then ODO and Trip A/B,
-  the ride in progress, what is being sent to the dash, and a
-  Connect/Disconnect button. When the bike is off, the numbers are the last
+  the ride in progress, and a Connect/Disconnect button. When the bike is off, the numbers are the last
   readings and the screen says when they were synced.
 - **Trips**: this month's distance, rides and riding time, then saved rides
   grouped by day, with a Starred filter and a route preview. Each ride opens
   its details and route map. Trip Settings (Record Trips, Skip Short Rides,
   Start And End Places, Record Route) are at the bottom.
-- **Thermals**: the live engine temperature on a cold-to-hot gauge, a Temp
-  Monitor graph of the last 30 minutes with your limits drawn in, the ride's
-  highest and average temperature and time above Hot, the hottest point of
-  recent trips, and Thermal Settings (see Engine temperature below).
-- **Service**: maintenance reminders (see Maintenance below).
+- **Bike**: Fuel, Thermals and Service, picked with a switcher at the top.
+  - **Fuel**: range, mileage and refills (see Fuel below).
+  - **Thermals**: the live engine temperature on a cold-to-hot gauge, a Temp
+    Monitor graph of the last 30 minutes with your limits drawn in, the ride's
+    highest and average temperature and time above Hot, the hottest point of
+    recent trips, and Thermal Settings (see Engine temperature below).
+  - **Service**: maintenance reminders (see Maintenance below).
 - **Dash Test** (Settings > Troubleshooting): show any turn icon on the dash, mark it **Looks Right** or
   **Looks Wrong** (the next icon follows automatically), see progress for
   all 64 icons, and **Share Results**. **Text Test** sends your own text
   into the number spots under the arrow. Tests only run while Google Maps
   isn't navigating.
 
-Optional extras in Settings: **Startup Animation** spins the compass arrow
+Optional extras in Settings > Dash: **Startup Animation** spins the compass arrow
 on the dash after "Welcome", and **Startup Greeting** shows a short text on the
 dash's call screen for 3, 5, 10 or 15 seconds (Shown For). The dash always puts its own
 "CALLER:" label above it; no other screen can show text. Both are skipped when a route is already running,
 and a route starting mid-animation or mid-greeting takes over at once.
-- **Settings**, in groups: Your Bike (Change Bike, rider name), Welcome
-  (startup animation and greeting), Riding (speed alert, traffic side),
-  Calls, Messages, Appearance, Connection, Updates and Troubleshooting
-  (with Dash Test). Trip, fuel, engine and maintenance settings sit at the
-  bottom of the Trips, Fuel, Thermals and Service tabs.
+- **Settings**: a short menu. The rider card at the top opens your name and
+  bike (Change Bike). Then **Dash** (speed alert, startup animation and
+  greeting), **Calls**, **Messages**, **Appearance**, **Connect
+  Automatically** (a switch: reconnect on ignition and after the phone
+  restarts), **Updates**, **Troubleshooting** (Dash Test, what is being sent
+  to the dash, traffic side, Reload Maps Arrows and the log) and **About &
+  Support**. Trip, fuel, engine and maintenance settings sit at the bottom of
+  the Trips tab and each part of the Bike tab.
 
 **Fuel**: Zuki Nav notices a refill when the fuel bars go up and asks (in
 a notification) for the litres and the amount paid; both are optional.
@@ -302,7 +306,7 @@ made your trips better, you can support its development with a UPI tip:
 
 Paste it into GPay, PhonePe, Paytm or any UPI app, or use **Pay With UPI**
 on the [website](https://th4rv4.github.io/Zuki_Nav/#support) or in the
-app (Settings > Updates > About & Support) from your phone. Stars, bug reports and test results from other models help just as
+app (Settings > About & Support) from your phone. Stars, bug reports and test results from other models help just as
 much.
 
 ## License

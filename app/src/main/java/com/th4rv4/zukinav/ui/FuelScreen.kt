@@ -67,7 +67,7 @@ class FuelScreen(host: MainActivity) : Screen(host) {
     override val view: View
 
     init {
-        val header = ui.vstack(2, ui.title("Fuel"), subtitle).apply { setPadding(ui.dp(4), 0, 0, 0) }
+        val header = host.bikeHeader(MainActivity.BIKE_FUEL, subtitle)
         val hero = ui.card(cap("Range Left").apply { gravity = Gravity.CENTER }, rangeText, rangeNote, gapDp = 4, padDp = 18)
         val stats = ui.hstack(
             8,
@@ -105,12 +105,7 @@ class FuelScreen(host: MainActivity) : Screen(host) {
             ui.text("Learned while the app is connected. \"--\" is still the estimate from the tank size; Bar 1 is the reserve.", 11f, Palette.MUTED),
             gapDp = 10,
         )
-        val note = ui.card(
-            ui.text("How Accurate Is This?", 14f, Palette.WARN, Ui.Weight.MEDIUM),
-            ui.text(ACCURACY_NOTE, 12f, Palette.TEXT_SOFT),
-            gapDp = 6,
-            padDp = 14,
-        ).apply { background = ui.rounded(Palette.WARN_BG, 20, Palette.WARN_BORDER) }
+        val note = ui.infoNote("How Accurate Is This?") { host.showInfo("How Accurate Is This?", ACCURACY_NOTE) }
 
         refillCard = ui.listCard(refillList)
         view = host.page(

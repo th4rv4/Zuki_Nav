@@ -78,19 +78,20 @@ class ThermalsScreen(host: MainActivity) : Screen(host) {
         tripBars.onPick = { i -> barTrips.getOrNull(i)?.let { host.showTrip(it.id) } }
 
         view = host.page(
-            ui.vstack(2, ui.title("Thermals"), ui.text("Engine temperature from the dash", 13f, Palette.MUTED))
-                .apply { setPadding(ui.dp(4), 0, 0, 0) },
+            host.bikeHeader(MainActivity.BIKE_THERMALS, ui.text("Engine temperature from the dash", 13f, Palette.MUTED)),
             noReading,
             gaugeCard,
             monitor,
             tripsCard,
             ui.sectionHeader(R.drawable.ic_engine_temp, "Thermal Settings"),
             settingsCard(),
-            ui.text(
-                "Dash alerts appear on the dash's call screen for the time you pick, then close by themselves. " +
-                    "Warmed Up is skipped during a route; Engine Overheat still shows, for 5 s at most so the arrows aren't hidden for long.",
-                12f, Palette.MUTED,
-            ).apply { setPadding(ui.dp(4), 0, ui.dp(4), 0) },
+            ui.infoNote("How Dash Alerts Work") {
+                host.showInfo(
+                    "Dash Alerts",
+                    "Dash alerts appear on the dash's call screen for the time you pick, then close by themselves. " +
+                        "Warmed Up is skipped during a route. Engine Overheat still shows, for 5 s at most, so the arrows aren't hidden for long.",
+                )
+            },
         )
     }
 

@@ -54,9 +54,7 @@ class MainActivity : Activity() {
     enum class Tab(val label: String, val icon: Int) {
         RIDE("Ride", R.drawable.ic_tab_ride),
         TRIPS("Trips", R.drawable.ic_tab_trips),
-        FUEL("Fuel", R.drawable.ic_fuel),
-        THERMALS("Thermals", R.drawable.ic_engine_temp),
-        MAINTENANCE("Service", R.drawable.ic_sec_wrench),
+        BIKE("Bike", R.drawable.ic_sec_bike),
         SETTINGS("Settings", R.drawable.ic_tab_settings),
     }
 
@@ -100,7 +98,7 @@ class MainActivity : Activity() {
     private fun openMaintenanceFrom(intent: Intent?) {
         if (intent?.getBooleanExtra(EXTRA_MAINTENANCE, false) != true) return
         intent.removeExtra(EXTRA_MAINTENANCE)
-        if (setupComplete()) showTab(Tab.MAINTENANCE)
+        if (setupComplete()) showBikeSection(BIKE_SERVICE)
     }
 
     /** From the "Refuelled?" notification: opens that refill's form. */
@@ -296,7 +294,8 @@ class MainActivity : Activity() {
     @Deprecated("Back from Setup returns to the tabs")
     override fun onBackPressed() {
         if (current is TripDetailScreen) showTab(Tab.TRIPS)
-        else if (current is AboutScreen || current is DashTestScreen) showTab(Tab.SETTINGS)
+        else if (current is DashTestScreen) showSettingsPage(SettingsScreen.PAGE_TROUBLESHOOTING)
+        else if (current is AboutScreen || current is SettingsPage) showTab(Tab.SETTINGS)
         else if (current is SetupScreen && setupComplete()) showTab(Tab.RIDE) else {
             @Suppress("DEPRECATION")
             super.onBackPressed()
@@ -393,9 +392,11 @@ class MainActivity : Activity() {
             when (tab) {
                 Tab.RIDE -> screen("ride") { RideScreen(this) }
                 Tab.TRIPS -> screen("trips") { TripsScreen(this) }
-                Tab.FUEL -> screen("fuel") { FuelScreen(this) }
-                Tab.THERMALS -> screen("thermals") { ThermalsScreen(this) }
-                Tab.MAINTENANCE -> screen("maintenance") { MaintenanceScreen(this) }
+                Tab.BIKE -> when (bikeSection) {
+                    BIKE_THERMALS -> screen("thermals") { ThermalsScreen(this) }
+                    BIKE_SERVICE -> screen("maintenance") { MaintenanceScreen(this) }
+                    else -> screen("fuel") { FuelScreen(this) }
+                }
                 Tab.SETTINGS -> screen("settings") { SettingsScreen(this) }
             },
         )
@@ -404,11 +405,44 @@ class MainActivity : Activity() {
     /** Opens Dash Test from Settings > Troubleshooting, with the Settings tab still selected. */
     fun showDashTest() = swapTo(screen("dash") { DashTestScreen(this) })
 
+    /** Which part of the Bike tab is open: Fuel, Thermals or Service. */
+    private var bikeSection = BIKE_FUEL
+
+    /** Opens the Bike tab on Fuel, Thermals or Service. */
+    fun showBikeSection(section: Int) {
+        bikeSection = section
+        showTab(Tab.BIKE)
+    }
+
+    /** "Bike" and the Fuel / Thermals / Service switcher, at the top of each of the three. */
+    fun bikeHeader(section: Int, subtitle: View? = null): View {
+        val switcher = ui.segmented(listOf("Fuel", "Thermals", "Service"), section, fill = true, stay = false) { i ->
+            if (i != bikeSection) showBikeSection(i)
+        }
+        return ui.vstack(
+            10,
+            ui.title("Bike").apply { setPadding(ui.dp(4), 0, 0, 0) },
+            switcher,
+            *listOfNotNull(subtitle?.apply { setPadding(ui.dp(4), 0, ui.dp(4), 0) }).toTypedArray(),
+        )
+    }
+
+    /** Opens one page of Settings (Dash, Calls, Messages...), with the Settings tab still selected. */
+    fun showSettingsPage(key: String) {
+        val settings = screen("settings") { SettingsScreen(this) } as SettingsScreen
+        swapTo(screen("settings:$key") { settings.makePage(key) })
+    }
+
+    /** A titled explanation, for the ⓘ notes. */
+    fun showInfo(title: String, body: String) {
+        AlertDialog.Builder(this, dialogTheme).setTitle(title).setMessage(body).setPositiveButton("OK", null).show()
+    }
+
     /** Opens About & Support, with the Settings tab still selected. */
     fun showAbout() = swapTo(screen("about") { AboutScreen(this) })
 
     /** Opens the Fuel tab, e.g. from the fuel cells on the Ride tab. */
-    fun showFuel() = showTab(Tab.FUEL)
+    fun showFuel() = showBikeSection(BIKE_FUEL)
 
     /** Opens one trip's details, with the Trips tab still selected. */
     fun showTrip(id: Long) {
@@ -628,6 +662,9 @@ class MainActivity : Activity() {
         /** Opens the refill form for this refill id (from the "Refuelled?" notification). */
         const val EXTRA_REFILL = "refill"
         const val EXTRA_MAINTENANCE = "maintenance"
+        const val BIKE_FUEL = 0
+        const val BIKE_THERMALS = 1
+        const val BIKE_SERVICE = 2
         private const val REQ_LOCATION = 2
         private const val REQ_LOCATION_BG = 3
         private const val STATE_TAB = "tab"

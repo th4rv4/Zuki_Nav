@@ -29,7 +29,7 @@ class MaintenanceScreen(host: MainActivity) : Screen(host) {
     init {
         val add = ui.button("+ Add Reminder", Ui.Btn.SECONDARY, 48) { ReminderSheet(host, null).show() }
         view = host.page(
-            ui.vstack(2, ui.title("Maintenance"), odoLine).apply { setPadding(ui.dp(4), 0, 0, 0) },
+            host.bikeHeader(MainActivity.BIKE_SERVICE, odoLine),
             list,
             add,
             ui.sectionHeader(R.drawable.ic_sec_wrench, "Maintenance Settings"),
@@ -40,11 +40,13 @@ class MaintenanceScreen(host: MainActivity) : Screen(host) {
                         render()
                     }),
             ),
-            ui.text(
-                "Reminders count from the ODO on your dash, so km ridden without the app still count: they're " +
-                    "caught up the next time the bike connects. Month-based reminders arrive even when it isn't connected.",
-                12f, Palette.MUTED,
-            ).apply { setPadding(ui.dp(4), 0, ui.dp(4), 0) },
+            ui.infoNote("How Reminders Count") {
+                host.showInfo(
+                    "How Reminders Count",
+                    "Reminders count from the ODO on your dash, so km ridden without the app still count: they're " +
+                        "caught up the next time the bike connects. Month-based reminders arrive even when it isn't connected.",
+                )
+            },
         )
     }
 
