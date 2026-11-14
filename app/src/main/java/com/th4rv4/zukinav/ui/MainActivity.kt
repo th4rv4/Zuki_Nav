@@ -641,6 +641,12 @@ class MainActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_BACKUP_CREATE || requestCode == REQ_BACKUP_OPEN) {
+            val cb = fileCallback
+            fileCallback = null
+            cb?.invoke(if (resultCode == RESULT_OK) data?.data else null)
+            return
+        }
         if (requestCode != REQ_AVATAR || resultCode != RESULT_OK) return
         val uri = data?.data ?: return
         Thread {
@@ -658,6 +664,42 @@ class MainActivity : Activity() {
 
     fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
 
+    private var fileCallback: ((android.net.Uri?) -> Unit)? = null
+
+    /** Android's folder picker, for where backups go. */
+    fun chooseBackupFolder(onPicked: (android.net.Uri?) -> Unit) {
+        fileCallback = onPicked
+        val i = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            addFlags(
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION,
+            )
+        }
+        @Suppress("DEPRECATION")
+        startActivityForResult(i, REQ_BACKUP_CREATE)
+    }
+
+    /** Android's file picker, to choose a backup to restore. */
+    fun pickBackupToRestore(onPicked: (android.net.Uri?) -> Unit) {
+        fileCallback = onPicked
+        val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream"))
+        }
+        @Suppress("DEPRECATION")
+        startActivityForResult(i, REQ_BACKUP_OPEN)
+    }
+
+    /** Starts the app afresh, e.g. after a restore, so everything reads the restored data. */
+    fun restartApp() {
+        stopService(Intent(this, com.th4rv4.zukinav.service.DashService::class.java))
+        val launch = packageManager.getLaunchIntentForPackage(packageName)
+            ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        if (launch != null) startActivity(launch)
+        Runtime.getRuntime().exit(0)
+    }
+
     companion object {
         /** Opens the refill form for this refill id (from the "Refuelled?" notification). */
         const val EXTRA_REFILL = "refill"
@@ -669,6 +711,8 @@ class MainActivity : Activity() {
         private const val REQ_LOCATION_BG = 3
         private const val STATE_TAB = "tab"
         private const val REQ_AVATAR = 4
+        private const val REQ_BACKUP_CREATE = 5
+        private const val REQ_BACKUP_OPEN = 6
     }
 }
 

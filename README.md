@@ -178,7 +178,7 @@ and a route starting mid-animation or mid-greeting takes over at once.
   greeting), **Calls** (dash alerts and Reject Unknown Callers),
   **Messages**, **Appearance**, **Connect
   Automatically** (a switch: reconnect on ignition and after the phone
-  restarts), **Updates**, **Troubleshooting** (Dash Test, what is being sent
+  restarts), **Backup & Restore**, **Updates**, **Troubleshooting** (Dash Test, what is being sent
   to the dash, traffic side, Reload Maps Arrows and the log) and **About &
   Support**. Trip, fuel, engine and maintenance settings sit at the bottom of
   the Trips tab and each part of the Bike tab.
@@ -193,6 +193,16 @@ model and can be changed under Fuel Settings on the Fuel tab. It is worked out f
 and the ODO rather than a fuel sensor, so the first tank is an estimate and
 range only learns while the app is connected: keep the phone connected on
 long rides for the best numbers.
+
+**Backup & Restore** (Settings) saves everything Zuki Nav keeps, trips and
+routes, fuel, reminders, your avatar and all settings including the saved
+bike, into one zip in a folder you choose (Google Drive, Downloads...),
+named with its date and time like `ZukiNav-2026-11-15_21-14.zip`. Each new
+backup replaces the previous one, so the folder only ever holds the latest.
+**Back Up After Every Trip** makes a fresh one each time a ride is saved. **Restore From Backup** shows the backup's date and contents,
+then replaces the app's data and restarts the app; a damaged or newer
+backup is refused without changing anything. Android permissions aren't in
+a backup, so on a new phone setup asks for them again.
 
 **Reject Unknown Callers** (Settings > Calls, off by default) declines
 phone calls from numbers that aren't in your contacts, while riding or

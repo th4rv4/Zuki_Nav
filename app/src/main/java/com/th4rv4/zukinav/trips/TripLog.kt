@@ -97,6 +97,7 @@ object TripLog {
         AppLog.d("Trips", "Ride saved: ${trip.distanceKm} km, top ${trip.topSpeedKmh} km/h")
         val app = ctx.applicationContext
         TripStore.add(app, trip)
+        com.th4rv4.zukinav.backup.Backup.afterTrip(app)
         if (trip.startLat != null || trip.endLat != null) {
             Thread {
                 val withNames = trip.copy(

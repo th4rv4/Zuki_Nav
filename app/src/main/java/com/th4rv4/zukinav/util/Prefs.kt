@@ -188,6 +188,68 @@ class Prefs(context: Context) {
         get() = sp.getInt(K_ROUTE_COLOURS, ROUTE_SPEED)
         set(v) = sp.edit().putInt(K_ROUTE_COLOURS, v).apply()
 
+    /** Backup & Restore: the folder backups go to (a content:// tree address). */
+    var backupFolder: String?
+        get() = sp.getString(K_BACKUP_FOLDER, null)
+        set(v) = sp.edit().putString(K_BACKUP_FOLDER, v).apply()
+
+    /** The latest backup file in that folder, deleted when the next one is written. */
+    var backupUri: String?
+        get() = sp.getString(K_BACKUP_URI, null)
+        set(v) = sp.edit().putString(K_BACKUP_URI, v).apply()
+    var backupLastAt: Long
+        get() = sp.getLong(K_BACKUP_LAST, 0L)
+        set(v) = sp.edit().putLong(K_BACKUP_LAST, v).apply()
+    var backupLastSize: Long
+        get() = sp.getLong(K_BACKUP_LAST_SIZE, 0L)
+        set(v) = sp.edit().putLong(K_BACKUP_LAST_SIZE, v).apply()
+
+    /** Update the backup file after every saved trip. */
+    var backupAfterTrip: Boolean
+        get() = sp.getBoolean(K_BACKUP_AFTER_TRIP, false)
+        set(v) = sp.edit().putBoolean(K_BACKUP_AFTER_TRIP, v).apply()
+
+    /** Every setting with its type, for a backup; [skip] keys are left out. */
+    fun exportAll(skip: Set<String>): org.json.JSONObject {
+        val o = org.json.JSONObject()
+        for ((k, v) in sp.all) {
+            if (k in skip || v == null) continue
+            val (t, value) = when (v) {
+                is Boolean -> "b" to v
+                is Int -> "i" to v
+                is Long -> "l" to v
+                is Float -> "f" to v.toDouble()
+                is String -> "s" to v
+                is Set<*> -> "S" to org.json.JSONArray(v.map { it.toString() })
+                else -> continue
+            }
+            o.put(k, org.json.JSONObject().put("t", t).put("v", value))
+        }
+        return o
+    }
+
+    /** Replaces the settings with a backup's, keeping the [keep] keys as they are. */
+    fun importAll(o: org.json.JSONObject, keep: Set<String>) {
+        val e = sp.edit()
+        for (k in sp.all.keys) if (k !in keep) e.remove(k)
+        for (k in o.keys()) {
+            if (k in keep) continue
+            val item = o.optJSONObject(k) ?: continue
+            when (item.optString("t")) {
+                "b" -> e.putBoolean(k, item.optBoolean("v"))
+                "i" -> e.putInt(k, item.optInt("v"))
+                "l" -> e.putLong(k, item.optLong("v"))
+                "f" -> e.putFloat(k, item.optDouble("v").toFloat())
+                "s" -> e.putString(k, item.optString("v"))
+                "S" -> {
+                    val a = item.optJSONArray("v") ?: continue
+                    e.putStringSet(k, (0 until a.length()).map { a.optString(it) }.toSet())
+                }
+            }
+        }
+        e.commit()
+    }
+
     /** Reject Unknown Callers: decline phone calls from numbers not in the contacts. */
     var rejectUnknown: Boolean
         get() = sp.getBoolean(K_REJECT, false)
@@ -281,6 +343,11 @@ class Prefs(context: Context) {
         private const val K_ROUTE_COLOURS = "route_colours"
         private const val K_SHARE_BG = "share_background"
         private const val K_REJECT = "reject_unknown"
+        const val K_BACKUP_URI = "backup_uri"
+        const val K_BACKUP_FOLDER = "backup_folder"
+        const val K_BACKUP_LAST = "backup_last"
+        const val K_BACKUP_LAST_SIZE = "backup_last_size"
+        const val K_BACKUP_AFTER_TRIP = "backup_after_trip"
         private const val K_REJECT_ALWAYS = "reject_unknown_always"
         private const val K_REJECT_REPEAT = "reject_unknown_repeat"
         private const val K_REJECT_DASH = "reject_unknown_dash"

@@ -61,6 +61,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             ui.listCard(
                 menuRow(PAGE_APPEARANCE, R.drawable.ic_sec_palette, "Appearance"),
                 connect,
+                menuRow(PAGE_BACKUP, R.drawable.ic_set_backup, "Backup & Restore"),
                 menuRow(PAGE_UPDATES, R.drawable.ic_sec_download, "Updates"),
             ),
             ui.listCard(
@@ -89,6 +90,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         summaries[PAGE_MESSAGES]?.text = if (prefs.messageAlerts) "On · WhatsApp and SMS" else "Off"
         summaries[PAGE_APPEARANCE]?.text = themeName(prefs.theme) + " · " + Accents.name(prefs.accent)
         summaries[PAGE_UPDATES]?.text = "Installed v${host.versionName()}"
+        summaries[PAGE_BACKUP]?.text = if (prefs.backupLastAt > 0) "Last backup " + whenText(prefs.backupLastAt) else "No backup yet"
         summaries[PAGE_TROUBLESHOOTING]?.text = "Dash Test, arrows, logs"
     }
 
@@ -137,6 +139,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         PAGE_MESSAGES -> messagesPage()
         PAGE_APPEARANCE -> appearancePage()
         PAGE_UPDATES -> updatesPage()
+        PAGE_BACKUP -> backupPage()
         else -> troubleshootingPage()
     }
 
@@ -310,6 +313,150 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         return SettingsPage(host, "Updates", updates.views, showHook = { updates.onShow() }, hideHook = { updates.onHide() })
     }
 
+    private fun backupPage(): SettingsPage {
+        val fileValue = ui.text("", 12f, Palette.MUTED)
+        val lastValue = ui.text("", 12f, Palette.MUTED)
+        val busy = arrayOf(false)
+
+        fun refresh() {
+            val folder = prefs.backupFolder?.let { android.net.Uri.parse(it) }
+            fileValue.text = if (folder == null) "Not chosen yet"
+            else com.th4rv4.zukinav.backup.Backup.displayName(host, folder, tree = true) ?: "Chosen folder"
+            val last = prefs.backupUri?.let { com.th4rv4.zukinav.backup.Backup.displayName(host, android.net.Uri.parse(it), tree = false) }
+            lastValue.text = if (prefs.backupLastAt > 0) {
+                listOfNotNull(whenText(prefs.backupLastAt), sizeText(prefs.backupLastSize), last).joinToString(" · ")
+            } else "Never"
+            lastValue.setTextColor(if (prefs.backupLastAt > 0) Palette.OK else Palette.MUTED)
+        }
+
+        fun backUp() {
+            if (busy[0]) return
+            busy[0] = true
+            host.toast("Backing up…")
+            Thread {
+                val ok = com.th4rv4.zukinav.backup.Backup.toSavedFolder(host)
+                host.runOnUiThread {
+                    busy[0] = false
+                    refresh()
+                    if (ok) host.toast("Backed up") else {
+                        host.toast("Couldn't save the backup there. Pick the folder again.")
+                        prefs.backupFolder = null
+                        refresh()
+                    }
+                }
+            }.start()
+        }
+
+        fun choose(thenBackUp: Boolean) {
+            host.chooseBackupFolder { uri ->
+                if (uri == null) return@chooseBackupFolder
+                com.th4rv4.zukinav.backup.Backup.keepAccess(host, uri)
+                prefs.backupFolder = uri.toString()
+                refresh()
+                if (thenBackUp) backUp()
+            }
+        }
+
+        fun restore() {
+            host.pickBackupToRestore { uri ->
+                if (uri == null) return@pickBackupToRestore
+                Thread {
+                    val info = try {
+                        host.contentResolver.openInputStream(uri)?.use { com.th4rv4.zukinav.backup.Backup.peek(it) }
+                    } catch (e: com.th4rv4.zukinav.backup.Backup.NewerBackup) {
+                        host.runOnUiThread { host.toast(e.message ?: "Update Zuki Nav first") }
+                        return@Thread
+                    } catch (e: Exception) {
+                        null
+                    }
+                    host.runOnUiThread {
+                        if (info == null) {
+                            host.toast("That isn't a Zuki Nav backup")
+                            return@runOnUiThread
+                        }
+                        android.app.AlertDialog.Builder(host, host.dialogTheme)
+                            .setTitle("Restore This Backup?")
+                            .setMessage(
+                                "From ${whenText(info.createdAt)} (Zuki Nav v${info.appVersion})\n" +
+                                    "${info.trips} trips · ${info.routes} routes · fuel, reminders and settings\n\n" +
+                                    "This replaces what's in the app now. The app restarts when it's done.",
+                            )
+                            .setPositiveButton("Restore") { _, _ ->
+                                Thread {
+                                    val ok = try {
+                                        host.contentResolver.openInputStream(uri)?.use { com.th4rv4.zukinav.backup.Backup.restore(host, it) } != null
+                                    } catch (e: Exception) {
+                                        com.th4rv4.zukinav.util.AppLog.d("Backup", "Restore failed: $e")
+                                        false
+                                    }
+                                    host.runOnUiThread {
+                                        if (ok) {
+                                            host.toast("Restored. Restarting…")
+                                            view.postDelayed({ host.restartApp() }, 800)
+                                        } else {
+                                            host.toast("Couldn't restore that file. Nothing was changed.")
+                                        }
+                                    }
+                                }.start()
+                            }
+                            .setNegativeButton("Cancel", null)
+                            .show()
+                    }
+                }.start()
+            }
+        }
+
+        val fileRow = ui.row("Backup Folder", null, ui.text("Change", 13f, Palette.ACCENT_SOFT, Ui.Weight.MEDIUM)).apply {
+            ((getChildAt(0) as? LinearLayout) ?: this).addView(fileValue)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { choose(thenBackUp = false) }
+        }
+        return SettingsPage(
+            host, "Backup & Restore",
+            listOf(
+                ui.listCard(
+                    fileRow,
+                    ui.row("Last Backup").apply { ((getChildAt(0) as? LinearLayout) ?: this).addView(lastValue) },
+                    ui.switchRow("Back Up After Every Trip", "Makes a fresh backup each time a ride is saved", prefs.backupAfterTrip) {
+                        prefs.backupAfterTrip = it
+                        if (it && prefs.backupFolder == null) choose(thenBackUp = true)
+                    },
+                ),
+                ui.button("Back Up Now", Ui.Btn.PRIMARY, 50) { if (prefs.backupFolder == null) choose(thenBackUp = true) else backUp() },
+                ui.button("Restore From Backup", Ui.Btn.SECONDARY, 50) { restore() },
+                ui.text(
+                    "Each backup is named with its date and time, like ZukiNav-2026-11-15_21-14.zip, and replaces the " +
+                        "previous one, so the folder only ever holds the latest. In a backup: trips and their route maps, " +
+                        "fuel, reminders, your avatar and settings, including your saved bike. Pick a Google Drive folder to keep it " +
+                        "safe if you lose the phone.",
+                    12f, Palette.MUTED,
+                ).apply { setPadding(ui.dp(4), 0, ui.dp(4), 0) },
+            ),
+            showHook = { refresh() },
+        )
+    }
+
+    private fun whenText(at: Long): String {
+        val zone = java.time.ZoneId.systemDefault()
+        val d = java.time.Instant.ofEpochMilli(at).atZone(zone)
+        val today = java.time.LocalDate.now(zone)
+        val time = d.toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern(
+            if (android.text.format.DateFormat.is24HourFormat(host)) "HH:mm" else "h:mm a", java.util.Locale.US,
+        ))
+        return when (d.toLocalDate()) {
+            today -> "today, $time"
+            today.minusDays(1) -> "yesterday, $time"
+            else -> d.toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", java.util.Locale.US)) + ", $time"
+        }
+    }
+
+    private fun sizeText(bytes: Long): String = when {
+        bytes >= 1_048_576 -> String.format(java.util.Locale.US, "%.1f MB", bytes / 1_048_576.0)
+        bytes >= 1024 -> "${bytes / 1024} KB"
+        else -> "$bytes B"
+    }
+
     private fun troubleshootingPage(): SettingsPage {
         val arrowStatus = ui.text("", 13f, Palette.MUTED)
         val reload = ui.navRow("Reload Maps Arrows", "Tap To Load") {}
@@ -376,6 +523,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         const val PAGE_MESSAGES = "messages"
         const val PAGE_APPEARANCE = "appearance"
         const val PAGE_UPDATES = "updates"
+        const val PAGE_BACKUP = "backup"
         const val PAGE_TROUBLESHOOTING = "troubleshooting"
     }
 }
