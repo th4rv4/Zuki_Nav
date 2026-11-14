@@ -203,6 +203,12 @@ Zuki Nav then stops completely while the bike is parked and Android wakes it
 when the ignition comes on. Bluetooth has to stay on. Opening the app always
 connects straight away.
 
+**Battery while riding**: during a route Zuki Nav sends to the dash every
+200 ms as always. On a ride without a route it only needs to keep the dash
+clock right, so it sends the status frame when the minute changes (and
+straight away when a call or message is cleared or the speed alert changes),
+and checks once a second instead of five times.
+
 **Backup & Restore** (Settings) saves everything Zuki Nav keeps, trips and
 routes, fuel, reminders, your avatar and all settings including the saved
 bike, into one zip in a folder you choose (Google Drive, Downloads...),

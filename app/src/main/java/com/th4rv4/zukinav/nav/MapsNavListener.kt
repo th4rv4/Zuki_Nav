@@ -36,6 +36,7 @@ class MapsNavListener : NotificationListenerService() {
     private var lastRemaining: Double? = null
     /** Same arrow bitmap -> same answer; Maps reposts the notification every second or so. */
     private val arrowCache = HashMap<Int, ClusterIcon>()
+    private var lastLogLine: String? = null
 
     private val main = Handler(Looper.getMainLooper())
     private val alerts = AlertTracker(
@@ -252,7 +253,12 @@ class MapsNavListener : NotificationListenerService() {
         }
         if (icon != null) lastIcon = icon
 
-        AppLog.d("Maps", "title=\"$title\" text=\"$text\" sub=\"$sub\" -> ${icon?.label} [$source]")
+        // Maps reposts every second or so: log only what changed.
+        val logLine = "title=\"$title\" text=\"$text\" sub=\"$sub\" -> ${icon?.label} [$source]"
+        if (logLine != lastLogLine) {
+            AppLog.d("Maps", logLine)
+            lastLogLine = logLine
+        }
         NavRepository.update(
             NavSnapshot(
                 icon = icon,

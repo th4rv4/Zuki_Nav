@@ -255,6 +255,7 @@ class DashService : Service(), ClusterLink.Listener {
                     statusLogged = false
                     helloLeft = 4
                     tick = 0
+                    statusAt = 0L
                     main.removeCallbacks(loop)
                     main.post(loop)
                 }
@@ -326,8 +327,32 @@ class DashService : Service(), ClusterLink.Listener {
         override fun run() {
             if (link.state != ClusterLink.State.READY) return
             step()
-            main.postDelayed(this, 200)
+            // Every 200 ms while something is moving on the dash; once a
+            // second on a ride without a route, when only the clock is sent.
+            main.postDelayed(this, if (busy()) 200 else IDLE_TICK_MS)
         }
+    }
+
+    /** Navigation, the startup animation, a Dash Test or the end of a route: frames every 200 ms. */
+    private fun busy(): Boolean =
+        NavRepository.current != null || helloLeft > 0 || splashWait > 0 || splashLeft > 0 ||
+            testFrame != null || endFramesLeft > 0 || navWasActive || greetingPending
+
+    /** When the status frame (clock, speed alert, clear flags) last went out, and with what. */
+    private var statusAt = 0L
+    private var statusMinute = -1
+    private var statusSpeedAlert = -1
+
+    /**
+     * During a route (or anything else moving on the dash) every 2 s, as
+     * always. On a ride without a route only when the minute changes, so the
+     * dash clock stays right, or straight away when something in it changed.
+     */
+    private fun statusDue(now: Long): Boolean {
+        if (statusAt == 0L || clearSmsLeft > 0 || clearMissedLeft > 0) return true
+        if (prefs.speedAlertKmh != statusSpeedAlert) return true
+        if (busy()) return now - statusAt >= 2_000
+        return LocalTime.now().minute != statusMinute || now - statusAt >= 60_000
     }
 
     private fun step() {
@@ -349,7 +374,11 @@ class DashService : Service(), ClusterLink.Listener {
             return
         }
 
-        if (tick % 10 == 0 && model.statusLayout != ClusterModel.StatusLayout.NONE) {
+        val nowMs = System.currentTimeMillis()
+        if (model.statusLayout != ClusterModel.StatusLayout.NONE && statusDue(nowMs)) {
+            statusAt = nowMs
+            statusMinute = LocalTime.now().minute
+            statusSpeedAlert = prefs.speedAlertKmh
             val status = SuzukiFrames.status(
                 LocalTime.now(), speedAlertKmh = prefs.speedAlertKmh,
                 clearSms = clearSmsLeft > 0, clearMissedCall = clearMissedLeft > 0,
@@ -358,7 +387,7 @@ class DashService : Service(), ClusterLink.Listener {
             if (clearSmsLeft > 0) clearSmsLeft--
             if (clearMissedLeft > 0) clearMissedLeft--
             if (!statusLogged) {
-                AppLog.d("Dash", "-> ${SuzukiFrames.hex(status)} (status, every 2 s)")
+                AppLog.d("Dash", "-> ${SuzukiFrames.hex(status)} (status: every 2 s during a route, else once a minute)")
                 statusLogged = true
             }
             link.send(status, coalesceKey = "status")
@@ -582,9 +611,17 @@ class DashService : Service(), ClusterLink.Listener {
         }
     }
 
+    /** What the notification last said: Maps updates every second, the text far less often. */
+    private var lastNotificationText: String? = null
+
     private fun updateNotification() {
         if (instance == null) return
-        getSystemService(NotificationManager::class.java).notify(NOTIF_ID, buildNotification())
+        val n = buildNotification()
+        val e = n.extras
+        val key = "${e.getCharSequence(Notification.EXTRA_TITLE)}\u0000${e.getCharSequence(Notification.EXTRA_TEXT)}"
+        if (key == lastNotificationText) return
+        lastNotificationText = key
+        getSystemService(NotificationManager::class.java).notify(NOTIF_ID, n)
     }
 
     /** "Refuelled?" notification; tapping it opens the refill form. */
@@ -655,6 +692,8 @@ class DashService : Service(), ClusterLink.Listener {
         /** After this long parked, no more quick direct tries. */
         private const val DEEP_SLEEP_MS = 60 * 60_000L
         private const val CLEAR_REPEATS = 3
+        /** The send loop's pace on a ride without a route. */
+        private const val IDLE_TICK_MS = 1_000L
 
         /** Compass arrows clockwise from north: one turn of the spinning arrow. */
         private val SPIN = listOf(
