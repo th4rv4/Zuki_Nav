@@ -62,7 +62,7 @@ class ThermalGaugeView(ctx: Context) : View(ctx) {
     }
 
     override fun onDraw(canvas: Canvas) {
-        val size = min(width, height * 1.18f)
+        val size = min(width.toFloat(), height * 1.18f)
         val r = size / 2 - stroke
         val cx = width / 2f
         val cy = r + stroke
