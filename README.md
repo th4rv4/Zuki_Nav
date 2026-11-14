@@ -132,7 +132,7 @@ This approach, and the Maps notification layouts, follow
   (tap it to pick your initial, an icon or a photo). Below it, a live card
   with the next turn (its arrow ringed by the distance to the turn, which
   empties over the last 500 m, like the dash's own bar), a speedometer,
-  fuel or battery cells, and ETA with distance left; then ODO and Trip A/B,
+  fuel or battery cells, engine temperature, and ETA with distance left; then ODO and Trip A/B,
   the ride in progress, what is being sent to the dash, and a
   Connect/Disconnect button. When the bike is off, the numbers are the last
   readings and the screen says when they were synced.
@@ -166,6 +166,14 @@ model and can be changed under Fuel Settings on the Fuel tab. It is worked out f
 and the ODO rather than a fuel sensor, so the first tank is an estimate and
 range only learns while the app is connected: keep the phone connected on
 long rides for the best numbers.
+
+**Engine temperature**: the dash sends the engine temperature in °C (Suzuki's
+own app receives it but never shows it). Zuki Nav shows it on the Ride tab as
+a bar from cold to hot. Set your own Engine Warm-Up Temp and Engine Heat
+Warning in Settings > Riding to get Warming Up, Normal and Hot labels and a
+warning when the engine runs hot; both are off until you set them. It only
+shows while the bike is connected, and each trip saves its highest and
+average engine temperature.
 
 **Appearance**: four themes (System, Light, Dark and AMOLED, which is true
 black) and an accent colour for the gauge, rings and buttons: Aurora,

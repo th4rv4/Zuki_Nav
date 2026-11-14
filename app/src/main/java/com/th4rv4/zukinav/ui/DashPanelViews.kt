@@ -276,3 +276,67 @@ class FuelCellsView(ctx: Context) : View(ctx) {
         }
     }
 }
+
+/**
+ * Engine temperature as a bar running blue (cold), green, amber to red (hot),
+ * with a marker at the current reading. The scale is fixed at 20 to 130 °C so
+ * the marker means the same thing every ride; it stretches if the engine
+ * ever reads hotter.
+ */
+class EngineHeatView(ctx: Context) : View(ctx) {
+
+    private val barHeight = ctx.dpf(7f)
+    private val markerWidth = ctx.dpf(4f)
+    private val bar = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val marker = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
+    private val markerGlow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        maskFilter = BlurMaskFilter(ctx.dpf(5f), BlurMaskFilter.Blur.NORMAL)
+    }
+    private val rect = RectF()
+    private var tempC: Int? = null
+
+    init {
+        setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+    }
+
+    fun set(c: Int?) {
+        tempC = c
+        invalidate()
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        setMeasuredDimension(View.MeasureSpec.getSize(widthMeasureSpec), context.dpf(18f).roundToInt())
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        val w = width.toFloat()
+        val cy = height / 2f
+        rect.set(0f, cy - barHeight / 2, w, cy + barHeight / 2)
+        bar.shader = LinearGradient(
+            0f, 0f, w, 0f,
+            intArrayOf(COLD, NORMAL, NORMAL, WARM, HOT),
+            floatArrayOf(0f, 0.38f, 0.7f, 0.82f, 1f),
+            Shader.TileMode.CLAMP,
+        )
+        bar.alpha = if (tempC == null) 70 else 230
+        canvas.drawRoundRect(rect, barHeight / 2, barHeight / 2, bar)
+        val t = tempC ?: return
+        val top = maxOf(SCALE_MAX, t + 5)
+        val frac = ((t - SCALE_MIN).toFloat() / (top - SCALE_MIN)).coerceIn(0f, 1f)
+        val x = (markerWidth / 2 + frac * (w - markerWidth)).coerceIn(markerWidth / 2, w - markerWidth / 2)
+        rect.set(x - markerWidth / 2, 0f, x + markerWidth / 2, height.toFloat())
+        if (!Palette.isLight) canvas.drawRoundRect(rect, markerWidth, markerWidth, markerGlow)
+        marker.color = if (Palette.isLight) Palette.TEXT else Color.WHITE
+        canvas.drawRoundRect(rect, markerWidth / 2, markerWidth / 2, marker)
+    }
+
+    companion object {
+        private const val SCALE_MIN = 20
+        private const val SCALE_MAX = 130
+        val COLD = 0xFF5AA9FF.toInt()
+        val NORMAL = 0xFF4ADE9A.toInt()
+        val WARM = 0xFFFFC966.toInt()
+        val HOT = 0xFFFF5A6E.toInt()
+    }
+}

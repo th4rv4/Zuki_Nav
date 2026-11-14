@@ -98,6 +98,8 @@ object TripStore {
         t.endLng?.let { put("lng1", it) }
         t.startPlace?.let { put("place0", it) }
         t.endPlace?.let { put("place1", it) }
+        t.maxEngineC?.let { put("engMax", it) }
+        t.avgEngineC?.let { put("engAvg", it) }
     }
 
     private fun fromJson(o: JSONObject): Trip? = try {
@@ -119,6 +121,8 @@ object TripStore {
             endLng = d("lng1"),
             startPlace = s("place0"),
             endPlace = s("place1"),
+            maxEngineC = if (o.has("engMax")) o.getInt("engMax") else null,
+            avgEngineC = if (o.has("engAvg")) o.getInt("engAvg") else null,
         )
     } catch (e: Exception) {
         null

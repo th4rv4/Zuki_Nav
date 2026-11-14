@@ -58,6 +58,14 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
                 ui.input(prefs.speedAlertKmh.takeIf { it > 0 }?.toString() ?: "", "Off", numeric = true) {
                     prefs.speedAlertKmh = it.toIntOrNull()?.coerceIn(0, 999) ?: 0
                 }),
+            ui.row("Engine Warm-Up Temp", "°C. Below this the Ride tab says Warming Up. Empty to turn off",
+                ui.input(prefs.engineWarmC.takeIf { it > 0 }?.toString() ?: "", "Off", numeric = true) {
+                    prefs.engineWarmC = it.toIntOrNull()?.coerceIn(0, 254) ?: 0
+                }),
+            ui.row("Engine Heat Warning", "°C. At or above this the Ride tab warns Hot. Empty to turn off",
+                ui.input(prefs.engineHotC.takeIf { it > 0 }?.toString() ?: "", "Off", numeric = true) {
+                    prefs.engineHotC = it.toIntOrNull()?.coerceIn(0, 254) ?: 0
+                }),
             ui.row("Traffic Side", "Decides roundabout and U-turn icons",
                 ui.segmented("Left", "Right", if (prefs.leftHandTraffic) 0 else 1) { prefs.leftHandTraffic = it == 0 }),
         )

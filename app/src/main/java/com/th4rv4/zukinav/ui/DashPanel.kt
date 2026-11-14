@@ -11,6 +11,7 @@ import com.th4rv4.zukinav.R
 import com.th4rv4.zukinav.fuel.Range
 import com.th4rv4.zukinav.nav.NavSnapshot
 import com.th4rv4.zukinav.protocol.BikeData
+import com.th4rv4.zukinav.protocol.EngineState
 import java.util.Locale
 
 /**
@@ -21,6 +22,7 @@ import java.util.Locale
 class DashPanel(private val host: MainActivity) {
 
     private val ui = host.ui
+    private val prefs = host.prefs
 
     private val turn = TurnRingView(ui.ctx)
     private val distance = numberText(26f, Palette.TEXT)
@@ -35,6 +37,12 @@ class DashPanel(private val host: MainActivity) {
     private val rangeText = numberText(17f, Palette.TEXT)
     private val rangeUnit = label("KM")
     private val fuelRow: LinearLayout
+
+    private val engineIcon = ImageView(ui.ctx).apply { setImageResource(R.drawable.ic_engine_temp) }
+    private val engineBar = EngineHeatView(ui.ctx)
+    private val engineText = numberText(17f, Palette.TEXT)
+    private val engineState = ui.text("", 10f, Palette.MUTED, Ui.Weight.BOLD).apply { letterSpacing = 0.08f }
+    private val engineBlock: LinearLayout
 
     private val eta = numberText(17f, Palette.TEXT)
     private val remaining = numberText(17f, Palette.TEXT)
@@ -79,6 +87,24 @@ class DashPanel(private val host: MainActivity) {
             setOnClickListener { host.showFuel() }
         }
         content.addView(fuelRow)
+
+        val engineRow = LinearLayout(ui.ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(engineIcon, LinearLayout.LayoutParams(ui.dp(20), ui.dp(20)).apply { marginEnd = ui.dp(10) })
+            addView(engineBar, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(engineText, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = ui.dp(12) })
+            addView(label("°C"), LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = ui.dp(4) })
+        }
+        engineBlock = LinearLayout(ui.ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(engineRow)
+            addView(engineState, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                gravity = Gravity.END
+                topMargin = ui.dp(6)
+            })
+        }
+        content.addView(engineBlock)
 
         etaRow = LinearLayout(ui.ctx).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -138,6 +164,8 @@ class DashPanel(private val host: MainActivity) {
             fuelRow.isClickable = battery == null
         }
 
+        renderEngine(data?.engineTempC, live)
+
         etaRow.visibility = if (nav == null) View.GONE else View.VISIBLE
         eta.text = etaText ?: "--"
         remaining.text = nav?.remainingMeters?.let { formatDistance(it) } ?: "--"
@@ -148,6 +176,47 @@ class DashPanel(private val host: MainActivity) {
         sync.text = syncNote.orEmpty()
         sync.visibility = if (syncNote.isNullOrBlank()) View.GONE else View.VISIBLE
         sync.setTextColor(if (live) Palette.OK else Palette.MUTED)
+    }
+
+    /**
+     * Engine temperature row; hidden on bikes whose dash sends none. Engine
+     * heat changes quickly, so without a live link it says Bike Not Connected
+     * instead of showing an old reading. Labels follow the rider's limits.
+     */
+    private fun renderEngine(reading: Int?, live: Boolean) {
+        engineBlock.visibility = if (reading == null) View.GONE else View.VISIBLE
+        if (reading == null) return
+        if (!live) {
+            engineBar.set(null)
+            engineText.text = "--"
+            engineText.setTextColor(Palette.MUTED)
+            engineIcon.setColorFilter(Palette.MUTED)
+            engineState.visibility = View.VISIBLE
+            engineState.text = "BIKE NOT CONNECTED"
+            engineState.setTextColor(Palette.MUTED)
+            engineState.background = ui.rounded(Accents.withAlpha(Palette.MUTED, 0x26), 8)
+            engineState.setPadding(ui.dp(8), ui.dp(2), ui.dp(8), ui.dp(2))
+            engineBlock.contentDescription = "Engine temperature: bike not connected"
+            return
+        }
+        val c = reading
+        val state = EngineState.of(c, prefs.engineWarmC, prefs.engineHotC)
+        engineBar.set(c)
+        engineText.text = c.toString()
+        val color = when (state) {
+            EngineState.WARMING_UP -> EngineHeatView.COLD
+            EngineState.NORMAL -> Palette.OK
+            EngineState.HOT -> Palette.DANGER
+            null -> Palette.TEXT
+        }
+        engineText.setTextColor(color)
+        engineIcon.setColorFilter(if (state == null) Palette.MUTED else color)
+        engineState.visibility = if (state == null) View.GONE else View.VISIBLE
+        engineState.text = state?.label?.uppercase(Locale.US).orEmpty()
+        engineState.setTextColor(color)
+        engineState.background = ui.rounded(Accents.withAlpha(color, 0x24), 8)
+        engineState.setPadding(ui.dp(8), ui.dp(2), ui.dp(8), ui.dp(2))
+        engineBlock.contentDescription = "Engine $c degrees Celsius" + (state?.let { ", ${it.label}" } ?: "")
     }
 
     private fun numberText(sizeSp: Float, color: Int) = TextView(ui.ctx).apply {

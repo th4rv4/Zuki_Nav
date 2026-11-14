@@ -30,6 +30,10 @@ class TripRecorder {
         val startLng: Double? = null,
         val endLat: Double? = null,
         val endLng: Double? = null,
+        /** Engine temperature: highest, and the sum and count for the average. */
+        val engineMax: Int? = null,
+        val engineSum: Long = 0,
+        val engineCount: Int = 0,
     ) {
         fun toTrip(): Trip = Trip(
             start = start,
@@ -43,22 +47,29 @@ class TripRecorder {
             startLng = startLng,
             endLat = endLat,
             endLng = endLng,
+            maxEngineC = engineMax,
+            avgEngineC = if (engineCount > 0) Math.round(engineSum.toDouble() / engineCount).toInt() else null,
         )
 
         fun encode(): String = listOf(
             start, lastAt, startOdo, lastOdo, lastTripA, lastSpeed, distanceKm, movingMs, topSpeed,
             startLat ?: "", startLng ?: "", endLat ?: "", endLng ?: "",
+            engineMax ?: "", engineSum, engineCount,
         ).joinToString(";")
 
         companion object {
             fun decode(s: String?): Active? {
                 val p = s?.split(';') ?: return null
-                if (p.size != 13) return null
+                // 13 fields before engine temperature was added.
+                if (p.size != 13 && p.size != 16) return null
                 return try {
                     Active(
                         p[0].toLong(), p[1].toLong(), p[2].toInt(), p[3].toInt(), p[4].toDouble(),
                         p[5].toInt(), p[6].toDouble(), p[7].toLong(), p[8].toInt(),
                         p[9].toDoubleOrNull(), p[10].toDoubleOrNull(), p[11].toDoubleOrNull(), p[12].toDoubleOrNull(),
+                        engineMax = p.getOrNull(13)?.toIntOrNull(),
+                        engineSum = p.getOrNull(14)?.toLongOrNull() ?: 0,
+                        engineCount = p.getOrNull(15)?.toIntOrNull() ?: 0,
                     )
                 } catch (_: NumberFormatException) {
                     null
@@ -82,7 +93,11 @@ class TripRecorder {
         val a = active
         justStarted = a == null
         if (a == null) {
-            active = Active(now, now, d.odoKm, d.odoKm, d.tripAKm, d.speedKmh, 0.0, 0, d.speedKmh)
+            val e = d.engineTempC
+            active = Active(
+                now, now, d.odoKm, d.odoKm, d.tripAKm, d.speedKmh, 0.0, 0, d.speedKmh,
+                engineMax = e, engineSum = e?.toLong() ?: 0, engineCount = if (e != null) 1 else 0,
+            )
             return finished
         }
         val stepMs = now - a.lastAt
@@ -95,6 +110,9 @@ class TripRecorder {
             distanceKm = a.distanceKm + step(a, d),
             movingMs = a.movingMs + if (moving) stepMs.coerceIn(0, MAX_STEP_MS) else 0,
             topSpeed = maxOf(a.topSpeed, d.speedKmh),
+            engineMax = d.engineTempC?.let { maxOf(it, a.engineMax ?: it) } ?: a.engineMax,
+            engineSum = a.engineSum + (d.engineTempC ?: 0),
+            engineCount = a.engineCount + if (d.engineTempC != null) 1 else 0,
         )
         return finished
     }

@@ -155,8 +155,16 @@ The dash sends this on its own every 5 s while connected.
 [17..22] Trip B, 0.1 km, ASCII digits
 [23]     'N' (unknown)
 [24]     fuel gauge bars '0'..'6'; e-ACCESS: battery % + 64
-[25..27] fuel economy, a 24-bit value (decoded differently per model)
+[25]     engine temperature, whole °C as one binary byte (0x26 = 38 °C);
+         0xFF = no reading
+[26..27] 0xFF on the Gixxer and V-Strom
 ```
+
+Suzuki Ride Connect reads bytes 25..27 together as a 24-bit fuel or energy
+consumption value on some models (TFT Access and Burgman, e-ACCESS). On the
+Gixxer SF 250 and V-Strom SX, bytes 26..27 are always 0xFF and byte 25 tracks
+the engine warming up (29, then 30, from cold on a V-Strom SX), so it is read
+as engine temperature.
 
 Checked against the usual sum checksum.
 

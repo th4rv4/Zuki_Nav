@@ -31,9 +31,19 @@ class BikeDataTest {
         assertNull(BikeData.parse(f)!!.fuelBars)
     }
 
+    @Test fun engineTemperature() {
+        assertEquals(38, BikeData.parse(bytes(sf250))!!.engineTempC)
+        val f = bytes(sf250)
+        f[25] = 0xFF.toByte()
+        f[28] = SuzukiFrames.checksum(f, SuzukiFrames.Checksum.SUM)
+        assertNull(BikeData.parse(f)!!.engineTempC)
+    }
+
     @Test fun saveAndLoad() {
-        val d = BikeData(0, 3292, 74.8, 471.1, 5, null)
+        val d = BikeData(0, 3292, 74.8, 471.1, 5, null, 86)
         assertEquals(d, BikeData.decode(d.encode()))
+        // Saved before engine temperature was added.
+        assertEquals(BikeData(0, 3292, 74.8, 471.1, 5, null), BikeData.decode("3292;74.8;471.1;5;"))
         assertNull(BikeData.decode("garbage"))
     }
 }

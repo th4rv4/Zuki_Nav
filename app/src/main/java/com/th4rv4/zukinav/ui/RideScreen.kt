@@ -10,6 +10,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.th4rv4.zukinav.ble.ClusterLink
 import com.th4rv4.zukinav.fuel.FuelStore
+import com.th4rv4.zukinav.protocol.EngineState
 import com.th4rv4.zukinav.nav.NavRepository
 import com.th4rv4.zukinav.nav.NavSnapshot
 import com.th4rv4.zukinav.service.DashService
@@ -39,6 +40,14 @@ class RideScreen(host: MainActivity) : Screen(host) {
     private val navListener: (NavSnapshot?) -> Unit = { refresh() }
     private val stateListener: () -> Unit = { view.post { refresh() } }
     private val fuelListener: () -> Unit = { refresh() }
+
+    private val engineHotTitle = ui.text("", 14f, Palette.DANGER, Ui.Weight.BOLD)
+    private val engineHotCard = ui.card(
+        engineHotTitle,
+        ui.text("At or above your Engine Heat Warning. Let it cool if you can.", 12f, Palette.TEXT_SOFT),
+        gapDp = 2,
+        padDp = 14,
+    ).apply { background = ui.rounded(Palette.DANGER_BG, 20, Palette.DANGER_BORDER) }
 
     private val lowRangeTitle = ui.text("", 14f, Palette.WARN, Ui.Weight.BOLD)
     private val lowRangeCard = ui.card(
@@ -95,7 +104,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
             ui.row("Arrow Source", trailing = sourceValue),
         )
 
-        view = host.page(header, lowRangeCard, panel.view, panel.chips, rideCard, statusCard, linkButton)
+        view = host.page(header, engineHotCard, lowRangeCard, panel.view, panel.chips, rideCard, statusCard, linkButton)
     }
 
     override fun onShow() {
@@ -144,6 +153,11 @@ class RideScreen(host: MainActivity) : Screen(host) {
         val live = DashService.liveBike
         val data = live ?: prefs.lastBike
         val range = data?.takeIf { it.fuelBars != null }?.let { FuelStore.range(host, it.odoKm) }
+        // Only from a live reading: an old one from a parked bike is no reason to warn.
+        val engine = live?.engineTempC
+        val hot = engine != null && EngineState.of(engine, prefs.engineWarmC, prefs.engineHotC) == EngineState.HOT
+        engineHotCard.visibility = if (hot) View.VISIBLE else View.GONE
+        engineHotTitle.text = "Engine Hot · ${engine ?: 0} °C"
         val low = prefs.lowRangeKm
         lowRangeCard.visibility = if (range != null && low > 0 && range.km < low) View.VISIBLE else View.GONE
         lowRangeTitle.text = "Low Range · ≈ ${range?.km ?: 0} km"

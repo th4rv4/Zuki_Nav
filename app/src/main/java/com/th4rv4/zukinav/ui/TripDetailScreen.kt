@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
+import com.th4rv4.zukinav.protocol.EngineState
 import com.th4rv4.zukinav.trips.Trip
 import com.th4rv4.zukinav.trips.TripFormat
 import com.th4rv4.zukinav.trips.TripStore
@@ -128,6 +129,12 @@ class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) 
         cells.chunked(2).forEach { pair ->
             grid.addView(ui.hstack(8, *pair.map { (k, v) -> cell(k, v) }.toTypedArray(), weighted = true))
         }
+        val maxC = t.maxEngineC
+        val avgC = t.avgEngineC
+        if (maxC != null && avgC != null) {
+            grid.addView(ui.hstack(8, cell("Max Engine Temp", "$maxC °C", engineColor(maxC)),
+                cell("Average Engine Temp", "$avgC °C", engineColor(avgC)), weighted = true))
+        }
         odo.text = "${TripFormat.odo(t.startOdo)} → ${TripFormat.odo(t.endOdo)}"
     }
 
@@ -152,8 +159,16 @@ class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) 
 
     private fun cap(s: String) = ui.text(s.uppercase(java.util.Locale.US), 11f, Palette.MUTED, Ui.Weight.BOLD).apply { letterSpacing = 0.12f }
 
-    private fun cell(label: String, value: String): View =
-        ui.vstack(4, cap(label).apply { gravity = Gravity.CENTER }, number(19f).apply { text = value }).apply {
+    /** Coloured by the rider's engine limits, if set. */
+    private fun engineColor(c: Int): Int = when (EngineState.of(c, prefs.engineWarmC, prefs.engineHotC)) {
+        EngineState.HOT -> Palette.DANGER
+        EngineState.NORMAL -> Palette.OK
+        EngineState.WARMING_UP -> EngineHeatView.COLD
+        null -> Palette.TEXT
+    }
+
+    private fun cell(label: String, value: String, color: Int = Palette.TEXT): View =
+        ui.vstack(4, cap(label).apply { gravity = Gravity.CENTER }, number(19f).apply { text = value; setTextColor(color) }).apply {
             gravity = Gravity.CENTER_HORIZONTAL
             background = ui.rounded(Palette.SURFACE, 16, Palette.BORDER)
             setPadding(ui.dp(8), ui.dp(12), ui.dp(8), ui.dp(12))

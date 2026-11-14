@@ -13,22 +13,21 @@ data class BikeData(
     val fuelBars: Int?,
     /** Battery charge in percent, on electric models. */
     val batteryPercent: Int?,
-    /**
-     * Byte 25 of the frame, which the dash fills with what looks like its own
-     * fuel economy figure (0x26 = 38 on a Gixxer SF 250). Not shown yet; it is
-     * logged so it can be checked against the mileage the app works out.
-     */
-    val dashEconomy: Int? = null,
+    /** Engine temperature in whole °C, from byte 25; null when the dash sends no reading. */
+    val engineTempC: Int? = null,
 ) {
-    /** For saving the last reading: "odo;tripA;tripB;fuel;battery" (speed is not kept). */
-    fun encode(): String = listOf(odoKm, tripAKm, tripBKm, fuelBars ?: "", batteryPercent ?: "").joinToString(";")
+    /** For saving the last reading: "odo;tripA;tripB;fuel;battery;engine" (speed is not kept). */
+    fun encode(): String =
+        listOf(odoKm, tripAKm, tripBKm, fuelBars ?: "", batteryPercent ?: "", engineTempC ?: "").joinToString(";")
 
     companion object {
         const val MAX_FUEL_BARS = 6
+        private const val NO_ENGINE_TEMP = 0xFF
 
         fun decode(s: String?): BikeData? {
             val p = s?.split(';') ?: return null
-            if (p.size != 5) return null
+            // Five fields before engine temperature was added.
+            if (p.size != 5 && p.size != 6) return null
             return BikeData(
                 speedKmh = 0,
                 odoKm = p[0].toIntOrNull() ?: return null,
@@ -36,6 +35,7 @@ data class BikeData(
                 tripBKm = p[2].toDoubleOrNull() ?: return null,
                 fuelBars = p[3].toIntOrNull(),
                 batteryPercent = p[4].toIntOrNull(),
+                engineTempC = p.getOrNull(5)?.toIntOrNull(),
             )
         }
 
@@ -47,8 +47,8 @@ data class BikeData(
          *   [11..16] Trip A in 0.1 km, 6 ASCII digits
          *   [17..22] Trip B in 0.1 km, 6 ASCII digits
          *   [24]     fuel bars as '0'..'6'; on e-ACCESS, battery % + 64
-         *   [25]     fuel economy as a number? (logged as [dashEconomy]; 0xFF = none)
-         *   [26..27] 0xFF
+         *   [25]     engine temperature, whole °C as one binary byte; 0xFF = no reading
+         *   [26..27] 0xFF on the Gixxer and V-Strom
          *
          * Returns null for anything else, or a frame that fails its checksum.
          */
@@ -67,8 +67,8 @@ data class BikeData(
             val f = frame[24].toInt() and 0xFF
             val bars = if (f in '0'.code..('0'.code + MAX_FUEL_BARS)) f - '0'.code else null
             val battery = if (bars == null && f >= 64) (f - 64).coerceAtMost(100) else null
-            val economy = (frame[25].toInt() and 0xFF).takeIf { it != 0xFF }
-            return BikeData(speed, odo, tripA / 10.0, tripB / 10.0, bars, battery, economy)
+            val engine = (frame[25].toInt() and 0xFF).takeIf { it != NO_ENGINE_TEMP }
+            return BikeData(speed, odo, tripA / 10.0, tripB / 10.0, bars, battery, engine)
         }
 
         private fun digits(f: ByteArray, at: Int, len: Int): Int? {

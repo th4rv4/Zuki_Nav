@@ -74,4 +74,29 @@ class TripRecorderTest {
         assertEquals(t.active, again.active)
         assertNull(TripRecorder.Active.decode("nope"))
     }
+
+    @Test fun engineTemperature() {
+        val t = TripRecorder()
+        var now = 0L
+        listOf(30, 60, 90, null, 100).forEachIndexed { i, c ->
+            t.onReading(BikeData(40, 100 + i, 1.0 + i, 100.0, 4, null, c), now)
+            now += 5_000
+        }
+        // Survives a restart part-way.
+        t.active = TripRecorder.Active.decode(t.active!!.encode())
+        val trip = t.finishIfIdle(now + TripRecorder.GAP_MS)!!
+        assertEquals(100, trip.maxEngineC)
+        assertEquals(70, trip.avgEngineC)
+        // Saved before engine temperature was added.
+        val old = "0;5000;100;101;2.0;40;1.0;5000;40;;;;"
+        assertNull(TripRecorder.Active.decode(old)!!.engineMax)
+    }
+
+    @Test fun noEngineTemperature() {
+        val t = TripRecorder()
+        t.onReading(r(40, 100, 1.0), 0)
+        val trip = t.finishIfIdle(TripRecorder.GAP_MS)!!
+        assertNull(trip.maxEngineC)
+        assertNull(trip.avgEngineC)
+    }
 }

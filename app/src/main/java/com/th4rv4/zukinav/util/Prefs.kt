@@ -71,6 +71,16 @@ class Prefs(context: Context) {
         get() = sp.getInt(K_THEME, THEME_SYSTEM)
         set(v) = sp.edit().putInt(K_THEME, v).apply()
 
+    /** Below this engine temperature (°C) the Ride tab says Warming Up; 0 for never. */
+    var engineWarmC: Int
+        get() = sp.getInt(K_ENGINE_WARM, 0)
+        set(v) = sp.edit().putInt(K_ENGINE_WARM, v).apply()
+
+    /** At or above this engine temperature (°C) the Ride tab warns Hot; 0 for never. */
+    var engineHotC: Int
+        get() = sp.getInt(K_ENGINE_HOT, 0)
+        set(v) = sp.edit().putInt(K_ENGINE_HOT, v).apply()
+
     /** Fuel tank size in litres; 0 or less uses the bike model's. */
     var fuelTank: Float
         get() = sp.getFloat(K_FUEL_TANK, 0f)
@@ -184,6 +194,8 @@ class Prefs(context: Context) {
         private const val K_ACCENT = "accent"
         private const val K_AVATAR = "avatar"
         private const val K_FUEL_TANK = "fuel_tank"
+        private const val K_ENGINE_WARM = "engine_warm_c"
+        private const val K_ENGINE_HOT = "engine_hot_c"
         private const val K_FUEL_RESERVE = "fuel_reserve"
         private const val K_FUEL_ASK = "fuel_ask_at_refill"
         private const val K_FUEL_LOW = "fuel_low_range_km"

@@ -19,6 +19,9 @@ data class Trip(
     val endLng: Double? = null,
     val startPlace: String? = null,
     val endPlace: String? = null,
+    /** Highest and average engine temperature in °C; null if the dash sent none. */
+    val maxEngineC: Int? = null,
+    val avgEngineC: Int? = null,
 ) {
     val id: Long get() = start
 
