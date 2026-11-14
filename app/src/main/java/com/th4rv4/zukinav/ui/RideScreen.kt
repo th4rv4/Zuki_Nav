@@ -141,7 +141,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
                 ClusterLink.State.CONNECTING -> ui.pill("Waiting", Palette.WARN, Palette.WARN_BG)
                 ClusterLink.State.DISCONNECTED -> when {
                     running && DashService.bluetoothOff -> ui.pill("Bluetooth Off", Palette.WARN, Palette.WARN_BG)
-                    else -> ui.pill(if (running) "Not Connected" else "Stopped", Palette.MUTED, Palette.INSET)
+                    else -> ui.pill(if (running) "Searching" else "Stopped", Palette.MUTED, Palette.INSET)
                 }
             },
         )
@@ -197,7 +197,25 @@ class RideScreen(host: MainActivity) : Screen(host) {
             rideTop.text = "Top ${ride.topSpeed} km/h"
         }
 
-        linkButton.text = if (running) "Disconnect" else "Connect"
+        // Follows the actual link: while the bike is away the app keeps looking
+        // for it in the background, and the button stops that instead.
+        when {
+            state == ClusterLink.State.READY -> {
+                linkButton.text = "Disconnect"
+                linkButton.background = ui.accentPressable(16)
+                linkButton.setTextColor(Palette.ON_ACCENT)
+            }
+            running -> {
+                linkButton.text = "Stop Searching For Bike"
+                linkButton.background = ui.pressable(Palette.SURFACE, 16, Palette.BORDER)
+                linkButton.setTextColor(Palette.TEXT)
+            }
+            else -> {
+                linkButton.text = "Connect"
+                linkButton.background = ui.accentPressable(16)
+                linkButton.setTextColor(Palette.ON_ACCENT)
+            }
+        }
     }
 
     private fun formatWhen(ms: Long): String {
