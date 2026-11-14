@@ -178,6 +178,28 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_TRIPS_PLACES, false)
         set(v) = sp.edit().putBoolean(K_TRIPS_PLACES, v).apply()
 
+    /** Record each ride's GPS route (needs location, allowed all the time). */
+    var recordRoute: Boolean
+        get() = sp.getBoolean(K_TRIPS_ROUTE, false)
+        set(v) = sp.edit().putBoolean(K_TRIPS_ROUTE, v).apply()
+
+    /** How the trip map colours the route: [ROUTE_SPEED], [ROUTE_ENGINE] or [ROUTE_PLAIN]. */
+    var routeColours: Int
+        get() = sp.getInt(K_ROUTE_COLOURS, ROUTE_SPEED)
+        set(v) = sp.edit().putInt(K_ROUTE_COLOURS, v).apply()
+
+    /** Share Image: background, line colour and what to show; see ShareImage. */
+    var shareBackground: Int
+        get() = sp.getInt(K_SHARE_BG, 0)
+        set(v) = sp.edit().putInt(K_SHARE_BG, v).apply()
+    var shareLine: Int
+        get() = sp.getInt(K_SHARE_LINE, 0)
+        set(v) = sp.edit().putInt(K_SHARE_LINE, v).apply()
+
+    /** One Share Image switch, e.g. "stats", "distance", "engine"; [default] when never set. */
+    fun shareShows(item: String, default: Boolean): Boolean = sp.getBoolean("share_show_$item", default)
+    fun setShareShows(item: String, on: Boolean) = sp.edit().putBoolean("share_show_$item", on).apply()
+
     /** The ride in progress, see TripRecorder.Active. */
     var activeTrip: String?
         get() = sp.getString(K_TRIP_ACTIVE, null)
@@ -235,6 +257,13 @@ class Prefs(context: Context) {
         private const val K_ALERT_WARM = "alert_warmed_up_dash"
         private const val K_ALERT_HOT = "alert_overheat_dash"
         private const val K_GREETING_SECS = "greeting_seconds"
+        private const val K_TRIPS_ROUTE = "trips_route"
+        private const val K_ROUTE_COLOURS = "route_colours"
+        private const val K_SHARE_BG = "share_background"
+        private const val K_SHARE_LINE = "share_line"
+        const val ROUTE_SPEED = 0
+        const val ROUTE_ENGINE = 1
+        const val ROUTE_PLAIN = 2
         private const val K_MAINT_EARLY = "maint_early_km"
         private const val K_ALERT_WARM_SECS = "alert_warmed_up_seconds"
         private const val K_ALERT_HOT_SECS = "alert_overheat_seconds"

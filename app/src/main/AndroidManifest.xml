@@ -67,6 +67,12 @@
             android:name=".update.InstallReceiver"
             android:exported="false" />
 
+        <provider
+            android:name=".ui.ShareFileProvider"
+            android:authorities="${applicationId}.share"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
         <receiver
             android:name=".maint.MaintReceiver"
             android:exported="false" />

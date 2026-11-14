@@ -97,6 +97,22 @@ and ended, using the phone's location. It needs location allowed all the
 time, because a ride ends with the ignition off while the app is in the
 background. Mileage and range are on the Fuel tab (see below).
 
+**Record Route** (off by default, same location permission) saves a GPS
+point every few seconds while riding. Each trip then shows its route on a
+plain dark map, coloured by speed, by engine temperature, or in one colour,
+with the start, the end and the top speed marked. **Expand** opens it full
+screen with pinch to zoom, and **Open In Google Maps** opens the ride as a
+path through up to 8 stops. The Trips list shows a small preview of each
+route. Nothing is downloaded: the map is drawn from your own points, so it
+works offline but shows no street names.
+
+**Share Image** on a trip's map makes a 1080 × 1440 PNG of the route, Strava
+style, to post on Instagram, WhatsApp and the like, or save to Pictures/Zuki
+Nav. Pick a Transparent (a sticker over your own photo), Dark or Light
+background, an Accent, Speed or White line, and which of Distance, Time, Avg
+Speed, Top Speed and Max Engine Temp go on it, plus the trip name. Your
+choices are remembered.
+
 ## How the turn arrow is chosen
 
 1. **The Maps arrow itself.** Google Maps ships its arrows as named drawables
@@ -137,9 +153,9 @@ This approach, and the Maps notification layouts, follow
   Connect/Disconnect button. When the bike is off, the numbers are the last
   readings and the screen says when they were synced.
 - **Trips**: this month's distance, rides and riding time, then saved rides
-  grouped by day, with a Starred filter. Each ride opens its details. Trip
-  Settings (Record Trips, Skip Short Rides, Start And End Places) are at the
-  bottom.
+  grouped by day, with a Starred filter and a route preview. Each ride opens
+  its details and route map. Trip Settings (Record Trips, Skip Short Rides,
+  Start And End Places, Record Route) are at the bottom.
 - **Thermals**: the live engine temperature on a cold-to-hot gauge, a Temp
   Monitor graph of the last 30 minutes with your limits drawn in, the ride's
   highest and average temperature and time above Hot, the hottest point of

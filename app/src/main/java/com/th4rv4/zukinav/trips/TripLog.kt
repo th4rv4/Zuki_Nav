@@ -42,6 +42,10 @@ object TripLog {
             AppLog.d("Trips", "Ride started at ODO ${d.odoKm}")
             if (prefs.tripPlaces) Places.locate(ctx) { lat, lng -> main.post { recorder.setStartPlace(lat, lng); persist(ctx) } }
         }
+        // Also picks the route back up after the app was restarted mid-ride.
+        val id = recorder.active?.start
+        if (prefs.recordRoute && id != null) RouteRecorder.start(ctx, id)
+        else if (!prefs.recordRoute && RouteRecorder.recordingId != null) RouteRecorder.stop()
         persist(ctx)
     }
 
@@ -59,6 +63,7 @@ object TripLog {
         restore(ctx)
         main.removeCallbacks(idleCheck)
         recorder.finish()?.let { save(ctx, it) }
+        RouteRecorder.stop()
         persist(ctx)
     }
 
@@ -82,9 +87,11 @@ object TripLog {
 
     private fun save(ctx: Context, trip: Trip) {
         val prefs = Prefs(ctx)
+        if (RouteRecorder.recordingId == trip.id) RouteRecorder.stop()
         val minKm = if (prefs.skipShortTrips) SHORT_RIDE_KM else 0.1
         if (trip.distanceKm < minKm) {
             AppLog.d("Trips", "Ride of ${trip.distanceKm} km not saved (too short)")
+            RouteStore.delete(ctx, trip.id)
             return
         }
         AppLog.d("Trips", "Ride saved: ${trip.distanceKm} km, top ${trip.topSpeedKmh} km/h")

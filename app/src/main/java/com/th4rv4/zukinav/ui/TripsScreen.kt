@@ -9,6 +9,7 @@ import android.widget.Switch
 import com.th4rv4.zukinav.R
 import com.th4rv4.zukinav.trips.Trip
 import com.th4rv4.zukinav.trips.TripFormat
+import com.th4rv4.zukinav.trips.RouteStore
 import com.th4rv4.zukinav.trips.TripLog
 import com.th4rv4.zukinav.trips.TripStore
 import com.th4rv4.zukinav.util.Places
@@ -35,6 +36,12 @@ class TripsScreen(host: MainActivity) : Screen(host) {
         prefs.tripPlaces && Places.hasPermission(host),
     ) { on -> setTripPlaces(on) }
     private val placesSwitch = placesRow.getChildAt(placesRow.childCount - 1) as Switch
+    private val routeRow = ui.switchRow(
+        "Record Route",
+        "Saves a GPS point every few seconds while riding, to draw each trip on a map. Needs location, allowed all the time.",
+        prefs.recordRoute && Places.hasPermission(host),
+    ) { on -> setRecordRoute(on) }
+    private val routeSwitch = routeRow.getChildAt(routeRow.childCount - 1) as Switch
     private var syncingPlaces = false
 
     override val view: View
@@ -63,6 +70,7 @@ class TripsScreen(host: MainActivity) : Screen(host) {
                     prefs.skipShortTrips = it
                 },
                 placesRow,
+                routeRow,
             ),
         )
     }
@@ -72,7 +80,10 @@ class TripsScreen(host: MainActivity) : Screen(host) {
         // A ride left open while the app was closed is saved now.
         TripLog.finishIfIdle(host)
         // Location may have been taken away in Android's settings.
-        if (!host.askingLocation) showPlaces(prefs.tripPlaces && Places.hasPermission(host))
+        if (!host.askingLocation) {
+            showPlaces(prefs.tripPlaces && Places.hasPermission(host))
+            showSwitch(routeSwitch, prefs.recordRoute && Places.hasPermission(host))
+        }
         render()
     }
 
@@ -84,6 +95,24 @@ class TripsScreen(host: MainActivity) : Screen(host) {
             showPlaces(granted)
             if (!granted) host.toast("Start And End Places needs location allowed all the time")
         }
+    }
+
+    private fun setRecordRoute(on: Boolean) {
+        if (syncingPlaces) return
+        if (!on) { prefs.recordRoute = false; return }
+        host.requestTripLocation { granted ->
+            prefs.recordRoute = granted
+            showSwitch(routeSwitch, granted)
+            if (!granted) host.toast("Record Route needs location allowed all the time")
+            else host.toast("Your next ride's route will be recorded")
+        }
+    }
+
+    private fun showSwitch(sw: Switch, on: Boolean) {
+        if (sw.isChecked == on) return
+        syncingPlaces = true
+        sw.isChecked = on
+        syncingPlaces = false
     }
 
     private fun showPlaces(on: Boolean) {
@@ -151,15 +180,30 @@ class TripsScreen(host: MainActivity) : Screen(host) {
             ), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             if (t.starred) addView(ui.text("★", 18f, Palette.WARN))
         }
+        val thumbPoints = if (RouteStore.has(host, t.id)) RouteStore.thumb(host, t) else emptyList()
         val distance = if (t.distanceKm < 1.0) String.format(Locale.US, "%.2f", t.distanceKm) else String.format(Locale.US, "%.1f", t.distanceKm)
         val numbers = ui.hstack(
             0,
             column(small(distance), "km"),
             column(small(TripFormat.shortDuration(t.durationSeconds)), "Time"),
+            column(small(t.averageKmh?.toInt()?.toString() ?: "-"), "Avg"),
             column(small(t.topSpeedKmh.toString()), "Top"),
             weighted = true,
         )
-        return ui.vstack(12, title, numbers).apply {
+        val body = ui.vstack(12, title, numbers)
+        val content: View = if (thumbPoints.size >= 2) {
+            LinearLayout(ui.ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(RouteView(ui.ctx, thumbnail = true).apply {
+                    set(thumbPoints, com.th4rv4.zukinav.util.Prefs.ROUTE_PLAIN, 0, 0)
+                    clipToOutline = true
+                    background = ui.rounded(Palette.INSET, 12)
+                }, LinearLayout.LayoutParams(ui.dp(72), ui.dp(72)).apply { marginEnd = ui.dp(12) })
+                addView(body, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            }
+        } else body
+        return ui.vstack(0, content).apply {
             background = ui.pressable(Palette.SURFACE, 18, Palette.BORDER)
             setPadding(ui.dp(16), ui.dp(14), ui.dp(16), ui.dp(14))
             isClickable = true

@@ -32,6 +32,7 @@ object TripStore {
         list.sortByDescending { it.start }
         var recent = 0
         list.removeAll { !it.starred && ++recent > MAX_RECENT }
+        RouteStore.prune(ctx, list.map { it.id }.toSet(), RouteRecorder.recordingId)
     }
 
     fun update(ctx: Context, trip: Trip) = change(ctx) { list ->
@@ -39,7 +40,10 @@ object TripStore {
         if (i >= 0) list[i] = trip
     }
 
-    fun delete(ctx: Context, id: Long) = change(ctx) { list -> list.removeAll { it.id == id } }
+    fun delete(ctx: Context, id: Long) = change(ctx) { list ->
+        list.removeAll { it.id == id }
+        RouteStore.delete(ctx, id)
+    }
 
     private fun change(ctx: Context, block: (MutableList<Trip>) -> Unit) {
         synchronized(lock) {

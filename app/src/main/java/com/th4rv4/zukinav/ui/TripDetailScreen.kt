@@ -11,7 +11,11 @@ import android.widget.LinearLayout
 import com.th4rv4.zukinav.protocol.EngineState
 import com.th4rv4.zukinav.trips.Trip
 import com.th4rv4.zukinav.trips.TripFormat
+import com.th4rv4.zukinav.trips.Route
+import com.th4rv4.zukinav.trips.RoutePoint
+import com.th4rv4.zukinav.trips.RouteStore
 import com.th4rv4.zukinav.trips.TripStore
+import com.th4rv4.zukinav.util.Prefs
 
 /** One trip: its numbers, and Rename, Star, Share and Delete. */
 class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) {
@@ -50,6 +54,26 @@ class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) 
     private val grid = ui.vstack(8)
     private val odo = number(16f)
 
+    // Route map: the line, its colour choice and legend, and Open In Google Maps.
+    private val routeMap = RouteView(ui.ctx)
+    private var route: List<RoutePoint> = emptyList()
+    private val legendLow = ui.text("Slow", 11f, Palette.MUTED)
+    private val legendHigh = ui.text("Fast", 11f, Palette.MUTED)
+    private val legend = LinearLayout(ui.ctx).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        addView(legendLow)
+        addView(View(ui.ctx).apply {
+            background = android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT, RouteView.SPEED_COLORS,
+            ).apply { cornerRadius = ui.dp(3).toFloat() }
+        }, LinearLayout.LayoutParams(0, ui.dp(5), 1f).apply { setMargins(ui.dp(8), 0, ui.dp(8), 0) })
+        addView(legendHigh)
+    }
+    private lateinit var modePicker: LinearLayout
+    private val routeCard: LinearLayout
+    private val mapsCard: View
+
     override val view: View
 
     init {
@@ -84,11 +108,44 @@ class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) 
             padDp = 14,
             radiusDp = 16,
         )
+        val expand = ui.text("⤢ Expand", 12f, Palette.TEXT).apply {
+            background = ui.rounded(android.graphics.Color.argb(200, 11, 11, 13), 12)
+            setTextColor(android.graphics.Color.rgb(221, 221, 221))
+            setPadding(ui.dp(10), ui.dp(5), ui.dp(10), ui.dp(5))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { showFullMap() }
+        }
+        val mapFrame = android.widget.FrameLayout(ui.ctx).apply {
+            addView(routeMap, android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ui.dp(240)))
+            addView(expand, android.widget.FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.END,
+            ).apply { setMargins(0, 0, ui.dp(10), ui.dp(10)) })
+            clipToOutline = true
+            outlineProvider = object : android.view.ViewOutlineProvider() {
+                override fun getOutline(v: View, o: android.graphics.Outline) {
+                    o.setRoundRect(0, 0, v.width, v.height, ui.dp(14).toFloat())
+                }
+            }
+        }
+        modePicker = ui.segmented(listOf("Speed", "Engine Temp", "Plain"), prefs.routeColours, fill = true) {
+            prefs.routeColours = it
+            showRoute()
+        }
+        val shareImage = ui.button("Share Image", Ui.Btn.SECONDARY, 44) { trip()?.let { ShareSheet(host, it, route).show() } }
+        routeCard = ui.card(mapFrame, modePicker, legend, shareImage, gapDp = 10, padDp = 10)
+        mapsCard = ui.listCard(ui.row("Open In Google Maps", "The route as a path, through up to 8 stops", ui.text("›", 20f, Palette.MUTED)).apply {
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { openInMaps() }
+        })
         view = host.page(
             header,
             hero,
+            routeCard,
             grid,
             odoCard,
+            mapsCard,
             ui.hstack(
                 8,
                 ui.button("Rename", Ui.Btn.SECONDARY, 48) { rename() },
@@ -136,6 +193,54 @@ class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) 
                 cell("Average Engine Temp", "$avgC °C", engineColor(avgC)), weighted = true))
         }
         odo.text = "${TripFormat.odo(t.startOdo)} → ${TripFormat.odo(t.endOdo)}"
+
+        route = RouteStore.points(host, t)
+        val has = route.size >= 2
+        routeCard.visibility = if (has) View.VISIBLE else View.GONE
+        mapsCard.visibility = if (has) View.VISIBLE else View.GONE
+        showRoute()
+    }
+
+    private fun showRoute() {
+        val mode = prefs.routeColours
+        routeMap.set(route, mode, prefs.engineWarmC, prefs.engineHotC)
+        val engine = mode == Prefs.ROUTE_ENGINE && routeMap.hasEngine()
+        legend.visibility = if (mode == Prefs.ROUTE_SPEED || engine) View.VISIBLE else View.GONE
+        legendLow.text = if (engine) "Cold" else "Slow"
+        legendHigh.text = if (engine) "Hot" else "Fast"
+    }
+
+    /** The route full screen, with pinch to zoom, drag to move and double-tap to reset. */
+    private fun showFullMap() {
+        val full = RouteView(ui.ctx, zoomable = true).apply { set(route, prefs.routeColours, prefs.engineWarmC, prefs.engineHotC) }
+        val dialog = android.app.Dialog(host, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+        val close = ui.text("✕", 22f, android.graphics.Color.WHITE).apply {
+            background = ui.rounded(android.graphics.Color.argb(200, 11, 11, 13), 22)
+            gravity = Gravity.CENTER
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Close map"
+            setOnClickListener { dialog.dismiss() }
+        }
+        val hint = ui.text("Pinch to zoom · double-tap to reset", 12f, android.graphics.Color.rgb(160, 160, 170))
+        dialog.setContentView(android.widget.FrameLayout(ui.ctx).apply {
+            addView(full, android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            addView(close, android.widget.FrameLayout.LayoutParams(ui.dp(44), ui.dp(44), Gravity.TOP or Gravity.END)
+                .apply { setMargins(0, ui.dp(40), ui.dp(16), 0) })
+            addView(hint, android.widget.FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL,
+            ).apply { setMargins(0, 0, 0, ui.dp(32)) })
+        })
+        dialog.show()
+    }
+
+    private fun openInMaps() {
+        val url = Route.googleMapsUrl(route) ?: return
+        try {
+            host.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+        } catch (e: Exception) {
+            host.toast("No app can open Google Maps links")
+        }
     }
 
     /** The distance in the accent gradient, like the speed gauge. */
@@ -215,5 +320,86 @@ class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) 
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+}
+
+/** Share Image: a live preview of the PNG, what goes on it, then Save or Share. */
+class ShareSheet(private val host: MainActivity, private val trip: Trip, private val route: List<RoutePoint>) {
+    private val ui = host.ui
+    private val prefs = host.prefs
+    private val preview = android.widget.ImageView(ui.ctx).apply {
+        adjustViewBounds = true
+        maxHeight = ui.dp(340)
+        scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+        contentDescription = "Preview of the image"
+    }
+    private val statRows = ArrayList<View>()
+
+    private fun options() = ShareImage.Options(
+        background = prefs.shareBackground,
+        line = prefs.shareLine,
+        showStats = prefs.shareShows("stats", true),
+        stats = ShareImage.STATS.filter { prefs.shareShows(it.key, it.default) }.map { it.key }.toSet(),
+        showName = prefs.shareShows("name", true),
+    )
+
+    private fun refresh() {
+        val o = options()
+        preview.setImageBitmap(ShareImage.render(trip, route, o, scale = 0.4f))
+        preview.background = when (o.background) {
+            ShareImage.BG_TRANSPARENT -> ui.rounded(android.graphics.Color.rgb(58, 62, 74), 14)
+            else -> null
+        }
+        statRows.forEach { it.alpha = if (o.showStats) 1f else 0.4f }
+    }
+
+    fun show() {
+        val views = ArrayList<View>()
+        views += ui.text("Share Image", 18f, Palette.TEXT, Ui.Weight.BOLD)
+        views += preview
+        views += ui.sectionLabel("Background")
+        views += ui.segmented(listOf("Transparent", "Dark", "Light"), prefs.shareBackground, fill = true) {
+            prefs.shareBackground = it
+            refresh()
+        }
+        views += ui.sectionLabel("Line")
+        views += ui.segmented(listOf("Accent", "Speed", "White"), prefs.shareLine, fill = true) {
+            prefs.shareLine = it
+            refresh()
+        }
+        views += ui.sectionLabel("Stats On The Image")
+        val rows = ArrayList<View>()
+        rows += ui.switchRow("Show Stats", null, prefs.shareShows("stats", true)) {
+            prefs.setShareShows("stats", it)
+            refresh()
+        }
+        ShareImage.STATS.forEach { s ->
+            val available = ShareImage.value(trip, s.key) != null
+            val row = ui.switchRow(s.label, if (available) null else "Not recorded for this ride", prefs.shareShows(s.key, s.default)) {
+                prefs.setShareShows(s.key, it)
+                refresh()
+            }
+            row.setPadding(row.paddingLeft + ui.dp(12), row.paddingTop, row.paddingRight, row.paddingBottom)
+            statRows += row
+            rows += row
+        }
+        rows += ui.switchRow("Trip Name", "With ZUKI NAV at the bottom", prefs.shareShows("name", true)) {
+            prefs.setShareShows("name", it)
+            refresh()
+        }
+        views += ui.listCard(*rows.toTypedArray())
+
+        lateinit var dialog: android.app.Dialog
+        val save = ui.button("Save", Ui.Btn.SECONDARY, 48) {
+            val ok = ShareImage.save(host, ShareImage.render(trip, route, options()), "zuki-nav-${trip.id}")
+            host.toast(if (ok) "Saved to Pictures/Zuki Nav" else "Couldn't save the image")
+        }
+        val share = ui.button("Share", Ui.Btn.PRIMARY, 48) {
+            if (!ShareImage.share(host, ShareImage.render(trip, route, options()))) host.toast("Couldn't make the image")
+            else dialog.dismiss()
+        }
+        views += ui.hstack(10, save, share, weighted = true)
+        refresh()
+        dialog = ui.sheet(*views.toTypedArray())
     }
 }
