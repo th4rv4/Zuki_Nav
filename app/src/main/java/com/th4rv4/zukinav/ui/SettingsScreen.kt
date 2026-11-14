@@ -82,7 +82,10 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             "animation".takeIf { prefs.startupAnimation },
             "greeting".takeIf { prefs.startupGreeting.isNotBlank() },
         ).joinToString(" · ")
-        summaries[PAGE_CALLS]?.text = if (prefs.callAlerts) "On · phone and WhatsApp" else "Off"
+        summaries[PAGE_CALLS]?.text = listOfNotNull(
+            if (prefs.callAlerts) "Alerts on" else "Alerts off",
+            "rejecting unknown".takeIf { prefs.rejectUnknown },
+        ).joinToString(" · ")
         summaries[PAGE_MESSAGES]?.text = if (prefs.messageAlerts) "On · WhatsApp and SMS" else "Off"
         summaries[PAGE_APPEARANCE]?.text = themeName(prefs.theme) + " · " + Accents.name(prefs.accent)
         summaries[PAGE_UPDATES]?.text = "Installed v${host.versionName()}"
@@ -201,16 +204,61 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         )
     }
 
-    private fun callsPage(): SettingsPage = SettingsPage(
-        host, "Calls",
-        listOf(
-            ui.listCard(
-                ui.switchRow("Call Alerts", "Incoming and missed calls on the dash, phone and WhatsApp", prefs.callAlerts) {
-                    prefs.callAlerts = it
+    private fun callsPage(): SettingsPage {
+        val extras = ArrayList<View>()
+        fun showExtras(on: Boolean) = extras.forEach { it.visibility = if (on) View.VISIBLE else View.GONE }
+        val whenRow = ui.vstack(
+            8,
+            ui.text("When", 15f, Palette.TEXT, Ui.Weight.MEDIUM),
+            ui.segmented(listOf("While Riding", "Always"), if (prefs.rejectAlways) 1 else 0, fill = true) {
+                prefs.rejectAlways = it == 1
+            },
+            ui.text("While Riding means while the bike is connected.", 12f, Palette.MUTED),
+        ).apply { setPadding(0, ui.dp(10), 0, ui.dp(12)) }
+        val repeat = ui.switchRow(
+            "Allow Repeat Callers", "A second call from the same number within 5 min rings through, in case it's urgent",
+            prefs.rejectAllowRepeat,
+        ) { prefs.rejectAllowRepeat = it }
+        val onDash = ui.switchRow("Show On Dash", "Shows REJECTED CALL for 3 s, except during a route", prefs.rejectShowOnDash) {
+            prefs.rejectShowOnDash = it
+        }
+        extras.addAll(listOf(whenRow, repeat, onDash))
+        showExtras(prefs.rejectUnknown)
+        return SettingsPage(
+            host, "Calls",
+            listOf(
+                ui.listCard(
+                    ui.switchRow("Call Alerts", "Incoming and missed calls on the dash, phone and WhatsApp", prefs.callAlerts) {
+                        prefs.callAlerts = it
+                    },
+                ),
+                ui.sectionHeader(R.drawable.ic_set_dialer, "Unknown Callers"),
+                ui.listCard(
+                    ui.switchRow(
+                        "Reject Unknown Callers",
+                        "Phone calls from numbers not in your contacts are declined straight away. They still show as missed calls.",
+                        prefs.rejectUnknown,
+                    ) {
+                        prefs.rejectUnknown = it
+                        showExtras(it)
+                    },
+                    whenRow,
+                    repeat,
+                    onDash,
+                ),
+                ui.infoNote("How Unknown Callers Are Spotted") {
+                    host.showInfo(
+                        "Unknown Callers",
+                        "Zuki Nav goes by your phone app's incoming-call notification: a saved contact shows a name, " +
+                            "anyone else a number, Unknown or Private number. It then presses the notification's own " +
+                            "Decline button, so it doesn't replace your caller ID app.\n\nIt needs a phone app with a Decline " +
+                            "button on that notification, as on most phones with Android 12 or newer. WhatsApp calls aren't " +
+                            "affected. If a caller ID app shows a name for a number you haven't saved, that call rings through.",
+                    )
                 },
             ),
-        ),
-    )
+        )
+    }
 
     private fun messagesPage(): SettingsPage = SettingsPage(
         host, "Messages",

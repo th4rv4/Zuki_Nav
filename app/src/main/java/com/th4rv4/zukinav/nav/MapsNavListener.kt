@@ -11,8 +11,10 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import com.th4rv4.zukinav.alerts.Alert
 import com.th4rv4.zukinav.alerts.AlertTracker
+import com.th4rv4.zukinav.alerts.CallFilter
 import com.th4rv4.zukinav.alerts.Notice
 import com.th4rv4.zukinav.protocol.ClusterIcon
+import com.th4rv4.zukinav.ble.ClusterLink
 import com.th4rv4.zukinav.service.DashService
 import com.th4rv4.zukinav.util.AppLog
 import com.th4rv4.zukinav.util.Prefs
@@ -40,6 +42,10 @@ class MapsNavListener : NotificationListenerService() {
         defaultSmsPackage = { try { Telephony.Sms.getDefaultSmsPackage(this) } catch (_: Exception) { null } },
         skipBusinessSms = { prefs.skipBusinessSms },
     )
+    /** Reject Unknown Callers: who was declined, and which call notifications were already looked at. */
+    private val callFilter = CallFilter()
+    private val screenedCalls = HashMap<String, Boolean>()
+
     private val alertTick = object : Runnable {
         override fun run() {
             deliver(alerts.tick(System.currentTimeMillis()))
@@ -63,7 +69,9 @@ class MapsNavListener : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (isMapsGuidance(sbn)) handle(sbn) else if (sbn.packageName != packageName) {
-            deliver(alerts.posted(notice(sbn), System.currentTimeMillis()))
+            val n = notice(sbn)
+            if (declineIfUnknown(sbn, n)) return
+            deliver(alerts.posted(n, System.currentTimeMillis()))
         }
     }
 
@@ -74,6 +82,7 @@ class MapsNavListener : NotificationListenerService() {
             lastRemaining = null
             NavRepository.scheduleEnd()
         } else if (sbn.packageName != packageName) {
+            if (screenedCalls.remove(sbn.key) == true) return
             deliver(alerts.removed(notice(sbn), System.currentTimeMillis()))
         }
     }
@@ -108,12 +117,67 @@ class MapsNavListener : NotificationListenerService() {
         else e.getParcelable(EXTRA_CALL_PERSON) as? Person
     } catch (_: Exception) { null }
 
+    /**
+     * Reject Unknown Callers: an incoming phone call (not WhatsApp) from a
+     * number not in the contacts is declined with the phone app's own
+     * Decline button. True if it was, so nothing about it goes to the dash.
+     */
+    private fun declineIfUnknown(sbn: StatusBarNotification, n: Notice): Boolean {
+        screenedCalls[sbn.key]?.let { return it }
+        if (!prefs.rejectUnknown) return false
+        if (n.category != AlertTracker.CATEGORY_CALL || AlertTracker.isWhatsApp(n.pkg)) return false
+        if (n.pkg !in AlertTracker.PHONE_PACKAGES && n.callType == 0) return false
+        val incoming = n.callType == AlertTracker.TYPE_INCOMING || (n.callType == 0 && !n.ongoing)
+        if (!incoming) return false
+        if (!prefs.rejectAlways && DashService.linkState != ClusterLink.State.READY) return false
+        val caller = n.callPerson?.takeIf { it.isNotBlank() } ?: n.title
+        val decline = callFilter.shouldDecline(caller, prefs.rejectAllowRepeat, System.currentTimeMillis())
+        screenedCalls[sbn.key] = decline
+        if (!decline) {
+            if (CallFilter.isUnknown(caller)) AppLog.d("Calls", "Unknown caller rang again, let through")
+            return false
+        }
+        val intent = declineIntent(sbn.notification)
+        if (intent == null) {
+            AppLog.d("Calls", "Unknown caller, but ${n.pkg} has no Decline button to press")
+            screenedCalls[sbn.key] = false
+            return false
+        }
+        return try {
+            intent.send()
+            AppLog.d("Calls", "Declined an unknown caller")
+            if (prefs.rejectShowOnDash) DashService.instance?.showRejectedCall()
+            true
+        } catch (e: Exception) {
+            AppLog.d("Calls", "Could not decline: $e")
+            screenedCalls[sbn.key] = false
+            false
+        }
+    }
+
+    /** The phone app's Decline action: the CallStyle one, else a button labelled Decline or Reject. */
+    @Suppress("DEPRECATION")
+    private fun declineIntent(n: Notification): android.app.PendingIntent? {
+        try {
+            val cs = if (android.os.Build.VERSION.SDK_INT >= 33) {
+                n.extras.getParcelable(EXTRA_DECLINE_INTENT, android.app.PendingIntent::class.java)
+            } else {
+                n.extras.getParcelable(EXTRA_DECLINE_INTENT) as? android.app.PendingIntent
+            }
+            if (cs != null) return cs
+        } catch (_: Exception) {
+        }
+        return n.actions?.firstOrNull { a -> DECLINE_WORDS.containsMatchIn(a.title?.toString().orEmpty()) }?.actionIntent
+    }
+
     private fun deliver(list: List<Alert>) {
         if (alerts.hasPending) {
             main.removeCallbacks(alertTick)
             main.postDelayed(alertTick, 500)
         }
         for (a in list) {
+            // The phone app's own missed-call notice for a call we declined.
+            if (a is Alert.Missed && !a.whatsapp && callFilter.recentlyDeclined(a.caller, System.currentTimeMillis())) continue
             val wanted = when (a) {
                 is Alert.Ringing, is Alert.Answered, is Alert.Missed, Alert.ClearMissed -> prefs.callAlerts
                 is Alert.Message, Alert.ClearMessages -> prefs.messageAlerts
@@ -277,5 +341,8 @@ class MapsNavListener : NotificationListenerService() {
         /** Notification.CallStyle (Android 12). */
         const val EXTRA_CALL_TYPE = "android.callType"
         const val EXTRA_CALL_PERSON = "android.callPerson"
+        /** Notification.CallStyle's Decline button. */
+        const val EXTRA_DECLINE_INTENT = "android.declineIntent"
+        private val DECLINE_WORDS = Regex("""(?i)\b(decline|reject|dismiss)\b|अस्वीकार|रिजेक्ट""")
     }
 }

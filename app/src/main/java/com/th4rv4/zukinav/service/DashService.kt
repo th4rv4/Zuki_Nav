@@ -476,7 +476,7 @@ class DashService : Service(), ClusterLink.Listener {
      * while navigating, so the arrows aren't covered; Engine Overheat is cut
      * to [ROUTE_ALERT_MAX_MS] during a route.
      */
-    private fun showDashMessage(text: String, duringRoute: Boolean): Boolean {
+    private fun showDashMessage(text: String, duringRoute: Boolean, seconds: Int? = null): Boolean {
         if (link.state != ClusterLink.State.READY) return false
         if (!duringRoute && NavRepository.current != null) {
             AppLog.d("Dash", "Route active, \"$text\" skipped")
@@ -484,10 +484,15 @@ class DashService : Service(), ClusterLink.Listener {
         }
         val mode = ClusterModels.fromBleName(link.deviceName ?: prefs.clusterName).checksum
         val overheat = text == OVERHEAT_TEXT
-        var ms = (if (overheat) prefs.overheatAlertSeconds else prefs.warmedUpAlertSeconds) * 1000L
+        var ms = (seconds ?: if (overheat) prefs.overheatAlertSeconds else prefs.warmedUpAlertSeconds) * 1000L
         if (overheat && NavRepository.current != null) ms = ms.coerceAtMost(ROUTE_ALERT_MAX_MS)
         showCallText(text, mode, ms, overheat)
         return true
+    }
+
+    /** Reject Unknown Callers with Show On Dash: REJECTED CALL for 3 s, not over the arrows. */
+    fun showRejectedCall() {
+        main.post { showDashMessage(REJECTED_TEXT, duringRoute = false, seconds = 3) }
     }
 
     /** From the Thermals tab: shows one of the alerts now. False if the dash isn't connected. */
@@ -645,6 +650,7 @@ class DashService : Service(), ClusterLink.Listener {
         /** Longest Engine Overheat stays over the arrows during a route. */
         private const val ROUTE_ALERT_MAX_MS = 5_000L
         const val OVERHEAT_TEXT = "ENGINE OVERHEAT"
+        const val REJECTED_TEXT = "REJECTED CALL"
         const val WARMED_UP_TEXT = "WARMED UP"
         const val ACTION_STOP = "com.th4rv4.zukinav.STOP"
 

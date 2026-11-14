@@ -175,7 +175,8 @@ dash's call screen for 3, 5, 10 or 15 seconds (Shown For). The dash always puts 
 and a route starting mid-animation or mid-greeting takes over at once.
 - **Settings**: a short menu. The rider card at the top opens your name and
   bike (Change Bike). Then **Dash** (speed alert, startup animation and
-  greeting), **Calls**, **Messages**, **Appearance**, **Connect
+  greeting), **Calls** (dash alerts and Reject Unknown Callers),
+  **Messages**, **Appearance**, **Connect
   Automatically** (a switch: reconnect on ignition and after the phone
   restarts), **Updates**, **Troubleshooting** (Dash Test, what is being sent
   to the dash, traffic side, Reload Maps Arrows and the log) and **About &
@@ -192,6 +193,15 @@ model and can be changed under Fuel Settings on the Fuel tab. It is worked out f
 and the ODO rather than a fuel sensor, so the first tank is an estimate and
 range only learns while the app is connected: keep the phone connected on
 long rides for the best numbers.
+
+**Reject Unknown Callers** (Settings > Calls, off by default) declines
+phone calls from numbers that aren't in your contacts, while riding or
+always. Zuki Nav reads your phone app's incoming-call notification (a saved
+contact shows a name, anyone else a number) and presses its own Decline
+button, so your caller ID app stays as it is. Declined calls still show as
+missed calls. **Allow Repeat Callers** lets a second call from the same
+number within 5 minutes ring through, and **Show On Dash** shows REJECTED
+CALL for 3 seconds. WhatsApp calls aren't affected.
 
 **Maintenance**: the Service tab keeps reminders for Chain Maintenance
 (every 500 km to start with), General Service (set the interval from your

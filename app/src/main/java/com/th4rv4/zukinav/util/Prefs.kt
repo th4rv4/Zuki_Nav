@@ -188,6 +188,26 @@ class Prefs(context: Context) {
         get() = sp.getInt(K_ROUTE_COLOURS, ROUTE_SPEED)
         set(v) = sp.edit().putInt(K_ROUTE_COLOURS, v).apply()
 
+    /** Reject Unknown Callers: decline phone calls from numbers not in the contacts. */
+    var rejectUnknown: Boolean
+        get() = sp.getBoolean(K_REJECT, false)
+        set(v) = sp.edit().putBoolean(K_REJECT, v).apply()
+
+    /** Reject even when the bike isn't connected (otherwise only while riding). */
+    var rejectAlways: Boolean
+        get() = sp.getBoolean(K_REJECT_ALWAYS, false)
+        set(v) = sp.edit().putBoolean(K_REJECT_ALWAYS, v).apply()
+
+    /** Let a second call from the same unknown number within 5 minutes ring through. */
+    var rejectAllowRepeat: Boolean
+        get() = sp.getBoolean(K_REJECT_REPEAT, true)
+        set(v) = sp.edit().putBoolean(K_REJECT_REPEAT, v).apply()
+
+    /** Show REJECTED CALL on the dash for a moment. */
+    var rejectShowOnDash: Boolean
+        get() = sp.getBoolean(K_REJECT_DASH, false)
+        set(v) = sp.edit().putBoolean(K_REJECT_DASH, v).apply()
+
     /** Share Image: background, line colour and what to show; see ShareImage. */
     var shareBackground: Int
         get() = sp.getInt(K_SHARE_BG, 0)
@@ -260,6 +280,10 @@ class Prefs(context: Context) {
         private const val K_TRIPS_ROUTE = "trips_route"
         private const val K_ROUTE_COLOURS = "route_colours"
         private const val K_SHARE_BG = "share_background"
+        private const val K_REJECT = "reject_unknown"
+        private const val K_REJECT_ALWAYS = "reject_unknown_always"
+        private const val K_REJECT_REPEAT = "reject_unknown_repeat"
+        private const val K_REJECT_DASH = "reject_unknown_dash"
         private const val K_SHARE_LINE = "share_line"
         const val ROUTE_SPEED = 0
         const val ROUTE_ENGINE = 1
