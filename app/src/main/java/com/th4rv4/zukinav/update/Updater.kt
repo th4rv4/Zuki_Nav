@@ -31,6 +31,7 @@ object Updater {
     const val REPO = "th4rv4/Zuki_Nav"
     private const val LATEST = "https://api.github.com/repos/$REPO/releases/latest"
     const val RELEASES_PAGE = "https://github.com/$REPO/releases"
+    private const val ALL = "https://api.github.com/repos/$REPO/releases?per_page=30"
 
     sealed interface State {
         data object Idle : State
@@ -66,9 +67,20 @@ object Updater {
         set(State.Checking)
         Thread {
             try {
-                val r = fetchLatest()
-                AppLog.d("Update", "Latest release ${r.version}, installed $installed")
-                set(if (Versions.isNewer(r.version, installed)) State.Available(r) else State.UpToDate(r.version))
+                val latest = fetchLatest()
+                AppLog.d("Update", "Latest release ${latest.version}, installed $installed")
+                if (Versions.isNewer(latest.version, installed)) {
+                    // Skipped a few versions? Show what changed in all of them.
+                    val notes = try {
+                        ReleaseNotes.since(fetchNotes(), installed, latest.version).ifBlank { latest.notes }
+                    } catch (e: Exception) {
+                        AppLog.d("Update", "Couldn't read older release notes: $e")
+                        latest.notes
+                    }
+                    set(State.Available(latest.copy(notes = notes)))
+                } else {
+                    set(State.UpToDate(latest.version))
+                }
             } catch (e: Exception) {
                 AppLog.d("Update", "Check failed: $e")
                 set(State.Failed("Couldn't reach GitHub. Check your connection."))
@@ -161,6 +173,19 @@ object Updater {
             apkUrl = apk.getString("browser_download_url"),
             apkSize = apk.optLong("size", -1),
         )
+    }
+
+    /** Every recent release as (version, notes). */
+    private fun fetchNotes(): List<Pair<String, String>> {
+        val conn = open(ALL)
+        conn.setRequestProperty("Accept", "application/vnd.github+json")
+        if (conn.responseCode != 200) error("HTTP ${conn.responseCode}")
+        val arr = org.json.JSONArray(conn.inputStream.bufferedReader().use { it.readText() })
+        return (0 until arr.length()).mapNotNull { i ->
+            val r = arr.getJSONObject(i)
+            if (r.optBoolean("draft") || r.optBoolean("prerelease")) null
+            else r.optString("tag_name").removePrefix("v") to cleanNotes(r.optString("body"))
+        }
     }
 
     /** The release notes list commits as "- message (abc1234)"; keep the messages. */

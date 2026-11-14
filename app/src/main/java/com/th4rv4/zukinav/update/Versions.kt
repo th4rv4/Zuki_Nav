@@ -31,3 +31,29 @@ object Versions {
         v.trim().removePrefix("v").removePrefix("V").substringBefore('-').substringBefore('+')
             .split('.').map { p -> p.takeWhile { it.isDigit() }.toIntOrNull() ?: 0 }
 }
+
+/** Joins the notes of every release between the installed version and the newest one. */
+object ReleaseNotes {
+
+    /** Most releases shown; older ones are on GitHub. */
+    const val MAX_RELEASES = 12
+
+    /**
+     * [releases] as (version, notes), in any order. Keeps those newer than
+     * [installed] and not newer than [latest], newest first. One release
+     * gives its notes as they are; several get a "v1.2.3" line above each.
+     */
+    fun since(releases: List<Pair<String, String>>, installed: String, latest: String): String {
+        val wanted = releases
+            .filter { (v, _) -> Versions.isNewer(v, installed) && !Versions.isNewer(v, latest) }
+            .distinctBy { it.first.removePrefix("v") }
+            .sortedWith { a, b -> Versions.compare(b.first, a.first) }
+        if (wanted.isEmpty()) return ""
+        if (wanted.size == 1) return wanted[0].second.trim()
+        val shown = wanted.take(MAX_RELEASES)
+        val text = shown.joinToString("\n\n") { (v, notes) ->
+            "v" + v.removePrefix("v") + "\n" + notes.trim().ifEmpty { "• Small fixes" }
+        }
+        return if (wanted.size > shown.size) "$text\n\nOlder changes are on GitHub." else text
+    }
+}
