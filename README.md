@@ -140,21 +140,26 @@ This approach, and the Maps notification layouts, follow
   grouped by day, with a Starred filter. Each ride opens its details. Trip
   Settings (Record Trips, Skip Short Rides, Start And End Places) are at the
   bottom.
-- **Test**: show any turn icon on the dash, mark it **Looks Right** or
+- **Thermals**: the live engine temperature on a cold-to-hot gauge, a Temp
+  Monitor graph of the last 30 minutes with your limits drawn in, the ride's
+  highest and average temperature and time above Hot, the hottest point of
+  recent trips, and Thermal Settings (see Engine temperature below).
+- **Dash Test** (Settings > Troubleshooting): show any turn icon on the dash, mark it **Looks Right** or
   **Looks Wrong** (the next icon follows automatically), see progress for
   all 64 icons, and **Share Results**. **Text Test** sends your own text
   into the number spots under the arrow. Tests only run while Google Maps
   isn't navigating.
 
 Optional extras in Settings: **Startup Animation** spins the compass arrow
-on the dash after "Welcome", and **Startup Greeting** shows a short text for 3
-seconds on the dash's call screen. The dash always puts its own
+on the dash after "Welcome", and **Startup Greeting** shows a short text on the
+dash's call screen for 3, 5, 10 or 15 seconds (Shown For). The dash always puts its own
 "CALLER:" label above it; no other screen can show text. Both are skipped when a route is already running,
-and a route starting mid-animation takes over at once.
+and a route starting mid-animation or mid-greeting takes over at once.
 - **Settings**, in groups: Your Bike (Change Bike, rider name), Welcome
   (startup animation and greeting), Riding (speed alert, traffic side),
-  Calls, Messages, Appearance, Connection, Updates and Troubleshooting.
-  Trip and fuel settings sit at the bottom of the Trips and Fuel tabs.
+  Calls, Messages, Appearance, Connection, Updates and Troubleshooting
+  (with Dash Test). Trip, fuel and engine settings sit at the bottom of the
+  Trips, Fuel and Thermals tabs.
 
 **Fuel**: Zuki Nav notices a refill when the fuel bars go up and asks (in
 a notification) for the litres and the amount paid; both are optional.
@@ -169,11 +174,16 @@ long rides for the best numbers.
 
 **Engine temperature**: the dash sends the engine temperature in °C (Suzuki's
 own app receives it but never shows it). Zuki Nav shows it on the Ride tab as
-a bar from cold to hot. Set your own Engine Warm-Up Temp and Engine Heat
-Warning in Settings > Riding to get Warming Up, Normal and Hot labels and a
-warning when the engine runs hot; both are off until you set them. It only
-shows while the bike is connected, and each trip saves its highest and
-average engine temperature.
+a bar from cold to hot, and in full on the Thermals tab. Set your own Engine
+Warm-Up Temp and Engine Heat Warning under Thermal Settings to get Warming
+Up, Normal and Hot labels and a warning when the engine runs hot; both are
+off until you set them. Two optional dash alerts use the call screen, each
+for 3, 5, 10 or 15 seconds (Shown For): **WARMED UP** once per ride when the
+engine reaches your warm-up temp (skipped during a route), and **ENGINE
+OVERHEAT** when it reaches your heat warning, again every 5 minutes while it
+stays hot (shown even during a route, but for 5 seconds at most so the arrows
+come back quickly). It only shows while the bike is connected, and each trip saves its
+highest and average engine temperature.
 
 **Appearance**: four themes (System, Light, Dark and AMOLED, which is true
 black) and an accent colour for the gauge, rings and buttons: Aurora,

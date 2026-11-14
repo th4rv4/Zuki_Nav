@@ -55,7 +55,7 @@ class MainActivity : Activity() {
         RIDE("Ride", R.drawable.ic_tab_ride),
         TRIPS("Trips", R.drawable.ic_tab_trips),
         FUEL("Fuel", R.drawable.ic_fuel),
-        DASH_TEST("Test", R.drawable.ic_tab_dash),
+        THERMALS("Thermals", R.drawable.ic_engine_temp),
         SETTINGS("Settings", R.drawable.ic_tab_settings),
     }
 
@@ -285,7 +285,7 @@ class MainActivity : Activity() {
     @Deprecated("Back from Setup returns to the tabs")
     override fun onBackPressed() {
         if (current is TripDetailScreen) showTab(Tab.TRIPS)
-        else if (current is AboutScreen) showTab(Tab.SETTINGS)
+        else if (current is AboutScreen || current is DashTestScreen) showTab(Tab.SETTINGS)
         else if (current is SetupScreen && setupComplete()) showTab(Tab.RIDE) else {
             @Suppress("DEPRECATION")
             super.onBackPressed()
@@ -383,11 +383,14 @@ class MainActivity : Activity() {
                 Tab.RIDE -> screen("ride") { RideScreen(this) }
                 Tab.TRIPS -> screen("trips") { TripsScreen(this) }
                 Tab.FUEL -> screen("fuel") { FuelScreen(this) }
-                Tab.DASH_TEST -> screen("dash") { DashTestScreen(this) }
+                Tab.THERMALS -> screen("thermals") { ThermalsScreen(this) }
                 Tab.SETTINGS -> screen("settings") { SettingsScreen(this) }
             },
         )
     }
+
+    /** Opens Dash Test from Settings > Troubleshooting, with the Settings tab still selected. */
+    fun showDashTest() = swapTo(screen("dash") { DashTestScreen(this) })
 
     /** Opens About & Support, with the Settings tab still selected. */
     fun showAbout() = swapTo(screen("about") { AboutScreen(this) })

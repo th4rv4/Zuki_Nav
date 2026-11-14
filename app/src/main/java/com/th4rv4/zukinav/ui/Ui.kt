@@ -389,6 +389,20 @@ class Ui(val ctx: Context) {
     fun segmented(left: String, right: String, selected: Int, onPick: (Int) -> Unit): LinearLayout =
         segmented(listOf(left, right), selected, onPick = onPick)
 
+    /** "Shown For" row with a 3 / 5 / 10 / 15 s picker, for text shown on the dash. */
+    fun durationRow(seconds: Int, onPick: (Int) -> Unit): LinearLayout {
+        val choices = com.th4rv4.zukinav.util.Prefs.MESSAGE_SECONDS
+        return LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(4), 0, dp(12))
+            addView(text("Shown For", 13f, Palette.MUTED, Weight.MEDIUM))
+            addView(
+                segmented(choices.map { "$it s" }, choices.indexOf(seconds).coerceAtLeast(0), fill = true) { onPick(choices[it]) },
+                LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) },
+            )
+        }
+    }
+
     /** Segmented control; [onPick] gets the index of the chosen option. */
     /** [fill]: the options share the full width equally, for a control on its own line. */
     fun segmented(labels: List<String>, selected: Int, padDp: Int = 14, fill: Boolean = false, onPick: (Int) -> Unit): LinearLayout {

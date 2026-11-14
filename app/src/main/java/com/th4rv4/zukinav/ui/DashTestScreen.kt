@@ -143,9 +143,23 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
             radiusDp = 22,
         )
 
+        val back = ui.text("‹", 30f, Palette.TEXT).apply {
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Back to Settings"
+            setPadding(ui.dp(4), 0, ui.dp(14), ui.dp(4))
+            setOnClickListener { host.showTab(MainActivity.Tab.SETTINGS) }
+        }
+        val header = LinearLayout(ui.ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(back)
+            addView(ui.vstack(2, ui.text("Dash Test", 22f, Palette.TEXT, Ui.Weight.BOLD),
+                ui.text("Check each turn icon on your dash", 13f, Palette.MUTED)),
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        }
         view = host.page(
-            ui.vstack(2, ui.title("Dash Test"), ui.text("Check each turn icon on your dash", 13f, Palette.MUTED))
-                .apply { setPadding(ui.dp(4), 0, 0, 0) },
+            header,
             currentCard,
             allCard,
             textCard,

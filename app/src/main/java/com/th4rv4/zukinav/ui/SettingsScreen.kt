@@ -43,28 +43,27 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             ui.row("Rider Name", "Shown on the dash when it connects", riderInput),
         )
 
+        val greetingTime = ui.durationRow(prefs.greetingSeconds) { prefs.greetingSeconds = it }.apply {
+            visibility = if (prefs.startupGreeting.isNotBlank()) View.VISIBLE else View.GONE
+        }
         val welcome = ui.listCard(
             ui.switchRow("Startup Animation", "Spins the arrow on the dash after Welcome. Skipped during a route.", prefs.startupAnimation) {
                 prefs.startupAnimation = it
             },
-            ui.row("Startup Greeting", "Shown for 3 s after Welcome, on the dash's call screen under \"CALLER:\"",
-                ui.input(prefs.startupGreeting, "None") { prefs.startupGreeting = it }.apply {
+            ui.row("Startup Greeting", "Shown after Welcome, on the dash's call screen under \"CALLER:\"",
+                ui.input(prefs.startupGreeting, "None") {
+                    prefs.startupGreeting = it
+                    greetingTime.visibility = if (prefs.startupGreeting.isNotBlank()) View.VISIBLE else View.GONE
+                }.apply {
                     filters = arrayOf(android.text.InputFilter.LengthFilter(20))
                 }),
+            greetingTime,
         )
 
         val riding = ui.listCard(
             ui.row("Speed Alert", "km/h, empty to turn off",
                 ui.input(prefs.speedAlertKmh.takeIf { it > 0 }?.toString() ?: "", "Off", numeric = true) {
                     prefs.speedAlertKmh = it.toIntOrNull()?.coerceIn(0, 999) ?: 0
-                }),
-            ui.row("Engine Warm-Up Temp", "°C. Below this the Ride tab says Warming Up. Empty to turn off",
-                ui.input(prefs.engineWarmC.takeIf { it > 0 }?.toString() ?: "", "Off", numeric = true) {
-                    prefs.engineWarmC = it.toIntOrNull()?.coerceIn(0, 254) ?: 0
-                }),
-            ui.row("Engine Heat Warning", "°C. At or above this the Ride tab warns Hot. Empty to turn off",
-                ui.input(prefs.engineHotC.takeIf { it > 0 }?.toString() ?: "", "Off", numeric = true) {
-                    prefs.engineHotC = it.toIntOrNull()?.coerceIn(0, 254) ?: 0
                 }),
             ui.row("Traffic Side", "Decides roundabout and U-turn icons",
                 ui.segmented("Left", "Right", if (prefs.leftHandTraffic) 0 else 1) { prefs.leftHandTraffic = it == 0 }),
@@ -125,6 +124,14 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         val reload = ui.navRow("Reload Maps Arrows", "Tap To Load") { reloadArrows() }
         arrowsRow = reload.getChildAt(reload.childCount - 1) as? TextView
         val troubleshooting = ui.listCard(
+            ui.row("Dash Test", "Check turn icons and text on your dash", ui.text("›", 20f, Palette.MUTED)).apply {
+                isClickable = true
+                isFocusable = true
+                background = android.graphics.drawable.RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(Palette.RIPPLE), null, ui.rounded(android.graphics.Color.WHITE, 8),
+                )
+                setOnClickListener { host.showDashTest() }
+            },
             ui.navRow("View Log") { host.showLogDialog() },
             ui.navRow("Share Log") { host.shareLog() },
             reload,
