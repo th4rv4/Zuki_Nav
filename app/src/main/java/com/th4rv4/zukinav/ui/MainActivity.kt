@@ -54,7 +54,7 @@ class MainActivity : Activity() {
     enum class Tab(val label: String, val icon: Int) {
         RIDE("Ride", R.drawable.ic_tab_ride),
         TRIPS("Trips", R.drawable.ic_tab_trips),
-        BIKE("Bike", R.drawable.ic_sec_bike),
+        BIKE("Bike", R.drawable.ic_tab_bike),
         SETTINGS("Settings", R.drawable.ic_tab_settings),
     }
 
