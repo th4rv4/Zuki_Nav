@@ -398,6 +398,9 @@ class DashService : Service(), ClusterLink.Listener {
             if (!statusLogged) {
                 AppLog.d("Dash", "-> ${SuzukiFrames.hex(status)} (status: every 2 s during a route, else once a minute)")
                 statusLogged = true
+            } else if (!busy()) {
+                // Once a minute without a route: worth a line, to see the dash keeps up.
+                AppLog.d("Dash", "-> status (clock ${LocalTime.now().withNano(0)})")
             }
             link.send(status, coalesceKey = "status")
         }
