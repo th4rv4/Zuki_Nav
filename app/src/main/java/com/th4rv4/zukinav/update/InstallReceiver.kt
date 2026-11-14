@@ -30,6 +30,16 @@ class InstallReceiver : BroadcastReceiver() {
                 AppLog.d("Update", "Installed ${intent.getStringExtra(EXTRA_VERSION)}")
                 Updater.finished(true, null)
             }
+            PackageInstaller.STATUS_FAILURE_CONFLICT -> {
+                // Signed with a different key from the installed app, which
+                // happens once when the app moves to its release key.
+                AppLog.d("Update", "Install ended: signature conflict, $message")
+                Updater.finished(
+                    false,
+                    "This update is signed with Zuki Nav's new release key, so Android can't install it over this " +
+                        "version. Uninstall Zuki Nav, then install the new version from GitHub. This is needed only once.",
+                )
+            }
             else -> {
                 AppLog.d("Update", "Install ended: status $status, $message")
                 Updater.finished(false, message)

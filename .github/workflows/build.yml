@@ -46,14 +46,30 @@ jobs:
             echo "name=0.0.0-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Unit tests and debug APK
+      # With the RELEASE_KEYSTORE_BASE64 secret set, builds a release APK
+      # signed with the private release key. Without it, the debug APK as
+      # before (signed with the public debug key in the repo).
+      - name: Unit tests and APK
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon testDebugUnitTest assembleDebug \
-            -PappVersionName="${{ steps.version.outputs.name }}" \
-            -PappVersionCode="${{ github.run_number }}"
           mkdir -p dist
-          cp app/build/outputs/apk/debug/app-debug.apk "dist/zuki-nav-${{ github.ref_name }}.apk"
+          VERSION_ARGS="-PappVersionName=${{ steps.version.outputs.name }} -PappVersionCode=${{ github.run_number }}"
+          if [ -n "$RELEASE_KEYSTORE_BASE64" ]; then
+            echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            export RELEASE_STORE_FILE="$RUNNER_TEMP/release.jks"
+            ./gradlew --no-daemon testReleaseUnitTest assembleRelease $VERSION_ARGS
+            cp app/build/outputs/apk/release/app-release.apk "dist/zuki-nav-${{ github.ref_name }}.apk"
+            rm -f "$RUNNER_TEMP/release.jks"
+          else
+            echo "::warning::No release key set: building the debug APK"
+            ./gradlew --no-daemon testDebugUnitTest assembleDebug $VERSION_ARGS
+            cp app/build/outputs/apk/debug/app-debug.apk "dist/zuki-nav-${{ github.ref_name }}.apk"
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

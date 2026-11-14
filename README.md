@@ -230,8 +230,16 @@ Icons 1 to 46 have all been checked on a Gixxer SF 250 dash.
 
 GitHub Actions (`.github/workflows/build.yml`) builds when a version tag
 is pushed, or when started by hand (Actions → Build → Run workflow). Plain
-commits don't trigger it. Unit tests run and the debug APK is attached to
-the run as an artifact.
+commits don't trigger it. Unit tests run and the APK is attached to the run
+as an artifact.
+
+Releases are signed with a private release key kept in the repo's Actions
+secrets: `RELEASE_KEYSTORE_BASE64` (the `.jks` file, base64), `RELEASE_STORE_PASSWORD`,
+`RELEASE_KEY_ALIAS` and `RELEASE_KEY_PASSWORD`. Without them the workflow
+falls back to the debug APK, which Google Play Protect flags as harmful
+because its key is public. Moving from a debug-signed build to the release
+key needs one uninstall and reinstall, as Android only updates an app
+signed with the same key.
 
 A tag push also publishes a GitHub Release named after the tag, with the
 APK attached and every commit since the previous `v*` tag listed in the
@@ -256,8 +264,8 @@ from this repo's releases.
 
 Needs JDK 17+ and an Android SDK with platform 36 (`local.properties` → `sdk.dir`).
 For a signed release, add `RELEASE_STORE_FILE`, `RELEASE_STORE_PASSWORD`,
-`RELEASE_KEY_ALIAS` and `RELEASE_KEY_PASSWORD` to `local.properties` and run
-`./gradlew assembleRelease`.
+`RELEASE_KEY_ALIAS` and `RELEASE_KEY_PASSWORD` to `local.properties` (or set
+them as environment variables) and run `./gradlew assembleRelease`.
 
 ## Layout
 

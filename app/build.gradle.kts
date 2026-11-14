@@ -5,7 +5,8 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-// Optional release signing, kept out of git in local.properties:
+// Release signing, never kept in git. Read from environment variables (set
+// by GitHub Actions from the repo's secrets) or from local.properties:
 //   RELEASE_STORE_FILE=/path/to/key.jks
 //   RELEASE_STORE_PASSWORD=...
 //   RELEASE_KEY_ALIAS=...
@@ -14,6 +15,8 @@ val localProps = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
+fun signingValue(name: String): String? = System.getenv(name)?.takeIf { it.isNotBlank() } ?: localProps.getProperty(name)
+val releaseStore: String? = signingValue("RELEASE_STORE_FILE")
 
 android {
     namespace = "com.th4rv4.zukinav"
@@ -40,20 +43,22 @@ android {
             keyPassword = "android"
         }
         create("release") {
-            localProps.getProperty("RELEASE_STORE_FILE")?.let { path ->
+            releaseStore?.let { path ->
                 storeFile = file(path)
-                storePassword = localProps.getProperty("RELEASE_STORE_PASSWORD")
-                keyAlias = localProps.getProperty("RELEASE_KEY_ALIAS")
-                keyPassword = localProps.getProperty("RELEASE_KEY_PASSWORD")
+                storePassword = signingValue("RELEASE_STORE_PASSWORD")
+                keyAlias = signingValue("RELEASE_KEY_ALIAS")
+                keyPassword = signingValue("RELEASE_KEY_PASSWORD")
             }
         }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = true
+            // Kept readable (no shrinking or renaming): the app is small, and
+            // plain code is easier for Play Protect to check.
+            isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            if (localProps.getProperty("RELEASE_STORE_FILE") != null) {
+            if (releaseStore != null) {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
