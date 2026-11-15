@@ -67,7 +67,7 @@ object MaintNotifier {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 
-    /** A daily check, so date-based reminders arrive even if the bike isn't connected. */
+    /** A daily check, so date-based reminders and papers arrive even if the bike isn't connected. */
     fun schedule(ctx: Context) {
         val am = ctx.getSystemService(AlarmManager::class.java) ?: return
         val pi = PendingIntent.getBroadcast(
@@ -87,7 +87,10 @@ class MaintReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val id = intent.getLongExtra(MaintNotifier.EXTRA_ID, -1L)
         when (intent.action) {
-            MaintNotifier.ACTION_CHECK -> MaintNotifier.show(context, MaintStore.checkNow(context))
+            MaintNotifier.ACTION_CHECK -> {
+                MaintNotifier.show(context, MaintStore.checkNow(context))
+                com.th4rv4.zukinav.papers.PaperNotifier.check(context)
+            }
             MaintNotifier.ACTION_DONE -> if (id >= 0) {
                 MaintStore.markDone(context, id)
                 cancel(context, id)

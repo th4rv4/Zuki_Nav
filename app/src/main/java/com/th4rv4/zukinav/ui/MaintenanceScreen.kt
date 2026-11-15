@@ -23,6 +23,8 @@ class MaintenanceScreen(host: MainActivity) : Screen(host) {
     private val odoLine = ui.text("", 13f, Palette.MUTED)
     private val list = ui.vstack(10)
     private val changed: () -> Unit = { render() }
+    private val papers = PapersSection(host)
+    private val papersChanged: () -> Unit = { papers.render() }
 
     override val view: View
 
@@ -32,6 +34,7 @@ class MaintenanceScreen(host: MainActivity) : Screen(host) {
             host.bikeHeader(MainActivity.BIKE_SERVICE, odoLine),
             list,
             add,
+            *papers.views.toTypedArray(),
             ui.sectionHeader(R.drawable.ic_sec_wrench, "Maintenance Settings"),
             ui.listCard(
                 ui.row("Remind Me Early", "km before a reminder is due",
@@ -52,6 +55,8 @@ class MaintenanceScreen(host: MainActivity) : Screen(host) {
 
     override fun onShow() {
         MaintStore.addListener(changed)
+        com.th4rv4.zukinav.papers.PaperStore.addListener(papersChanged)
+        papers.render()
         // Catch up straight away if the dash has sent a newer ODO.
         DashService.liveBike?.odoKm?.takeIf { it > 0 }?.let {
             com.th4rv4.zukinav.maint.MaintNotifier.show(host, MaintStore.onOdo(host, it))
@@ -61,6 +66,7 @@ class MaintenanceScreen(host: MainActivity) : Screen(host) {
 
     override fun onHide() {
         MaintStore.removeListener(changed)
+        com.th4rv4.zukinav.papers.PaperStore.removeListener(papersChanged)
     }
 
     private fun render() {

@@ -80,6 +80,7 @@ class MainActivity : Activity() {
         openRefillFrom(intent)
         openMaintenanceFrom(intent)
         com.th4rv4.zukinav.maint.MaintNotifier.schedule(this)
+        Thread { com.th4rv4.zukinav.papers.PaperNotifier.check(applicationContext) }.start()
         // Kept for the whole time the app is open, so the Bluetooth popup also
         // closes when Bluetooth is turned on from Android's own prompt.
         val filter = android.content.IntentFilter(android.bluetooth.BluetoothAdapter.ACTION_STATE_CHANGED)
@@ -657,7 +658,7 @@ class MainActivity : Activity() {
             cb?.invoke(ok)
             return
         }
-        if (requestCode == REQ_BACKUP_CREATE || requestCode == REQ_BACKUP_OPEN) {
+        if (requestCode == REQ_BACKUP_CREATE || requestCode == REQ_BACKUP_OPEN || requestCode == REQ_PAPER) {
             val cb = fileCallback
             fileCallback = null
             cb?.invoke(if (resultCode == RESULT_OK) data?.data else null)
@@ -728,6 +729,23 @@ class MainActivity : Activity() {
         startActivityForResult(i, REQ_BACKUP_OPEN)
     }
 
+    /** Android's file picker, for a photo or PDF of a paper. */
+    fun pickPaperFile(onPicked: (android.net.Uri?) -> Unit) {
+        fileCallback = onPicked
+        val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("image/*", "application/pdf"))
+        }
+        try {
+            @Suppress("DEPRECATION")
+            startActivityForResult(i, REQ_PAPER)
+        } catch (_: Exception) {
+            fileCallback = null
+            toast("No file picker found")
+        }
+    }
+
     /** Starts the app afresh, e.g. after a restore, so everything reads the restored data. */
     fun restartApp() {
         stopService(Intent(this, com.th4rv4.zukinav.service.DashService::class.java))
@@ -751,6 +769,7 @@ class MainActivity : Activity() {
         private const val REQ_BACKUP_CREATE = 5
         private const val REQ_BACKUP_OPEN = 6
         private const val REQ_WAKE = 7
+        private const val REQ_PAPER = 8
     }
 }
 
