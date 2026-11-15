@@ -139,7 +139,7 @@ object ShareImage {
         return bmp
     }
 
-    private fun drawRoute(
+    internal fun drawRoute(
         c: Canvas, points: List<RoutePoint>, l: Float, t: Float, r: Float, b: Float,
         line: Int, width: Float, shadow: Boolean, light: Boolean,
     ) {

@@ -24,6 +24,31 @@ class TripsScreen(host: MainActivity) : Screen(host) {
     private val monthTime = stat()
     private val monthCard: LinearLayout
     private val list = ui.vstack(10)
+    private val recapTitle = ui.text("", 15f, Palette.TEXT, Ui.Weight.MEDIUM)
+    private val recapSub = ui.text("", 12f, Palette.MUTED)
+    private var recap: com.th4rv4.zukinav.trips.MonthRecap? = null
+    private val recapCard: LinearLayout = LinearLayout(ui.ctx).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        background = ui.pressable(Palette.SURFACE, 20, Palette.BORDER)
+        setPadding(ui.dp(14), ui.dp(12), ui.dp(8), ui.dp(12))
+        isClickable = true
+        isFocusable = true
+        setOnClickListener { recap?.let { RecapSheet(host, it).show() } }
+        addView(ui.iconTile(R.drawable.ic_sec_route, 40, 20, Palette.ACCENT_SOFT, Palette.ACCENT_BG, 12),
+            LinearLayout.LayoutParams(ui.dp(40), ui.dp(40)).apply { marginEnd = ui.dp(12) })
+        addView(ui.vstack(2, recapTitle, recapSub), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        addView(ui.text("Share", 13f, Palette.ACCENT_SOFT, Ui.Weight.MEDIUM))
+        addView(ui.text("✕", 15f, Palette.MUTED).apply {
+            setPadding(ui.dp(12), ui.dp(8), ui.dp(8), ui.dp(8))
+            contentDescription = "Hide this recap"
+            isClickable = true
+            setOnClickListener {
+                prefs.recapDismissed = recap?.month?.toString()
+                render()
+            }
+        })
+    }
     private val empty = ui.text("", 14f, Palette.MUTED).apply {
         gravity = Gravity.CENTER
         setPadding(ui.dp(16), ui.dp(32), ui.dp(16), ui.dp(32))
@@ -55,6 +80,7 @@ class TripsScreen(host: MainActivity) : Screen(host) {
         view = host.page(
             ui.vstack(2, ui.title("Trips"), ui.text("Saved from the dash, ignition on to ignition off", 13f, Palette.MUTED))
                 .apply { setPadding(ui.dp(4), 0, 0, 0) },
+            recapCard,
             monthCard,
             ui.segmented(listOf("All", "Starred"), 0, fill = true) { starredOnly = it == 1; render() },
             list,
@@ -134,6 +160,17 @@ class TripsScreen(host: MainActivity) : Screen(host) {
         monthRides.text = n.toString()
         monthTime.text = TripFormat.shortDuration(TripFormat.monthSeconds(all))
         monthCard.visibility = if (all.isEmpty()) View.GONE else View.VISIBLE
+
+        // Last month's recap, offered during the first week of the month.
+        recap = com.th4rv4.zukinav.trips.MonthRecap.offered()
+            ?.takeIf { it.toString() != prefs.recapDismissed }
+            ?.let { com.th4rv4.zukinav.trips.MonthRecap.of(all, it) }
+            ?.takeIf { it.rides > 0 }
+        recapCard.visibility = if (recap == null) View.GONE else View.VISIBLE
+        recap?.let { r ->
+            recapTitle.text = "Your ${r.month.month.getDisplayName(java.time.format.TextStyle.FULL, Locale.US)} Recap"
+            recapSub.text = RecapImage.value(r, "km") + " · " + r.rides + if (r.rides == 1) " ride" else " rides"
+        }
 
         val shown = if (starredOnly) all.filter { it.starred } else all
         list.removeAllViews()

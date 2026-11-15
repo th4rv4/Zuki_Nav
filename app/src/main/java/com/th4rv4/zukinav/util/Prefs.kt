@@ -274,6 +274,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_REJECT_REPEAT, true)
         set(v) = sp.edit().putBoolean(K_REJECT_REPEAT, v).apply()
 
+    /** The month (yyyy-MM) whose recap card was closed on the Trips tab. */
+    var recapDismissed: String?
+        get() = sp.getString(K_RECAP_DISMISSED, null)
+        set(v) = sp.edit().putString(K_RECAP_DISMISSED, v).apply()
+
     /** Where the bike was parked: "lat;lng;time;place", or null. */
     var parkedSpot: String?
         get() = sp.getString(K_PARKED, null)
@@ -388,6 +393,7 @@ class Prefs(context: Context) {
         private const val K_REJECT_DASH = "reject_unknown_dash"
         private const val K_AUTO_REPLY = "auto_reply"
         private const val K_PARKED = "parked_spot"
+        private const val K_RECAP_DISMISSED = "recap_dismissed"
         private const val K_AUTO_REPLY_TEXT = "auto_reply_text"
         private const val K_AUTO_REPLY_CONTACTS = "auto_reply_contacts_only"
         private const val K_AUTO_REPLY_EVERY = "auto_reply_every_min"
