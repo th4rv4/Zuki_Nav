@@ -294,6 +294,7 @@ class MainActivity : Activity() {
     @Deprecated("Back from Setup returns to the tabs")
     override fun onBackPressed() {
         if (current is TripDetailScreen) showTab(Tab.TRIPS)
+        else if (current is StopsScreen) showTrip((current as StopsScreen).tripId)
         else if (current is DashTestScreen) showSettingsPage(SettingsScreen.PAGE_TROUBLESHOOTING)
         else if (current is AboutScreen || current is SettingsPage) showTab(Tab.SETTINGS)
         else if (current is SetupScreen && setupComplete()) showTab(Tab.RIDE) else {
@@ -447,6 +448,11 @@ class MainActivity : Activity() {
     /** Opens one trip's details, with the Trips tab still selected. */
     fun showTrip(id: Long) {
         swapTo(TripDetailScreen(this, id))
+    }
+
+    /** A merged trip's stops, with the Trips tab still selected. */
+    fun showStops(tripId: Long) {
+        swapTo(StopsScreen(this, tripId))
     }
 
     /** Dialog style that matches the app. */

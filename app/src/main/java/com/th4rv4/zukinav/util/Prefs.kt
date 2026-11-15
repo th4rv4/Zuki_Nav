@@ -188,6 +188,15 @@ class Prefs(context: Context) {
         get() = sp.getInt(K_ROUTE_COLOURS, ROUTE_SPEED)
         set(v) = sp.edit().putInt(K_ROUTE_COLOURS, v).apply()
 
+    /** The rider's own stop labels, newest first, at most 3. */
+    val recentStopLabels: List<String>
+        get() = sp.getString(K_STOP_LABELS, null)?.split('\n')?.filter { it.isNotBlank() } ?: emptyList()
+
+    fun rememberStopLabel(label: String) {
+        val list = (listOf(label) + recentStopLabels.filterNot { it.equals(label, ignoreCase = true) }).take(3)
+        sp.edit().putString(K_STOP_LABELS, list.joinToString("\n")).apply()
+    }
+
     /** Backup & Restore: the folder backups go to (a content:// tree address). */
     var backupFolder: String?
         get() = sp.getString(K_BACKUP_FOLDER, null)
@@ -344,6 +353,7 @@ class Prefs(context: Context) {
         private const val K_SHARE_BG = "share_background"
         private const val K_REJECT = "reject_unknown"
         const val K_BACKUP_URI = "backup_uri"
+        private const val K_STOP_LABELS = "stop_labels_recent"
         const val K_BACKUP_FOLDER = "backup_folder"
         const val K_BACKUP_LAST = "backup_last"
         const val K_BACKUP_LAST_SIZE = "backup_last_size"

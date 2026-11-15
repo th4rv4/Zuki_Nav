@@ -41,6 +41,10 @@ object TripFormat {
     fun odo(km: Int): String = String.format(Locale.US, "%,d", km)
 
     /** The rider's name for it, else "From → To", else "Ride, 7 Nov". */
+    /** What to call a stop: its label, else its place, else "Stop 1". */
+    fun stopName(s: Stop, index: Int): String =
+        s.label?.takeIf { it.isNotBlank() } ?: s.place ?: "Stop ${index + 1}"
+
     /** "2 stops, 15 min" for merged rides; null when there were none. */
     fun stops(t: Trip): String? {
         if (t.stops <= 0) return null
@@ -54,6 +58,7 @@ object TripFormat {
         val to = t.endPlace
         return when {
             from != null && to != null && from != to -> "$from → $to"
+            from != null && to == from && t.stops > 0 -> "$from Round Trip"
             from != null && (to == null || to == from) -> "Ride In $from"
             to != null -> "Ride To $to"
             else -> "Ride, " + date(t.start, zone).format(DateTimeFormatter.ofPattern("d MMM", Locale.US))

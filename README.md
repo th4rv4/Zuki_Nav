@@ -101,7 +101,12 @@ background. Mileage and range are on the Fuel tab (see below).
 it, for when stops split one outing into several trips (a trip ends 3
 minutes after the ignition goes off). Distances and riding time add up, the
 routes join into one map, and the time in between shows as a stop, like
-"2 stops, 15 min". Rides whose place names couldn't be looked up get
+"2 stops, 15 min". Merged trips get a **Stops** page: a timeline of each leg
+(distance, time, top speed) and each stop (where, arrive and leave, how long),
+with the stops marked in amber on the map. Tap a stop to label it (Fuel,
+Chai Break, Food, Photos, Bike Check, Rest, or your own with Other); your own
+labels come back as quick picks. A trip that ends where it started is called
+"<place> Round Trip". Rides whose place names couldn't be looked up get
 another try the next time the Trips tab is opened with internet.
 
 **Record Route** (off by default, same location permission) saves a GPS

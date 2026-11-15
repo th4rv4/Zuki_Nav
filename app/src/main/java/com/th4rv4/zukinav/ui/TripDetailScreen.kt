@@ -74,6 +74,17 @@ class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) 
     private val routeCard: LinearLayout
     private val mapsCard: View
 
+    // Stops: shown for merged trips.
+    private val stopsDetail = ui.text("", 12f, Palette.MUTED)
+    private val stopsCard: View = ui.listCard(
+        ui.row("Stops", null, ui.text("›", 20f, Palette.MUTED)).apply {
+            ((getChildAt(0) as? LinearLayout) ?: this).addView(stopsDetail)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { host.showStops(id) }
+        },
+    )
+
     // Merge With Next Ride: shown when a later ride exists.
     private val mergeDetail = ui.text("", 12f, Palette.MUTED)
     private val mergeCard: View = ui.listCard(
@@ -154,6 +165,7 @@ class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) 
             header,
             hero,
             routeCard,
+            stopsCard,
             grid,
             odoCard,
             mapsCard,
@@ -202,7 +214,12 @@ class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) 
         star.text = if (t.starred) "★" else "☆"
         star.setTextColor(if (t.starred) Palette.WARN else Palette.MUTED)
         star.contentDescription = if (t.starred) "Unstar" else "Star"
-        span.text = TripFormat.span(t, is24) + (TripFormat.stops(t)?.let { " · $it" } ?: "")
+        span.text = TripFormat.span(t, is24)
+        stopsCard.visibility = if (t.stops > 0) View.VISIBLE else View.GONE
+        stopsDetail.text = listOfNotNull(
+            TripFormat.stops(t),
+            t.stopList.mapIndexed { i, s -> TripFormat.stopName(s, i) }.takeIf { it.isNotEmpty() }?.joinToString(", "),
+        ).joinToString(" · ")
         val next = com.th4rv4.zukinav.trips.TripMerge.next(t, TripStore.all(host))
         mergeCard.visibility = if (next == null) View.GONE else View.VISIBLE
         if (next != null) {
@@ -246,6 +263,7 @@ class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) 
     private fun showRoute() {
         val mode = prefs.routeColours
         routeMap.set(route, mode, prefs.engineWarmC, prefs.engineHotC)
+        routeMap.stops = trip()?.stopList?.mapNotNull { s -> if (s.lat != null && s.lng != null) s.lat to s.lng else null } ?: emptyList()
         val engine = mode == Prefs.ROUTE_ENGINE && routeMap.hasEngine()
         legend.visibility = if (mode == Prefs.ROUTE_SPEED || engine) View.VISIBLE else View.GONE
         legendLow.text = if (engine) "Cold" else "Slow"

@@ -86,6 +86,10 @@ class RouteView(ctx: Context, private val thumbnail: Boolean = false, private va
         invalidate()
     }
 
+    /** Where the trip stopped, drawn as amber dots. */
+    var stops: List<Pair<Double, Double>> = emptyList()
+        set(v) { field = v; invalidate() }
+
     fun hasEngine(): Boolean = points.any { it.engineC != null }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -163,6 +167,26 @@ class RouteView(ctx: Context, private val thumbnail: Boolean = false, private va
         canvas.drawCircle(ex, ey, r, dot)
         dot.color = Color.rgb(18, 19, 24)
         canvas.drawCircle(ex, ey, r * 0.4f, dot)
+
+        // Stops of a merged trip.
+        if (stops.isNotEmpty()) {
+            // Same flat projection as the route itself.
+            val lat0 = (points.minOf { it.lat } + points.maxOf { it.lat }) / 2
+            val k = Math.cos(Math.toRadians(lat0)) * 111_320.0
+            val sp = FloatArray(stops.size * 2)
+            for (i in stops.indices) {
+                val (lat, lng) = stops[i]
+                sp[2 * i] = (lng * k * s + ox).toFloat()
+                sp[2 * i + 1] = (-lat * 111_320.0 * s + oy).toFloat()
+            }
+            if (zoomable) view.mapPoints(sp)
+            for (i in stops.indices) {
+                dot.color = Color.rgb(18, 19, 24)
+                canvas.drawCircle(sp[2 * i], sp[2 * i + 1], r * 0.85f + 2 * d, dot)
+                dot.color = Palette.WARN
+                canvas.drawCircle(sp[2 * i], sp[2 * i + 1], r * 0.85f, dot)
+            }
+        }
 
         // Top speed marker.
         val f = Route.fastest(points)

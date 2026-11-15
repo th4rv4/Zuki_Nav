@@ -25,6 +25,9 @@ data class Trip(
     /** Ignition-off stops inside this trip, from merging rides, and how long they lasted. */
     val stops: Int = 0,
     val stopSeconds: Long = 0,
+    /** For merged trips: each riding part, and the stops between them (one fewer). Empty for a plain ride. */
+    val legs: List<Leg> = emptyList(),
+    val stopList: List<Stop> = emptyList(),
 ) {
     val id: Long get() = start
 
@@ -37,6 +40,21 @@ data class Trip(
     /** Average while moving, or null for very short rides. */
     val averageKmh: Double?
         get() = if (movingSeconds >= 60) distanceKm / (movingSeconds / 3600.0) else null
+}
+
+/** One riding part of a merged trip, between stops. */
+data class Leg(val start: Long, val end: Long, val distanceKm: Double, val movingSeconds: Long, val topSpeedKmh: Int)
+
+/** A stop between two legs: where, when, and the rider's own label for it. */
+data class Stop(
+    val arrive: Long,
+    val depart: Long,
+    val lat: Double? = null,
+    val lng: Double? = null,
+    val place: String? = null,
+    val label: String? = null,
+) {
+    val seconds: Long get() = ((depart - arrive) / 1000).coerceAtLeast(0)
 }
 
 /** Joins two rides into one trip. */
@@ -73,7 +91,34 @@ object TripMerge {
             avgEngineC = avgEngine,
             stops = first.stops + second.stops + 1,
             stopSeconds = first.stopSeconds + second.stopSeconds + gap,
+            legs = joinLegs(first, second),
+            stopList = joinStops(first, second),
         )
+    }
+
+    /** A trip's legs, or itself as one leg; null when an older merge kept no details. */
+    private fun legsOf(t: Trip): List<Leg>? = when {
+        t.legs.isNotEmpty() -> t.legs
+        t.stops > 0 -> null
+        else -> listOf(Leg(t.start, t.end, t.distanceKm, t.movingSeconds, t.topSpeedKmh))
+    }
+
+    private fun joinLegs(a: Trip, b: Trip): List<Leg> {
+        val la = legsOf(a) ?: return emptyList()
+        val lb = legsOf(b) ?: return emptyList()
+        return la + lb
+    }
+
+    private fun joinStops(a: Trip, b: Trip): List<Stop> {
+        if (legsOf(a) == null || legsOf(b) == null) return emptyList()
+        val between = Stop(
+            arrive = a.end,
+            depart = b.start,
+            lat = a.endLat ?: b.startLat,
+            lng = a.endLng ?: b.startLng,
+            place = a.endPlace ?: b.startPlace,
+        )
+        return a.stopList + between + b.stopList
     }
 
     /** The ride right after [t] in [all], if any. */

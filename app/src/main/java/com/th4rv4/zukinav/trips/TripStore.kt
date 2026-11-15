@@ -124,6 +124,25 @@ object TripStore {
             put("stops", t.stops)
             put("stopSecs", t.stopSeconds)
         }
+        if (t.legs.isNotEmpty()) {
+            put("legs", org.json.JSONArray().apply {
+                t.legs.forEach { l ->
+                    put(JSONObject().put("s", l.start).put("e", l.end).put("km", l.distanceKm).put("mv", l.movingSeconds).put("top", l.topSpeedKmh))
+                }
+            })
+            put("stopList", org.json.JSONArray().apply {
+                t.stopList.forEach { st ->
+                    put(JSONObject().apply {
+                        put("a", st.arrive)
+                        put("d", st.depart)
+                        st.lat?.let { put("lat", it) }
+                        st.lng?.let { put("lng", it) }
+                        st.place?.let { put("place", it) }
+                        st.label?.let { put("label", it) }
+                    })
+                }
+            })
+        }
     }
 
     private fun fromJson(o: JSONObject): Trip? = try {
@@ -149,6 +168,25 @@ object TripStore {
             avgEngineC = if (o.has("engAvg")) o.getInt("engAvg") else null,
             stops = o.optInt("stops", 0),
             stopSeconds = o.optLong("stopSecs", 0L),
+            legs = o.optJSONArray("legs")?.let { a ->
+                (0 until a.length()).map { i ->
+                    val l = a.getJSONObject(i)
+                    Leg(l.getLong("s"), l.getLong("e"), l.getDouble("km"), l.getLong("mv"), l.getInt("top"))
+                }
+            } ?: emptyList(),
+            stopList = o.optJSONArray("stopList")?.let { a ->
+                (0 until a.length()).map { i ->
+                    val st = a.getJSONObject(i)
+                    Stop(
+                        arrive = st.getLong("a"),
+                        depart = st.getLong("d"),
+                        lat = if (st.has("lat")) st.getDouble("lat") else null,
+                        lng = if (st.has("lng")) st.getDouble("lng") else null,
+                        place = if (st.has("place")) st.getString("place") else null,
+                        label = if (st.has("label")) st.getString("label") else null,
+                    )
+                }
+            } ?: emptyList(),
         )
     } catch (e: Exception) {
         null
