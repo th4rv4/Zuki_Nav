@@ -16,6 +16,8 @@ import com.th4rv4.zukinav.nav.NavSnapshot
 import com.th4rv4.zukinav.service.DashService
 import com.th4rv4.zukinav.trips.TripFormat
 import com.th4rv4.zukinav.trips.TripLog
+import com.th4rv4.zukinav.trips.TripStore
+import com.th4rv4.zukinav.maint.MaintStore
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -38,6 +40,8 @@ class RideScreen(host: MainActivity) : Screen(host) {
     private val navListener: (NavSnapshot?) -> Unit = { refresh() }
     private val stateListener: () -> Unit = { view.post { refresh() } }
     private val fuelListener: () -> Unit = { refresh() }
+    private val monthCard = MonthCard(host)
+    private val monthListener: () -> Unit = { reloadMonth() }
 
     private val engineHotTitle = ui.text("", 14f, Palette.DANGER, Ui.Weight.BOLD)
     private val engineHotCard = ui.card(
@@ -119,13 +123,18 @@ class RideScreen(host: MainActivity) : Screen(host) {
         }
 
 
-        view = host.page(header, bondedCard, engineHotCard, lowRangeCard, panel.view, panel.chips, rideCard, linkButton)
+        view = host.page(header, bondedCard, engineHotCard, lowRangeCard, panel.view, panel.chips, rideCard, monthCard.view, linkButton)
+        // The month card only fills spare room: re-checked whenever the page is laid out.
+        view.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> fitMonthCard() }
     }
 
     override fun onShow() {
         FuelStore.addListener(fuelListener)
         NavRepository.addListener(navListener)
         DashService.addStateListener(stateListener)
+        TripStore.addListener(monthListener)
+        MaintStore.addListener(monthListener)
+        reloadMonth()
         refresh()
         view.postDelayed(clockTick, 30_000)
     }
@@ -134,11 +143,14 @@ class RideScreen(host: MainActivity) : Screen(host) {
         NavRepository.removeListener(navListener)
         FuelStore.removeListener(fuelListener)
         DashService.removeStateListener(stateListener)
+        TripStore.removeListener(monthListener)
+        MaintStore.removeListener(monthListener)
         view.removeCallbacks(clockTick)
     }
 
     private val clockTick = object : Runnable {
         override fun run() {
+            reloadMonth()
             refresh()
             view.postDelayed(this, 30_000)
         }
@@ -218,6 +230,43 @@ class RideScreen(host: MainActivity) : Screen(host) {
                 linkButton.setTextColor(Palette.ON_ACCENT)
             }
         }
+    }
+
+    private fun reloadMonth() {
+        monthCard.reload()
+        fitMonthCard()
+    }
+
+    /**
+     * Shows as much of the month card as fits above the tab bar without making
+     * the page scroll: the reminder line goes first, then the whole card.
+     */
+    private fun fitMonthCard() {
+        val page = view as? ViewGroup ?: return
+        val column = page.getChildAt(0) as? LinearLayout ?: return
+        if (page.height == 0 || linkButton.bottom == 0) return
+        val card = monthCard.view
+        val row = monthCard.reminderRow
+        val gap = ui.dp(14)
+        // Page height without the card in it.
+        val shown = card.visibility == View.VISIBLE
+        val without: Int = linkButton.bottom + column.paddingBottom - (if (shown) card.height + gap else 0)
+        val room: Int = page.height - without - gap
+        // Measuring alone never asks for a new layout, so this can't loop.
+        val inner = column.width - column.paddingLeft - column.paddingRight
+        val any = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        card.measure(View.MeasureSpec.makeMeasureSpec(inner, View.MeasureSpec.EXACTLY), any)
+        row.measure(View.MeasureSpec.makeMeasureSpec(inner - card.paddingLeft - card.paddingRight, View.MeasureSpec.EXACTLY), any)
+        val lineH = row.measuredHeight + ui.dp(10)
+        val withoutLine: Int = card.measuredHeight - (if (row.visibility == View.VISIBLE) lineH else 0)
+        fun heightWith(line: Boolean): Int = withoutLine + (if (line) lineH else 0)
+        val wantLine = monthCard.hasReminder && heightWith(true) <= room
+        val wantCard = wantLine || heightWith(false) <= room
+        val lineVis = if (wantLine) View.VISIBLE else View.GONE
+        val cardVis = if (wantCard) View.VISIBLE else View.GONE
+        // Only touch what changed, so this settles after one more layout.
+        if (row.visibility != lineVis) row.visibility = lineVis
+        if (card.visibility != cardVis) card.visibility = cardVis
     }
 
     private fun formatWhen(ms: Long): String {
