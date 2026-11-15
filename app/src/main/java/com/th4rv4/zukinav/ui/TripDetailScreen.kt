@@ -74,6 +74,17 @@ class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) 
     private val routeCard: LinearLayout
     private val mapsCard: View
 
+    // Merge With Next Ride: shown when a later ride exists.
+    private val mergeDetail = ui.text("", 12f, Palette.MUTED)
+    private val mergeCard: View = ui.listCard(
+        ui.row("Merge With Next Ride", null, ui.text("›", 20f, Palette.MUTED)).apply {
+            ((getChildAt(0) as? LinearLayout) ?: this).addView(mergeDetail)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { merge() }
+        },
+    )
+
     override val view: View
 
     init {
@@ -146,6 +157,7 @@ class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) 
             grid,
             odoCard,
             mapsCard,
+            mergeCard,
             ui.hstack(
                 8,
                 ui.button("Rename", Ui.Btn.SECONDARY, 48) { rename() },
@@ -158,6 +170,29 @@ class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) 
 
     override fun onShow() = render()
 
+    private fun merge() {
+        val t = trip() ?: return
+        val next = com.th4rv4.zukinav.trips.TripMerge.next(t, TripStore.all(host)) ?: return
+        val is24 = DateFormat.is24HourFormat(host)
+        val gapMin = ((next.start - t.end) / 60_000).coerceAtLeast(0)
+        android.app.AlertDialog.Builder(host, host.dialogTheme)
+            .setTitle("Merge These Rides?")
+            .setMessage(
+                "${TripFormat.title(t)}, ${TripFormat.time(t.start, is24)}\n" +
+                    "+ ${TripFormat.title(next)}, ${TripFormat.time(next.start, is24)}\n\n" +
+                    "They become one trip: distances and riding time are added up, the routes join into one map, " +
+                    "and the ${TripFormat.shortDuration(gapMin * 60)} in between counts as a stop. This can't be undone.",
+            )
+            .setPositiveButton("Merge") { _, _ ->
+                if (TripStore.mergeWithNext(host, t.id) != null) {
+                    host.toast("Rides merged")
+                    render()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     private fun trip(): Trip? = TripStore.all(host).firstOrNull { it.id == id }
 
     private fun render() {
@@ -167,7 +202,14 @@ class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) 
         star.text = if (t.starred) "★" else "☆"
         star.setTextColor(if (t.starred) Palette.WARN else Palette.MUTED)
         star.contentDescription = if (t.starred) "Unstar" else "Star"
-        span.text = TripFormat.span(t, is24)
+        span.text = TripFormat.span(t, is24) + (TripFormat.stops(t)?.let { " · $it" } ?: "")
+        val next = com.th4rv4.zukinav.trips.TripMerge.next(t, TripStore.all(host))
+        mergeCard.visibility = if (next == null) View.GONE else View.VISIBLE
+        if (next != null) {
+            val gapMin = ((next.start - t.end) / 60_000).coerceAtLeast(0)
+            mergeDetail.text = "${TripFormat.title(next)} · ${TripFormat.time(next.start, is24)}, " +
+                TripFormat.shortDuration(gapMin * 60) + " later"
+        }
 
         val km = TripFormat.distance(t.distanceKm)
         distance.text = km
@@ -179,7 +221,7 @@ class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) 
         grid.removeAllViews()
         val cells = listOf(
             "Moving Time" to TripFormat.duration(t.movingSeconds),
-            "Stopped" to TripFormat.duration(t.durationSeconds - t.movingSeconds),
+            "Stopped" to TripFormat.duration(t.ridingSeconds - t.movingSeconds),
             "Average Speed" to (t.averageKmh?.let { "${it.toInt()} km/h" } ?: "-"),
             "Top Speed" to "${t.topSpeedKmh} km/h",
         )

@@ -40,6 +40,22 @@ object TripStore {
         if (i >= 0) list[i] = trip
     }
 
+    /** Joins the ride [firstId] with the one after it, routes included. Returns the merged trip. */
+    fun mergeWithNext(ctx: Context, firstId: Long): Trip? {
+        var merged: Trip? = null
+        change(ctx) { list ->
+            val a = list.firstOrNull { it.id == firstId } ?: return@change
+            val b = TripMerge.next(a, list) ?: return@change
+            val m = TripMerge.merge(a, b)
+            list.removeAll { it.id == a.id || it.id == b.id }
+            list.add(m)
+            list.sortByDescending { it.start }
+            RouteStore.join(ctx, a.id, b.id)
+            merged = m
+        }
+        return merged
+    }
+
     fun delete(ctx: Context, id: Long) = change(ctx) { list ->
         list.removeAll { it.id == id }
         RouteStore.delete(ctx, id)
@@ -104,6 +120,10 @@ object TripStore {
         t.endPlace?.let { put("place1", it) }
         t.maxEngineC?.let { put("engMax", it) }
         t.avgEngineC?.let { put("engAvg", it) }
+        if (t.stops > 0) {
+            put("stops", t.stops)
+            put("stopSecs", t.stopSeconds)
+        }
     }
 
     private fun fromJson(o: JSONObject): Trip? = try {
@@ -127,6 +147,8 @@ object TripStore {
             endPlace = s("place1"),
             maxEngineC = if (o.has("engMax")) o.getInt("engMax") else null,
             avgEngineC = if (o.has("engAvg")) o.getInt("engAvg") else null,
+            stops = o.optInt("stops", 0),
+            stopSeconds = o.optLong("stopSecs", 0L),
         )
     } catch (e: Exception) {
         null

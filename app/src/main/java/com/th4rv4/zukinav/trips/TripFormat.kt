@@ -41,6 +41,13 @@ object TripFormat {
     fun odo(km: Int): String = String.format(Locale.US, "%,d", km)
 
     /** The rider's name for it, else "From → To", else "Ride, 7 Nov". */
+    /** "2 stops, 15 min" for merged rides; null when there were none. */
+    fun stops(t: Trip): String? {
+        if (t.stops <= 0) return null
+        val mins = ((t.stopSeconds + 30) / 60).coerceAtLeast(1)
+        return (if (t.stops == 1) "1 stop" else "${t.stops} stops") + ", " + shortDuration(mins * 60)
+    }
+
     fun title(t: Trip, zone: ZoneId = ZoneId.systemDefault()): String {
         t.name?.takeIf { it.isNotBlank() }?.let { return it }
         val from = t.startPlace
@@ -84,7 +91,7 @@ object TripFormat {
     /** Total ride time, start to end, of rides that started this calendar month. */
     fun monthSeconds(trips: List<Trip>, zone: ZoneId = ZoneId.systemDefault(), today: LocalDate = LocalDate.now(zone)): Long =
         trips.filter { date(it.start, zone).let { d -> d.year == today.year && d.month == today.month } }
-            .sumOf { it.durationSeconds }
+            .sumOf { it.ridingSeconds }
 
     /** Plain text for sharing a trip. */
     fun shareText(t: Trip, is24h: Boolean, zone: ZoneId = ZoneId.systemDefault(), today: LocalDate = LocalDate.now(zone)): String =

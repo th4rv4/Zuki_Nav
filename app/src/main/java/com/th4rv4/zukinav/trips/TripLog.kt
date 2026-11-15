@@ -112,4 +112,31 @@ object TripLog {
             }.start()
         }
     }
+
+    private var lastPlaceRetry = 0L
+
+    /**
+     * Rides whose place names couldn't be looked up (no internet at the time)
+     * get another try, a few at a time and at most every 10 minutes.
+     */
+    fun retryPlaces(ctx: Context) {
+        val now = System.currentTimeMillis()
+        if (now - lastPlaceRetry < 10 * 60_000L) return
+        lastPlaceRetry = now
+        val app = ctx.applicationContext
+        val missing = TripStore.all(app).filter {
+            (it.startLat != null && it.startPlace == null) || (it.endLat != null && it.endPlace == null)
+        }.take(3)
+        if (missing.isEmpty()) return
+        Thread {
+            for (t in missing) {
+                val start = t.startPlace ?: t.startLat?.let { Places.name(app, it, t.startLng ?: return@let null) }
+                val end = t.endPlace ?: t.endLat?.let { Places.name(app, it, t.endLng ?: return@let null) }
+                if (start == t.startPlace && end == t.endPlace) continue
+                val current = TripStore.all(app).firstOrNull { it.id == t.id } ?: continue
+                TripStore.update(app, current.copy(startPlace = current.startPlace ?: start, endPlace = current.endPlace ?: end))
+                AppLog.d("Places", "Found the place names of an older ride")
+            }
+        }.start()
+    }
 }

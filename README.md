@@ -97,6 +97,13 @@ and ended, using the phone's location. It needs location allowed all the
 time, because a ride ends with the ignition off while the app is in the
 background. Mileage and range are on the Fuel tab (see below).
 
+**Merge With Next Ride** on a trip's page joins it with the ride after
+it, for when stops split one outing into several trips (a trip ends 3
+minutes after the ignition goes off). Distances and riding time add up, the
+routes join into one map, and the time in between shows as a stop, like
+"2 stops, 15 min". Rides whose place names couldn't be looked up get
+another try the next time the Trips tab is opened with internet.
+
 **Record Route** (off by default, same location permission) saves a GPS
 point every few seconds while riding. Each trip then shows its route on a
 plain dark map, coloured by speed, by engine temperature, or in one colour,

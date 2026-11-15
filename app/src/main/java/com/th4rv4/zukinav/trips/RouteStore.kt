@@ -48,6 +48,19 @@ object RouteStore {
         }
     }
 
+    /** Adds ride [secondId]'s points to the end of ride [firstId]'s, for a merge. */
+    fun join(ctx: Context, firstId: Long, secondId: Long) {
+        val second = file(ctx, secondId)
+        if (!second.exists()) return
+        try {
+            file(ctx, firstId).appendText(second.readText())
+            second.delete()
+        } catch (e: Exception) {
+            AppLog.d("Route", "Could not join routes: $e")
+        }
+        synchronized(thumbs) { thumbs.remove(firstId); thumbs.remove(secondId) }
+    }
+
     fun delete(ctx: Context, id: Long) {
         file(ctx, id).delete()
         synchronized(thumbs) { thumbs.remove(id) }

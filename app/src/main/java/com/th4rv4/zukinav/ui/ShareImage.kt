@@ -63,7 +63,7 @@ object ShareImage {
     /** The label and value of a stat for this trip, or null if the trip doesn't have it. */
     fun value(t: Trip, key: String): String? = when (key) {
         "distance" -> TripFormat.distance(t.distanceKm)
-        "time" -> TripFormat.shortDuration(t.durationSeconds)
+        "time" -> TripFormat.shortDuration(t.ridingSeconds)
         "avg" -> t.averageKmh?.let { "${it.toInt()} km/h" }
         "top" -> "${t.topSpeedKmh} km/h"
         "engine" -> t.maxEngineC?.let { "$it °C" }

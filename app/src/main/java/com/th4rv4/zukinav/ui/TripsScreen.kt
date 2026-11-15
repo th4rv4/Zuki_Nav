@@ -76,6 +76,7 @@ class TripsScreen(host: MainActivity) : Screen(host) {
     }
 
     override fun onShow() {
+        com.th4rv4.zukinav.trips.TripLog.retryPlaces(host)
         TripStore.addListener(changed)
         // A ride left open while the app was closed is saved now.
         TripLog.finishIfIdle(host)
@@ -176,7 +177,11 @@ class TripsScreen(host: MainActivity) : Screen(host) {
                     maxLines = 1
                     ellipsize = android.text.TextUtils.TruncateAt.END
                 },
-                ui.text(TripFormat.time(t.start, is24) + " – " + TripFormat.time(t.end, is24), 12f, Palette.MUTED),
+                ui.text(
+                    TripFormat.time(t.start, is24) + " – " + TripFormat.time(t.end, is24) +
+                        (TripFormat.stops(t)?.let { " · $it" } ?: ""),
+                    12f, Palette.MUTED,
+                ),
             ), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             if (t.starred) addView(ui.text("★", 18f, Palette.WARN))
         }
@@ -185,7 +190,7 @@ class TripsScreen(host: MainActivity) : Screen(host) {
         val numbers = ui.hstack(
             0,
             column(small(distance), "km"),
-            column(small(TripFormat.shortDuration(t.durationSeconds)), "Time"),
+            column(small(TripFormat.shortDuration(t.ridingSeconds)), "Time"),
             column(small(t.averageKmh?.toInt()?.toString() ?: "-"), "Avg"),
             column(small(t.topSpeedKmh.toString()), "Top"),
             weighted = true,
