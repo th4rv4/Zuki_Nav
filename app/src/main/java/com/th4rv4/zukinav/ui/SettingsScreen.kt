@@ -338,19 +338,68 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         )
     }
 
-    private fun messagesPage(): SettingsPage = SettingsPage(
-        host, "Messages",
-        listOf(
-            ui.listCard(
-                ui.switchRow("Message Alerts", "New WhatsApp and SMS messages on the dash", prefs.messageAlerts) {
-                    prefs.messageAlerts = it
-                },
-                ui.switchRow("Skip Business SMS", "Bank, OTP, government and promo senders, like AD-HPGOVT", prefs.skipBusinessSms) {
-                    prefs.skipBusinessSms = it
+    private fun messagesPage(): SettingsPage {
+        val extras = ArrayList<View>()
+        fun showExtras(on: Boolean) = extras.forEach { it.visibility = if (on) View.VISIBLE else View.GONE }
+        val replyText = ui.vstack(
+            8,
+            ui.text("Reply", 15f, Palette.TEXT, Ui.Weight.MEDIUM),
+            ui.input(prefs.autoReplyText, Prefs.DEFAULT_AUTO_REPLY) { prefs.autoReplyText = it }.apply {
+                gravity = android.view.Gravity.START or android.view.Gravity.CENTER_VERTICAL
+                isSingleLine = false
+                maxLines = 4
+                inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or
+                    android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            },
+        ).apply { setPadding(0, ui.dp(10), 0, ui.dp(12)) }
+        val contacts = ui.switchRow("Contacts Only", "Skip numbers you haven't saved, and group chats", prefs.autoReplyContactsOnly) {
+            prefs.autoReplyContactsOnly = it
+        }
+        val choices = Prefs.AUTO_REPLY_EVERY
+        val every = ui.vstack(
+            8,
+            ui.text("Reply Again After", 15f, Palette.TEXT, Ui.Weight.MEDIUM),
+            ui.segmented(choices.map { if (it == 0) "Once" else "$it min" }, choices.indexOf(prefs.autoReplyEveryMin).coerceAtLeast(0), fill = true) {
+                prefs.autoReplyEveryMin = choices[it]
+            },
+            ui.text("Once means one reply per chat per ride.", 12f, Palette.MUTED),
+        ).apply { setPadding(0, ui.dp(10), 0, ui.dp(12)) }
+        extras.addAll(listOf(replyText, contacts, every))
+        showExtras(prefs.autoReply)
+        return SettingsPage(
+            host, "Messages",
+            listOf(
+                ui.listCard(
+                    ui.switchRow("Message Alerts", "New WhatsApp and SMS messages on the dash", prefs.messageAlerts) {
+                        prefs.messageAlerts = it
+                    },
+                    ui.switchRow("Skip Business SMS", "Bank, OTP, government and promo senders, like AD-HPGOVT", prefs.skipBusinessSms) {
+                        prefs.skipBusinessSms = it
+                    },
+                ),
+                ui.sectionHeader(R.drawable.ic_sec_message, "Auto-Reply"),
+                ui.listCard(
+                    ui.switchRow("Auto-Reply While Riding", "WhatsApp chats, while the bike is connected", prefs.autoReply) {
+                        prefs.autoReply = it
+                        showExtras(it)
+                    },
+                    replyText,
+                    contacts,
+                    every,
+                ),
+                ui.infoNote("How Auto-Reply Works") {
+                    host.showInfo(
+                        "Auto-Reply",
+                        "When a WhatsApp message arrives while the bike is connected, Zuki Nav presses the Reply button on " +
+                            "WhatsApp's own notification and sends your reply, the same as replying from the notification " +
+                            "yourself. Each chat gets one reply per window, however many messages it sends.\n\n" +
+                            "SMS isn't answered: that would need the Send SMS permission. WhatsApp calls aren't answered either. " +
+                            "If WhatsApp's notifications are turned off or hidden, there is no Reply button to press.",
+                    )
                 },
             ),
-        ),
-    )
+        )
+    }
 
     private fun appearancePage(): SettingsPage = SettingsPage(
         host, "Appearance",

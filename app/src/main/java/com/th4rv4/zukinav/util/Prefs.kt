@@ -274,6 +274,26 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_REJECT_REPEAT, true)
         set(v) = sp.edit().putBoolean(K_REJECT_REPEAT, v).apply()
 
+    /** Answer WhatsApp chats while the bike is connected. */
+    var autoReply: Boolean
+        get() = sp.getBoolean(K_AUTO_REPLY, false)
+        set(v) = sp.edit().putBoolean(K_AUTO_REPLY, v).apply()
+
+    /** What the auto-reply says. */
+    var autoReplyText: String
+        get() = sp.getString(K_AUTO_REPLY_TEXT, null)?.takeIf { it.isNotBlank() } ?: DEFAULT_AUTO_REPLY
+        set(v) = sp.edit().putString(K_AUTO_REPLY_TEXT, v.trim()).apply()
+
+    /** Skip numbers that aren't saved contacts, and group chats. */
+    var autoReplyContactsOnly: Boolean
+        get() = sp.getBoolean(K_AUTO_REPLY_CONTACTS, true)
+        set(v) = sp.edit().putBoolean(K_AUTO_REPLY_CONTACTS, v).apply()
+
+    /** Minutes before the same chat gets another reply; 0 means once per ride. */
+    var autoReplyEveryMin: Int
+        get() = sp.getInt(K_AUTO_REPLY_EVERY, 30)
+        set(v) = sp.edit().putInt(K_AUTO_REPLY_EVERY, v).apply()
+
     /** Show REJECTED CALL on the dash for a moment. */
     var rejectShowOnDash: Boolean
         get() = sp.getBoolean(K_REJECT_DASH, false)
@@ -361,6 +381,13 @@ class Prefs(context: Context) {
         private const val K_REJECT_ALWAYS = "reject_unknown_always"
         private const val K_REJECT_REPEAT = "reject_unknown_repeat"
         private const val K_REJECT_DASH = "reject_unknown_dash"
+        private const val K_AUTO_REPLY = "auto_reply"
+        private const val K_AUTO_REPLY_TEXT = "auto_reply_text"
+        private const val K_AUTO_REPLY_CONTACTS = "auto_reply_contacts_only"
+        private const val K_AUTO_REPLY_EVERY = "auto_reply_every_min"
+        const val DEFAULT_AUTO_REPLY = "Riding right now, I'll get back to you once I stop."
+        /** Choices for [autoReplyEveryMin]; 0 is once per ride. */
+        val AUTO_REPLY_EVERY = listOf(15, 30, 0)
         private const val K_SHARE_LINE = "share_line"
         const val ROUTE_SPEED = 0
         const val ROUTE_ENGINE = 1

@@ -11,6 +11,7 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import com.th4rv4.zukinav.alerts.Alert
 import com.th4rv4.zukinav.alerts.AlertTracker
+import com.th4rv4.zukinav.alerts.AutoReply
 import com.th4rv4.zukinav.alerts.CallFilter
 import com.th4rv4.zukinav.alerts.Notice
 import com.th4rv4.zukinav.protocol.ClusterIcon
@@ -46,6 +47,7 @@ class MapsNavListener : NotificationListenerService() {
     /** Reject Unknown Callers: who was declined, and which call notifications were already looked at. */
     private val callFilter = CallFilter()
     private val screenedCalls = HashMap<String, Boolean>()
+    private val autoReply by lazy { AutoReply(this, prefs) }
 
     private val alertTick = object : Runnable {
         override fun run() {
@@ -72,6 +74,7 @@ class MapsNavListener : NotificationListenerService() {
         if (isMapsGuidance(sbn)) handle(sbn) else if (sbn.packageName != packageName) {
             val n = notice(sbn)
             if (declineIfUnknown(sbn, n)) return
+            autoReply.onNotification(sbn, DashService.linkState == ClusterLink.State.READY)
             deliver(alerts.posted(n, System.currentTimeMillis()))
         }
     }
