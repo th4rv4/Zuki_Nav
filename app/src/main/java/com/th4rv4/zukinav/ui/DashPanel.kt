@@ -52,10 +52,15 @@ class DashPanel(private val host: MainActivity) {
     private val tripA = numberText(19f, Palette.TEXT)
     private val tripB = numberText(19f, Palette.TEXT)
     private val sync = ui.text("", 12f, Palette.MUTED).apply { gravity = Gravity.CENTER }
+    /** When the numbers were last read, in the card's top right corner. */
+    private val syncedAt = ui.text("", 11f, Palette.MUTED).apply {
+        gravity = Gravity.END
+        setLineSpacing(0f, 1.1f)
+    }
 
     val view: View
 
-    /** ODO, Trip A and Trip B, plus the sync note under them. */
+    /** ODO, Trip A and Trip B, plus a setup hint under them before the first reading. */
     val chips: View
 
     init {
@@ -67,6 +72,10 @@ class DashPanel(private val host: MainActivity) {
             gravity = Gravity.CENTER_VERTICAL
             addView(turn, LinearLayout.LayoutParams(ui.dp(64), ui.dp(64)).apply { marginEnd = ui.dp(12) })
             addView(ui.vstack(2, distance, instruction), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(syncedAt, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                gravity = Gravity.TOP
+                marginStart = ui.dp(8)
+            })
         })
         content.addView(View(ui.ctx).apply { setBackgroundColor(Palette.BORDER) },
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ui.dp(1)))
@@ -128,9 +137,13 @@ class DashPanel(private val host: MainActivity) {
 
     /**
      * [live] is true while readings come from the dash; [data] may be the
-     * last saved reading. [syncNote] explains where the numbers come from.
+     * last saved reading. [syncNote] is a setup hint under the trip meters;
+     * [syncedAt] is the short "when" shown in the top right corner.
      */
-    fun render(nav: NavSnapshot?, data: BikeData?, live: Boolean, etaText: String?, syncNote: String?, range: Range?) {
+    fun render(nav: NavSnapshot?, data: BikeData?, live: Boolean, etaText: String?, syncNote: String?, syncedAt: String?, range: Range?) {
+        this.syncedAt.text = syncedAt.orEmpty()
+        this.syncedAt.visibility = if (syncedAt.isNullOrBlank()) View.GONE else View.VISIBLE
+        this.syncedAt.contentDescription = syncedAt?.let { "Last synced " + it.replace('\n', ' ') }
 
         val art = nav?.let { TurnArt.of(it.icon) }
         turn.set(art, nav?.metersToTurn)

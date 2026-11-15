@@ -196,11 +196,12 @@ class RideScreen(host: MainActivity) : Screen(host) {
             etaText = nav?.eta?.let { formatTime(it) },
             range = range,
             syncNote = when {
-                live != null -> null
-                data != null -> "Last synced ${formatWhen(prefs.lastBikeAt)}"
+                live != null || data != null -> null
                 name != null -> "Turn the ignition on once to see fuel, ODO and trip meters here."
                 else -> "Pair your bike in Settings to get started."
             },
+            // Hidden while live, and during a route so turn instructions get the full width.
+            syncedAt = if (live == null && data != null && nav == null) formatWhen(prefs.lastBikeAt) else null,
         )
 
         val ride = if (prefs.recordTrips) TripLog.active(host) else null
@@ -269,16 +270,18 @@ class RideScreen(host: MainActivity) : Screen(host) {
         if (card.visibility != cardVis) card.visibility = cardVis
     }
 
-    private fun formatWhen(ms: Long): String {
-        if (ms <= 0) return "-"
+    /** Two short lines, the day then the time: "Today" / "3:22 PM". */
+    private fun formatWhen(ms: Long): String? {
+        if (ms <= 0) return null
         val t = java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.systemDefault())
         val today = java.time.LocalDate.now()
         val time = formatTime(t.toLocalTime())
-        return when (t.toLocalDate()) {
-            today -> "today, $time"
-            today.minusDays(1) -> "yesterday, $time"
-            else -> t.format(DateTimeFormatter.ofPattern("d MMM", Locale.US)) + ", $time"
+        val day = when (t.toLocalDate()) {
+            today -> "Today"
+            today.minusDays(1) -> "Yesterday"
+            else -> t.format(DateTimeFormatter.ofPattern("d MMM", Locale.US))
         }
+        return "$day\n$time"
     }
 
     private fun toggleLink() {
