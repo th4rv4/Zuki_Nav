@@ -1,5 +1,6 @@
 package com.th4rv4.zukinav.service
 
+import com.th4rv4.zukinav.widget.RangeWidget
 import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
@@ -160,6 +161,7 @@ class DashService : Service(), ClusterLink.Listener {
         NavRepository.removeListener(navListener)
         link.release()
         notifyState()
+        RangeWidget.refresh(this)
         super.onDestroy()
     }
 
@@ -289,6 +291,7 @@ class DashService : Service(), ClusterLink.Listener {
             }
             updateNotification()
             notifyState()
+            RangeWidget.refresh(this)
         }
     }
 
@@ -324,6 +327,7 @@ class DashService : Service(), ClusterLink.Listener {
                 (data.fuelBars?.let { "fuel $it/${BikeData.MAX_FUEL_BARS}" } ?: "battery ${data.batteryPercent}%") +
                 (data.engineTempC?.let { ", engine $it°C" } ?: ""))
             notifyState()
+            RangeWidget.refresh(this)
         } else if (speedChanged) {
             // The Ride tab's speedometer follows the bike.
             notifyState()

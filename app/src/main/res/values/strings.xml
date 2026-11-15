@@ -2,4 +2,5 @@
 <resources>
     <string name="app_name">Zuki Nav</string>
     <string name="channel_link">Dash Link</string>
+    <string name="widget_range_description">Fuel range, ODO and whether the bike is connected</string>
 </resources>

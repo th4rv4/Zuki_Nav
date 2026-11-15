@@ -214,6 +214,8 @@ class MainActivity : Activity() {
     override fun onPause() {
         resumed = false
         current?.onHide()
+        // Picks up a theme change, and anything the app changed while open.
+        com.th4rv4.zukinav.widget.RangeWidget.refresh(this)
         super.onPause()
     }
 

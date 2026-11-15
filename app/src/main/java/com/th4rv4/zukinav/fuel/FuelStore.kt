@@ -1,5 +1,6 @@
 package com.th4rv4.zukinav.fuel
 
+import com.th4rv4.zukinav.widget.RangeWidget
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -66,6 +67,7 @@ object FuelStore {
         if (after.gaugeBars != before.gaugeBars) {
             AppLog.d("Fuel", "Gauge ${before.gaugeBars} -> ${after.gaugeBars} bars at $odoKm km")
             main.post { listeners.forEach { it() } }
+            RangeWidget.refresh(ctx.applicationContext)
         }
         found?.let { AppLog.d("Fuel", "Refill at ${it.odoKm} km, ${it.barsBefore} -> ${it.barsAfter} bars") }
         return found
@@ -94,6 +96,8 @@ object FuelStore {
             write(ctx, next)
         }
         main.post { listeners.forEach { it() } }
+        // Range depends on refills and learning too.
+        RangeWidget.refresh(ctx.applicationContext)
     }
 
     private fun file(ctx: Context) = File(ctx.applicationContext.filesDir, "fuel.json")
