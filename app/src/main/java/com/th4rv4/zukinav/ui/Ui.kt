@@ -522,7 +522,7 @@ class Ui(val ctx: Context) {
             addView(View(ctx).apply { background = rounded(Palette.BORDER, 3) }, 0,
                 LinearLayout.LayoutParams(dp(36), dp(4)).apply { gravity = Gravity.CENTER_HORIZONTAL })
         }
-        dialog.setContentView(android.widget.ScrollView(ctx).apply { addView(body) })
+        dialog.setContentView(android.widget.ScrollView(ctx).apply { isVerticalScrollBarEnabled = false; addView(body) })
         dialog.window?.apply {
             setBackgroundDrawable(android.graphics.drawable.ColorDrawable(0))
             setGravity(Gravity.BOTTOM)

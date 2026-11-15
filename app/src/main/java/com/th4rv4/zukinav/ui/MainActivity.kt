@@ -361,6 +361,7 @@ class MainActivity : Activity() {
         }
         return ScrollView(this).apply {
             isFillViewport = true
+            isVerticalScrollBarEnabled = false
             addView(column)
         }
     }
@@ -618,7 +619,7 @@ class MainActivity : Activity() {
             setTextIsSelectable(true)
             setPadding(ui.dp(16), ui.dp(8), ui.dp(16), ui.dp(8))
         }
-        val scroll = ScrollView(this).apply { addView(body) }
+        val scroll = ScrollView(this).apply { isVerticalScrollBarEnabled = false; addView(body) }
         AlertDialog.Builder(this, dialogTheme)
             .setTitle("Log")
             .setView(scroll)
