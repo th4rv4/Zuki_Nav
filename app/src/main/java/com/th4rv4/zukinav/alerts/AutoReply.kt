@@ -46,7 +46,7 @@ class AutoReply(private val ctx: Context, private val prefs: Prefs) {
         if (lastIsMine(e)) return
 
         val now = System.currentTimeMillis()
-        val key = sbn.shortcutId?.takeIf { it.isNotBlank() } ?: chat
+        val key: String = n.shortcutId?.takeIf { it.isNotBlank() } ?: chat
         val every = prefs.autoReplyEveryMin
         val last = answered[key]
         if (last != null && (every == 0 || now - last < every * 60_000L)) return
