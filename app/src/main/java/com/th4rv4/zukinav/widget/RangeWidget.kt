@@ -7,6 +7,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
+import android.os.Build
+import android.os.Bundle
+import android.util.SizeF
 import android.widget.RemoteViews
 import com.th4rv4.zukinav.R
 import com.th4rv4.zukinav.ble.ClusterLink
@@ -29,6 +32,12 @@ class RangeWidget : AppWidgetProvider() {
     override fun onUpdate(ctx: Context, manager: AppWidgetManager, ids: IntArray) {
         last = null
         push(ctx, manager, ids)
+    }
+
+    /** Resized, or the launcher's grid changed: square it up again. */
+    override fun onAppWidgetOptionsChanged(ctx: Context, manager: AppWidgetManager, id: Int, options: Bundle) {
+        last = null
+        push(ctx, manager, intArrayOf(id))
     }
 
     companion object {
@@ -70,35 +79,75 @@ class RangeWidget : AppWidgetProvider() {
 
             val low = (bars != null && bars <= 1) || (battery != null && battery <= 15)
             val fill = if (low) colors.warn else colors.ok
-            val v = RemoteViews(ctx.packageName, R.layout.widget_range)
-            v.setInt(R.id.widget_bg, "setColorFilter", colors.bg)
-            v.setImageViewResource(R.id.widget_icon, if (battery != null) R.drawable.ic_battery else R.drawable.ic_fuel)
-            v.setInt(R.id.widget_icon, "setColorFilter", if (data == null) colors.muted else fill)
-            v.setInt(R.id.widget_dot, "setColorFilter", if (connected) colors.ok else colors.track)
-            v.setTextViewText(R.id.widget_value, value)
-            v.setTextColor(R.id.widget_value, colors.text)
-            v.setTextViewText(R.id.widget_unit, unit)
-            v.setTextColor(R.id.widget_unit, colors.muted)
-            v.setTextViewText(R.id.widget_odo, odo)
-            v.setTextColor(R.id.widget_odo, colors.muted)
-            // Battery models have no bars; the percentage says it all.
-            v.setViewVisibility(R.id.widget_bars, if (battery != null) android.view.View.GONE else android.view.View.VISIBLE)
-            BARS.forEachIndexed { i, id ->
-                v.setInt(id, "setColorFilter", if (bars != null && i < bars) fill else colors.track)
-            }
-            val label = when {
-                battery != null -> "Battery $battery percent"
-                range != null -> "Range about ${range.km} kilometres"
-                else -> "Range not known yet"
-            } + ", $odo, " + if (connected) "bike connected" else "bike not connected"
-            v.setContentDescription(R.id.widget_root, label)
+            fun build(): RemoteViews {
+                val v = RemoteViews(ctx.packageName, R.layout.widget_range)
+                v.setInt(R.id.widget_bg, "setColorFilter", colors.bg)
+                v.setImageViewResource(R.id.widget_icon, if (battery != null) R.drawable.ic_battery else R.drawable.ic_fuel)
+                v.setInt(R.id.widget_icon, "setColorFilter", if (data == null) colors.muted else fill)
+                v.setInt(R.id.widget_dot, "setColorFilter", if (connected) colors.ok else colors.track)
+                v.setTextViewText(R.id.widget_value, value)
+                v.setTextColor(R.id.widget_value, colors.text)
+                v.setTextViewText(R.id.widget_unit, unit)
+                v.setTextColor(R.id.widget_unit, colors.muted)
+                v.setTextViewText(R.id.widget_odo, odo)
+                v.setTextColor(R.id.widget_odo, colors.muted)
+                // Battery models have no bars; the percentage says it all.
+                v.setViewVisibility(R.id.widget_bars, if (battery != null) android.view.View.GONE else android.view.View.VISIBLE)
+                BARS.forEachIndexed { i, id ->
+                    v.setInt(id, "setColorFilter", if (bars != null && i < bars) fill else colors.track)
+                }
+                val label = when {
+                    battery != null -> "Battery $battery percent"
+                    range != null -> "Range about ${range.km} kilometres"
+                    else -> "Range not known yet"
+                } + ", $odo, " + if (connected) "bike connected" else "bike not connected"
+                v.setContentDescription(R.id.widget_root, label)
 
-            val open = Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            v.setOnClickPendingIntent(
-                R.id.widget_root,
-                PendingIntent.getActivity(ctx, 41, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE),
-            )
-            manager.updateAppWidget(ids, v)
+                val open = Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                v.setOnClickPendingIntent(
+                    R.id.widget_root,
+                    PendingIntent.getActivity(ctx, 41, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE),
+                )
+                return v
+            }
+
+            // Each widget is drawn as a square in the middle of its cell, whatever the grid.
+            for (id in ids) {
+                val views = try {
+                    squared(ctx, manager.getAppWidgetOptions(id)) { build() }
+                } catch (_: Exception) {
+                    build()
+                }
+                manager.updateAppWidget(id, views)
+            }
+        }
+
+        /**
+         * Launcher cells are rarely square (a 5×6 grid makes them tall), so the
+         * card is padded down to a square centred in whatever space it's given.
+         * On Android 12+ the launcher lists each exact size; older ones give a
+         * range, of which portrait uses the min width and max height.
+         */
+        private fun squared(ctx: Context, options: Bundle, build: () -> RemoteViews): RemoteViews {
+            val density = ctx.resources.displayMetrics.density
+            fun pad(v: RemoteViews, wDp: Float, hDp: Float): RemoteViews {
+                if (wDp <= 0f || hDp <= 0f) return v
+                val side = minOf(wDp, hDp)
+                val x = ((wDp - side) / 2f * density).toInt()
+                val y = ((hDp - side) / 2f * density).toInt()
+                v.setViewPadding(R.id.widget_root, x, y, x, y)
+                return v
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                @Suppress("DEPRECATION")
+                val sizes = options.getParcelableArrayList<SizeF>(AppWidgetManager.OPTION_APPWIDGET_SIZES)
+                if (!sizes.isNullOrEmpty()) {
+                    return RemoteViews(sizes.associateWith { pad(build(), it.width, it.height) })
+                }
+            }
+            val w = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH).toFloat()
+            val h = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT).toFloat()
+            return pad(build(), w, h)
         }
     }
 
