@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.TextView
 import com.th4rv4.zukinav.protocol.EngineState
 import com.th4rv4.zukinav.trips.Trip
 import com.th4rv4.zukinav.trips.TripFormat
@@ -418,15 +419,22 @@ class ShareSheet(private val host: MainActivity, private val trip: Trip, private
         views += ui.text("Share Image", 18f, Palette.TEXT, Ui.Weight.BOLD)
         views += preview
         views += ui.sectionLabel("Background")
-        views += ui.segmented(listOf("Transparent", "Dark", "Light"), prefs.shareBackground, fill = true) {
-            prefs.shareBackground = it
-            refresh()
-        }
-        views += ui.sectionLabel("Line")
-        views += ui.segmented(listOf("Accent", "Speed", "White"), prefs.shareLine, fill = true) {
+        // The plain line is white, or black on the Light background, and says so.
+        fun plainLabel() = if (prefs.shareBackground == ShareImage.BG_LIGHT) "Black" else "White"
+        val lineChoice = ui.segmented(listOf("Accent", "Speed", plainLabel()), prefs.shareLine, fill = true) {
             prefs.shareLine = it
             refresh()
         }
+        views += ui.segmented(listOf("Transparent", "Dark", "Light"), prefs.shareBackground, fill = true) {
+            prefs.shareBackground = it
+            (lineChoice.getChildAt(2) as? TextView)?.apply {
+                text = plainLabel()
+                contentDescription = plainLabel()
+            }
+            refresh()
+        }
+        views += ui.sectionLabel("Line")
+        views += lineChoice
         views += ui.sectionLabel("Stats On The Image")
         val rows = ArrayList<View>()
         rows += ui.switchRow("Show Stats", null, prefs.shareShows("stats", true)) {

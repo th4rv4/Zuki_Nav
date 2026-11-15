@@ -121,7 +121,7 @@ works offline but shows no street names.
 **Share Image** on a trip's map makes a 1080 × 1440 PNG of the route, Strava
 style, to post on Instagram, WhatsApp and the like, or save to Pictures/Zuki
 Nav. Pick a Transparent (a sticker over your own photo), Dark or Light
-background, an Accent, Speed or White line, and which of Distance, Time, Avg
+background, an Accent, Speed or plain line (white, or black on Light), and which of Distance, Time, Avg
 Speed, Top Speed and Max Engine Temp go on it, plus the trip name. Your
 choices are remembered.
 

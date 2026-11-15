@@ -39,6 +39,7 @@ object ShareImage {
 
     const val LINE_ACCENT = 0
     const val LINE_SPEED = 1
+    /** White on dark and transparent backgrounds, black on the light one. */
     const val LINE_WHITE = 2
 
     /** The stat switches, in the order they appear on the image. Max Engine Temp starts off. */
@@ -134,11 +135,14 @@ object ShareImage {
             bottom -= 70f * u
         }
 
-        drawRoute(c, points, 90f * u, top + 30f * u, w - 90f * u, bottom, o.line, 14f * u, shadow)
+        drawRoute(c, points, 90f * u, top + 30f * u, w - 90f * u, bottom, o.line, 14f * u, shadow, light)
         return bmp
     }
 
-    private fun drawRoute(c: Canvas, points: List<RoutePoint>, l: Float, t: Float, r: Float, b: Float, line: Int, width: Float, shadow: Boolean) {
+    private fun drawRoute(
+        c: Canvas, points: List<RoutePoint>, l: Float, t: Float, r: Float, b: Float,
+        line: Int, width: Float, shadow: Boolean, light: Boolean,
+    ) {
         val xy = Route.project(points)
         if (xy.size < 2 || r <= l || b <= t) return
         val minX = xy.minOf { it.first }
@@ -176,7 +180,11 @@ object ShareImage {
                 c.drawLine(px[i - 1], py[i - 1], px[i], py[i], paint)
             }
         } else {
-            paint.color = if (line == LINE_WHITE) Color.WHITE else Palette.ACCENT_MID
+            paint.color = when {
+                line != LINE_WHITE -> Palette.ACCENT_MID
+                light -> Color.rgb(20, 20, 26)
+                else -> Color.WHITE
+            }
             c.drawPath(path, paint)
         }
     }
