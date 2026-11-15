@@ -81,7 +81,7 @@ class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) 
             ((getChildAt(0) as? LinearLayout) ?: this).addView(stopsDetail)
             isClickable = true
             isFocusable = true
-            setOnClickListener { host.showStops(id) }
+            setOnClickListener { host.showStops(this@TripDetailScreen.id) }
         },
     )
 
