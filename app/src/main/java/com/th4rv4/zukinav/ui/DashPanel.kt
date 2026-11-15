@@ -25,6 +25,11 @@ class DashPanel(private val host: MainActivity) {
     private val prefs = host.prefs
 
     private val turn = TurnRingView(ui.ctx)
+    /** Shown in the turn ring's place when there is a parked spot and no route. */
+    private val parkIcon = ui.iconTile(R.drawable.ic_parking, 64, 28, Palette.ACCENT_SOFT, Palette.ACCENT_BG, 32).apply {
+        visibility = View.GONE
+    }
+    private lateinit var topRow: LinearLayout
     private val distance = numberText(26f, Palette.TEXT)
     private val instruction = ui.text("", 13f, Palette.MUTED).apply {
         maxLines = 1
@@ -67,16 +72,20 @@ class DashPanel(private val host: MainActivity) {
         val content = ui.vstack(12)
         content.setPadding(ui.dp(16), ui.dp(16), ui.dp(16), ui.dp(16))
 
-        content.addView(LinearLayout(ui.ctx).apply {
+        topRow = LinearLayout(ui.ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            addView(turn, LinearLayout.LayoutParams(ui.dp(64), ui.dp(64)).apply { marginEnd = ui.dp(12) })
+            addView(android.widget.FrameLayout(ui.ctx).apply {
+                addView(turn, android.widget.FrameLayout.LayoutParams(ui.dp(64), ui.dp(64)))
+                addView(parkIcon, android.widget.FrameLayout.LayoutParams(ui.dp(64), ui.dp(64)))
+            }, LinearLayout.LayoutParams(ui.dp(64), ui.dp(64)).apply { marginEnd = ui.dp(12) })
             addView(ui.vstack(2, distance, instruction), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             addView(syncedAt, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                 gravity = Gravity.TOP
                 marginStart = ui.dp(8)
             })
-        })
+        }
+        content.addView(topRow)
         content.addView(View(ui.ctx).apply { setBackgroundColor(Palette.BORDER) },
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ui.dp(1)))
         content.addView(speed, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ui.dp(190)))
@@ -140,7 +149,10 @@ class DashPanel(private val host: MainActivity) {
      * last saved reading. [syncNote] is a setup hint under the trip meters;
      * [syncedAt] is the short "when" shown in the top right corner.
      */
-    fun render(nav: NavSnapshot?, data: BikeData?, live: Boolean, etaText: String?, syncNote: String?, syncedAt: String?, range: Range?) {
+    fun render(
+        nav: NavSnapshot?, data: BikeData?, live: Boolean, etaText: String?, syncNote: String?, syncedAt: String?, range: Range?,
+        parked: com.th4rv4.zukinav.trips.Parked? = null,
+    ) {
         this.syncedAt.text = syncedAt.orEmpty()
         this.syncedAt.visibility = if (syncedAt.isNullOrBlank()) View.GONE else View.VISIBLE
         this.syncedAt.contentDescription = syncedAt?.let { "Last synced " + it.replace('\n', ' ') }
@@ -156,6 +168,8 @@ class DashPanel(private val host: MainActivity) {
             else -> nav.icon?.label ?: "Follow the route"
         }
         instruction.text = text
+        instruction.setTextColor(Palette.MUTED)
+        renderParked(if (nav == null) parked else null)
 
         speed.setSpeed(if (live) data?.speedKmh else null)
 
@@ -189,6 +203,45 @@ class DashPanel(private val host: MainActivity) {
         sync.text = syncNote.orEmpty()
         sync.visibility = if (syncNote.isNullOrBlank()) View.GONE else View.VISIBLE
         sync.setTextColor(if (live) Palette.OK else Palette.MUTED)
+    }
+
+    /** Parked Spot takes over the idle top row: no extra room on the page. */
+    private fun renderParked(p: com.th4rv4.zukinav.trips.Parked?) {
+        turn.visibility = if (p == null) View.VISIBLE else View.INVISIBLE
+        parkIcon.visibility = if (p == null) View.GONE else View.VISIBLE
+        distance.typeface = if (p == null) DashFonts.numbers else android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+        distance.textSize = if (p == null) 26f else 17f
+        distance.maxLines = 1
+        distance.ellipsize = TextUtils.TruncateAt.END
+        if (p == null) {
+            topRow.isClickable = false
+            topRow.background = null
+            topRow.contentDescription = null
+            return
+        }
+        distance.text = "Parked" + (p.place?.let { " · $it" } ?: "")
+        distance.setTextColor(Palette.TEXT)
+        instruction.text = "Open In Maps"
+        instruction.setTextColor(Palette.ACCENT_SOFT)
+        topRow.isClickable = true
+        topRow.background = android.graphics.drawable.RippleDrawable(
+            android.content.res.ColorStateList.valueOf(Palette.RIPPLE), null, ui.rounded(android.graphics.Color.WHITE, 12),
+        )
+        topRow.contentDescription = "Parked" + (p.place?.let { " near $it" } ?: "") + ". Opens walking directions in Google Maps."
+        topRow.setOnClickListener { openParked(p) }
+    }
+
+    private fun openParked(p: com.th4rv4.zukinav.trips.Parked) {
+        val walk = android.content.Intent(android.content.Intent.ACTION_VIEW,
+            android.net.Uri.parse("google.navigation:q=${p.lat},${p.lng}&mode=w"))
+            .setPackage("com.google.android.apps.maps")
+        val any = android.content.Intent(android.content.Intent.ACTION_VIEW,
+            android.net.Uri.parse("geo:${p.lat},${p.lng}?q=${p.lat},${p.lng}(Parked bike)"))
+        try {
+            host.startActivity(walk)
+        } catch (_: Exception) {
+            try { host.startActivity(any) } catch (_: Exception) { host.toast("No maps app found") }
+        }
     }
 
     /**

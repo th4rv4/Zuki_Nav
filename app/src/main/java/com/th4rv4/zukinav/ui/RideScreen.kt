@@ -42,6 +42,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
     private val fuelListener: () -> Unit = { refresh() }
     private val monthCard = MonthCard(host)
     private val monthListener: () -> Unit = { reloadMonth() }
+    private val parkedListener: () -> Unit = { refresh() }
 
     private val engineHotTitle = ui.text("", 14f, Palette.DANGER, Ui.Weight.BOLD)
     private val engineHotCard = ui.card(
@@ -133,6 +134,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
         NavRepository.addListener(navListener)
         DashService.addStateListener(stateListener)
         TripStore.addListener(monthListener)
+        com.th4rv4.zukinav.trips.Parking.addListener(parkedListener)
         MaintStore.addListener(monthListener)
         reloadMonth()
         refresh()
@@ -144,6 +146,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
         FuelStore.removeListener(fuelListener)
         DashService.removeStateListener(stateListener)
         TripStore.removeListener(monthListener)
+        com.th4rv4.zukinav.trips.Parking.removeListener(parkedListener)
         MaintStore.removeListener(monthListener)
         view.removeCallbacks(clockTick)
     }
@@ -202,6 +205,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
             },
             // Hidden while live, and during a route so turn instructions get the full width.
             syncedAt = if (live == null && data != null && nav == null) formatWhen(prefs.lastBikeAt) else null,
+            parked = if (live == null && nav == null) com.th4rv4.zukinav.trips.Parking.get(host) else null,
         )
 
         val ride = if (prefs.recordTrips) TripLog.active(host) else null

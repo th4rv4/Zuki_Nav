@@ -154,7 +154,10 @@ class DashService : Service(), ClusterLink.Listener {
     }
 
     override fun onDestroy() {
-        if (bike != null) TripLog.onDisconnected(this)
+        if (bike != null) {
+            TripLog.onDisconnected(this)
+            com.th4rv4.zukinav.trips.Parking.onBikeOff(this)
+        }
         instance = null
         try { unregisterReceiver(bluetoothReceiver) } catch (_: Exception) {}
         main.removeCallbacksAndMessages(null)
@@ -272,7 +275,10 @@ class DashService : Service(), ClusterLink.Listener {
                 }
                 ClusterLink.State.DISCONNECTED -> {
                     if (lostAt == 0L) lostAt = System.currentTimeMillis()
-                    if (bike != null) TripLog.onDisconnected(this)
+                    if (bike != null) {
+                        TripLog.onDisconnected(this)
+                        com.th4rv4.zukinav.trips.Parking.onBikeOff(this)
+                    }
                     bike = null
                     main.removeCallbacks(loop)
                     main.removeCallbacks(connectTimeout)

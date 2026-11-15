@@ -93,6 +93,9 @@ object RouteRecorder {
 
     val recordingId: Long? get() = tripId
 
+    /** The newest point kept for the ride being recorded, if any. */
+    val lastPoint: RoutePoint? get() = last
+
     /** Starts (or carries on) recording for [id]. Main thread. */
     @SuppressLint("MissingPermission")
     fun start(ctx: Context, id: Long) {
