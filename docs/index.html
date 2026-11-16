@@ -110,6 +110,46 @@ section{padding:72px 0}
 .small{font-size:13px;color:var(--muted);margin-top:14px}
 @media(max-width:620px){.compare th,.compare td{padding:12px 12px;font-size:13.5px}}
 
+/* real-life photos */
+.real{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.real figure{margin:0;cursor:zoom-in}
+.real img{width:100%;display:block;border-radius:22px;border:1px solid var(--border);box-shadow:0 24px 50px rgba(0,0,0,.45);aspect-ratio:5/4;object-fit:cover}
+.real figcaption{margin:12px 4px 0}
+.real figcaption b{display:block;font-size:15px}
+.real figcaption span{display:block;font-size:13px;color:var(--muted);line-height:1.45}
+@media(max-width:820px){.real{grid-template-columns:1fr}}
+
+/* share spotlight */
+.spot{display:grid;grid-template-columns:1.05fr .95fr;gap:36px;align-items:center;padding:34px}
+.spot h2{font-size:clamp(26px,3.6vw,36px);line-height:1.15;margin:8px 0 12px}
+.spot p{color:var(--soft);font-size:16px}
+.spot ul{list-style:none;margin:18px 0 0;padding:0;display:grid;gap:10px}
+.spot li{color:var(--soft);font-size:14.5px;padding-left:22px;position:relative}
+.spot li::before{content:"";position:absolute;left:0;top:7px;width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,var(--a1),var(--a2))}
+.spot li b{color:var(--text)}
+.spot figure{margin:0;cursor:zoom-in}
+.spot figure img{width:100%;display:block;border-radius:24px;border:1px solid var(--border);box-shadow:0 24px 50px rgba(0,0,0,.45)}
+.spot-pics{position:relative;max-width:420px;margin:0 auto;padding-bottom:40px}
+.spot-pics .story{width:78%}
+.spot-pics .card-pic{position:absolute;right:0;bottom:0;width:52%}
+.spot-pics .card-pic img{border-radius:18px}
+@media(max-width:820px){.spot{grid-template-columns:1fr;padding:24px}}
+
+/* screenshots */
+.shots{display:flex;align-items:flex-start;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 22px 18px;margin:0 -22px;scrollbar-width:thin}
+.shot{flex:none;width:232px;scroll-snap-align:start;background:none;border:none;color:inherit;font:inherit;text-align:left;cursor:zoom-in;padding:0}
+.shot .frame{position:relative;aspect-ratio:9/19.5;border-radius:30px;overflow:hidden;border:1px solid var(--border);background:#0B0E15;box-shadow:0 24px 50px rgba(0,0,0,.45);transition:transform .2s ease}
+.shot:hover .frame{transform:translateY(-4px)}
+.shot img{width:100%;height:100%;object-fit:cover;object-position:top;display:block}
+.shot .more{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);font-size:11px;padding:4px 10px;border-radius:999px;background:rgba(7,10,16,.8);border:1px solid var(--border);color:var(--soft);white-space:nowrap}
+.shot b{display:block;margin:12px 4px 2px;font-size:15px}
+.shot span.d{display:block;margin:0 4px;font-size:13px;color:var(--muted);line-height:1.45}
+.lightbox{position:fixed;inset:0;z-index:50;background:rgba(3,5,9,.86);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:none;overflow-y:auto;padding:28px 16px}
+.lightbox.open{display:block}
+.lightbox img{display:block;width:min(420px,100%);margin:0 auto;border-radius:24px;border:1px solid var(--border)}
+.lightbox p{text-align:center;color:var(--soft);font-size:14px;margin:14px auto 40px;max-width:420px}
+.lightbox button{position:fixed;top:16px;right:16px;width:44px;height:44px;border-radius:50%;border:1px solid var(--border);background:rgba(255,255,255,.08);color:var(--text);font-size:22px;cursor:pointer}
+
 /* models + steps */
 .two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
 .models{padding:26px}
@@ -153,7 +193,7 @@ footer .row{flex-wrap:wrap;gap:12px}
       Zuki Nav
     </a>
     <nav class="links" aria-label="Sections">
-      <a href="#why">Why</a><a href="#features">Features</a><a href="#compare">Compare</a><a href="#start">Get Started</a><a href="#support">Support</a>
+      <a href="#why">Why</a><a href="#features">Features</a><a href="#real">On The Bike</a><a href="#share">Share</a><a href="#screens">Screenshots</a><a href="#compare">Compare</a><a href="#start">Get Started</a><a href="#support">Support</a>
     </nav>
     <a class="btn btn-o" href="https://github.com/th4rv4/Zuki_Nav" style="padding:9px 16px;font-size:14px">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.6 22.4c.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.9 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.2c0 .3.2.7.8.6A11.5 11.5 0 0 0 12 .5z"/></svg>
@@ -242,12 +282,12 @@ footer .row{flex-wrap:wrap;gap:12px}
           <h3>Mileage And Range</h3><p>Spots refills when the fuel bars go up, works out km/l and cost per km from full tank to full tank, and learns km per bar to show how far you can still go.</p></div>
         <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h7a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h7"/></svg></div>
           <h3>Every Ride Saved</h3><p>Ignition on to ignition off: distance, moving time, average and top speed, and where you started and ended. Star, rename or share any ride.</p></div>
+        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19c3-1 3-6 6-7s4 3 7 1 2-6 3-8"/><circle cx="4" cy="19" r="1.5"/><circle cx="20" cy="5" r="1.5"/></svg></div>
+          <h3>Share Your Ride</h3><p>Turn any ride into a Strava-style route doodle with your distance, speeds and engine temperature, on a see-through, dark or light background.</p></div>
         <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-3 2a11 11 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg></div>
           <h3>Call And Message Alerts</h3><p>Phone and WhatsApp calls with the caller's name, new WhatsApp and SMS messages, and an option to skip bank, OTP and promo SMS.</p></div>
         <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 11V7a2 2 0 0 1 4 0v4M11 9a2 2 0 0 1 4 0v3M15 11a2 2 0 0 1 4 0v4a6 6 0 0 1-12 0v-3"/></svg></div>
           <h3>Your Welcome</h3><p>The dash greets you by name when it connects, with an optional spinning-arrow startup animation and a short greeting of your own.</p></div>
-        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="11" rx="2"/><path d="M9 20h6"/></svg></div>
-          <h3>Dash Test</h3><p>Show any of the 64 turn icons on your dash and mark which look right, so every model can be checked and shared back.</p></div>
         <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 9.5v1M12 7v1M16 9.5v1"/></svg></div>
           <h3>Make It Yours</h3><p>Dark, Light and true-black AMOLED themes, eight accent colours or your wallpaper's colours, and a rider avatar.</p></div>
         <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1"/></svg></div>
@@ -256,6 +296,110 @@ footer .row{flex-wrap:wrap;gap:12px}
       <div class="card" style="margin-top:16px;padding:22px 24px">
         <div class="row" style="flex-wrap:wrap;gap:12px"><div><h3 style="font-size:17px">Try the accents</h3><p style="color:var(--soft);font-size:14.5px">The same colours the app uses. Tap one to repaint this page.</p></div></div>
         <div class="accents" id="accents" role="group" aria-label="Accent colours"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="real">
+    <div class="wrap">
+      <div class="sh"><span class="cap">On The Bike</span><h2>Not a mockup. This is the dash.</h2>
+        <p>From a Gixxer SF 250 running Zuki Nav. Tap one to see it bigger.</p></div>
+      <div class="real">
+        <figure class="shot-open" data-src="screens/real-message.webp" data-cap="A new SMS on the dash's message screen, with the sender's name.">
+          <img src="screens/real-message.webp" alt="A new SMS shown on the dash's message screen" loading="lazy" width="900">
+          <figcaption><b>Messages on the dash</b><span>Who's calling or texting, without taking the phone out.</span></figcaption>
+        </figure>
+        <figure class="shot-open" data-src="screens/real-widget.webp" data-cap="The home screen widget: range left, fuel bars and ODO, as a square on any grid.">
+          <img src="screens/real-widget.webp" alt="The square Zuki Nav widget on a home screen, showing 267 km of range, fuel bars and ODO" loading="lazy" width="900">
+          <figcaption><b>Range at a glance</b><span>A square widget with the range left, fuel bars and ODO, and whether the bike is connected.</span></figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="share">
+    <div class="wrap">
+      <div class="card spot">
+        <div>
+          <span class="cap">Share Your Ride</span>
+          <h2>Every ride, ready to post.</h2>
+          <p>Each ride's route becomes a Strava-style map doodle with your numbers on it. Lay it over a photo from the ride and post it as your story, in one tap.</p>
+          <ul>
+            <li><b>Transparent</b> to drop over your own photo or story, or <b>Dark</b> and <b>Light</b> on their own.</li>
+            <li>The line in your accent colour, <b>coloured by speed</b>, or plain white.</li>
+            <li>Pick the stats: distance, time, average and top speed, max engine temperature, and the trip name.</li>
+            <li><b>Share</b> to Instagram or WhatsApp, or <b>Save</b> to your gallery. Your picks are remembered.</li>
+          </ul>
+        </div>
+        <div class="spot-pics">
+          <figure class="shot-open story" data-src="screens/share-story.webp" data-cap="A ride's route doodle on a transparent background, over a photo from the ride.">
+            <img src="screens/share-story.webp" alt="A ride's route doodle with distance, speeds and engine temperature, laid over a photo of a Gixxer SF 250 in the hills" loading="lazy" width="720">
+          </figure>
+          <figure class="shot-open card-pic" data-src="screens/share.webp" data-cap="Share Image: Pick the background, line and stats, then share or save.">
+            <img src="screens/share-card.webp" alt="The Share Image preview: a route coloured by speed with the ride's stats" loading="lazy" width="720">
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screens">
+    <div class="wrap">
+      <div class="sh"><span class="cap">Screenshots</span><h2>Real rides, real screens.</h2>
+        <p>Straight from a phone connected to a Gixxer SF 250. Every number here came from the bike's own dash. Tap a screen to see all of it.</p></div>
+      <div class="shots">
+        <button class="shot" type="button" data-src="screens/ride.webp" data-cap="Ride: A live copy of the dash, range left and where you parked.">
+          <div class="frame"><img src="screens/ride.webp" alt="Zuki Nav Ride screen" loading="lazy" width="720"></div>
+          <b>Ride</b><span class="d">A live copy of the dash, range left and where you parked.</span>
+        </button>
+        <button class="shot" type="button" data-src="screens/trips.webp" data-cap="Trips: Every ride saved from ignition on to off, with this month at the top.">
+          <div class="frame"><img src="screens/trips.webp" alt="Zuki Nav Trips screen" loading="lazy" width="720"><span class="more">Tap to see it all</span></div>
+          <b>Trips</b><span class="d">Every ride saved from ignition on to off, with this month at the top.</span>
+        </button>
+        <button class="shot" type="button" data-src="screens/trip.webp" data-cap="A Trip: The route coloured by speed or engine temperature, plus all the numbers.">
+          <div class="frame"><img src="screens/trip.webp" alt="Zuki Nav A Trip screen" loading="lazy" width="720"><span class="more">Tap to see it all</span></div>
+          <b>A Trip</b><span class="d">The route coloured by speed or engine temperature, plus all the numbers.</span>
+        </button>
+        <button class="shot" type="button" data-src="screens/share.webp" data-cap="Share Image: A Strava-style route doodle with your stats, to share or save.">
+          <div class="frame"><img src="screens/share.webp" alt="Zuki Nav Share Image screen" loading="lazy" width="720"><span class="more">Tap to see it all</span></div>
+          <b>Share Image</b><span class="d">A Strava-style route doodle with your stats, to share or save.</span>
+        </button>
+        <button class="shot" type="button" data-src="screens/fuel.webp" data-cap="Fuel: Range that learns your bike, bar by bar, with mileage and cost per km.">
+          <div class="frame"><img src="screens/fuel.webp" alt="Zuki Nav Fuel screen" loading="lazy" width="720"><span class="more">Tap to see it all</span></div>
+          <b>Fuel</b><span class="d">Range that learns your bike, bar by bar, with mileage and cost per km.</span>
+        </button>
+        <button class="shot" type="button" data-src="screens/thermals.webp" data-cap="Thermals: Engine temperature from the dash, the last 30 minutes and each ride's peak.">
+          <div class="frame"><img src="screens/thermals.webp" alt="Zuki Nav Thermals screen" loading="lazy" width="720"><span class="more">Tap to see it all</span></div>
+          <b>Thermals</b><span class="d">Engine temperature from the dash, the last 30 minutes and each ride's peak.</span>
+        </button>
+        <button class="shot" type="button" data-src="screens/service.webp" data-cap="Service: Chain and service reminders from the ODO, and your papers with expiry dates.">
+          <div class="frame"><img src="screens/service.webp" alt="Zuki Nav Service screen" loading="lazy" width="720"><span class="more">Tap to see it all</span></div>
+          <b>Service</b><span class="d">Chain and service reminders from the ODO, and your papers with expiry dates.</span>
+        </button>
+        <button class="shot" type="button" data-src="screens/dash.webp" data-cap="Dash: Speed alert, startup animation and your own greeting on the dash.">
+          <div class="frame"><img src="screens/dash.webp" alt="Zuki Nav Dash screen" loading="lazy" width="720"></div>
+          <b>Dash</b><span class="d">Speed alert, startup animation and your own greeting on the dash.</span>
+        </button>
+        <button class="shot" type="button" data-src="screens/calls.webp" data-cap="Calls: Call alerts on the dash, and unknown callers declined if you want.">
+          <div class="frame"><img src="screens/calls.webp" alt="Zuki Nav Calls screen" loading="lazy" width="720"></div>
+          <b>Calls</b><span class="d">Call alerts on the dash, and unknown callers declined if you want.</span>
+        </button>
+        <button class="shot" type="button" data-src="screens/messages.webp" data-cap="Messages: WhatsApp and SMS on the dash, without the bank and OTP noise.">
+          <div class="frame"><img src="screens/messages.webp" alt="Zuki Nav Messages screen" loading="lazy" width="720"></div>
+          <b>Messages</b><span class="d">WhatsApp and SMS on the dash, without the bank and OTP noise.</span>
+        </button>
+        <button class="shot" type="button" data-src="screens/appearance.webp" data-cap="Appearance: System, Light, Dark or AMOLED, with nine accents.">
+          <div class="frame"><img src="screens/appearance.webp" alt="Zuki Nav Appearance screen" loading="lazy" width="720"></div>
+          <b>Appearance</b><span class="d">System, Light, Dark or AMOLED, with nine accents.</span>
+        </button>
+        <button class="shot" type="button" data-src="screens/backup.webp" data-cap="Backup: A fresh backup after every ride, to Google Drive or your phone.">
+          <div class="frame"><img src="screens/backup.webp" alt="Zuki Nav Backup screen" loading="lazy" width="720"></div>
+          <b>Backup</b><span class="d">A fresh backup after every ride, to Google Drive or your phone.</span>
+        </button>
+        <button class="shot" type="button" data-src="screens/updates.webp" data-cap="Updates: New versions found and installed from inside the app.">
+          <div class="frame"><img src="screens/updates.webp" alt="Zuki Nav Updates screen" loading="lazy" width="720"></div>
+          <b>Updates</b><span class="d">New versions found and installed from inside the app.</span>
+        </button>
       </div>
     </div>
   </section>
@@ -330,6 +474,12 @@ footer .row{flex-wrap:wrap;gap:12px}
   </section>
 </main>
 
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Screenshot">
+  <button type="button" id="lb-close" aria-label="Close">×</button>
+  <img id="lb-img" alt="">
+  <p id="lb-cap"></p>
+</div>
+
 <footer>
   <div class="wrap row">
     <span>Zuki Nav · Unofficial, not affiliated with Suzuki · MIT licence</span>
@@ -375,6 +525,20 @@ footer .row{flex-wrap:wrap;gap:12px}
   var saved = 0;
   try { saved = parseInt(localStorage.getItem('zuki-accent') || '0', 10) || 0; } catch (e) {}
   apply(saved < presets.length ? saved : 0);
+
+  var lb = document.getElementById('lightbox'), lbImg = document.getElementById('lb-img'), lbCap = document.getElementById('lb-cap');
+  function closeLb() { lb.classList.remove('open'); document.body.style.overflow = ''; }
+  Array.prototype.forEach.call(document.querySelectorAll('.shot, .shot-open'), function (b) {
+    b.addEventListener('click', function () {
+      lbImg.src = b.getAttribute('data-src'); lbImg.alt = b.getAttribute('data-cap');
+      lbCap.textContent = b.getAttribute('data-cap');
+      lb.classList.add('open'); lb.scrollTop = 0; document.body.style.overflow = 'hidden';
+      document.getElementById('lb-close').focus();
+    });
+  });
+  document.getElementById('lb-close').addEventListener('click', closeLb);
+  lb.addEventListener('click', function (e) { if (e.target === lb) closeLb(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && lb.classList.contains('open')) closeLb(); });
 
   var toast = document.getElementById('toast');
   document.getElementById('copy').addEventListener('click', function () {

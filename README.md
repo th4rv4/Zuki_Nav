@@ -15,6 +15,40 @@ Free, open source, no account, no ads. Everything stays on your phone.
 Unofficial and not affiliated with Suzuki. Use at your own risk, and don't
 fiddle with your phone while riding.
 
+## Screenshots
+
+Real screens from a phone connected to a Gixxer SF 250. Every number came from the bike's own dash.
+
+<table>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screens/ride.webp" width="200" alt="Ride"><br><sub><b>Ride</b></sub></td>
+    <td align="center" valign="top"><img src="docs/screens/trips.webp" width="200" alt="Trips"><br><sub><b>Trips</b></sub></td>
+    <td align="center" valign="top"><img src="docs/screens/trip.webp" width="200" alt="A Trip"><br><sub><b>A Trip</b></sub></td>
+    <td align="center" valign="top"><img src="docs/screens/share.webp" width="200" alt="Share Image"><br><sub><b>Share Image</b></sub></td>
+  </tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screens/fuel.webp" width="200" alt="Fuel"><br><sub><b>Fuel</b></sub></td>
+    <td align="center" valign="top"><img src="docs/screens/thermals.webp" width="200" alt="Thermals"><br><sub><b>Thermals</b></sub></td>
+    <td align="center" valign="top"><img src="docs/screens/service.webp" width="200" alt="Service"><br><sub><b>Service</b></sub></td>
+    <td align="center" valign="top"><img src="docs/screens/dash.webp" width="200" alt="Dash"><br><sub><b>Dash</b></sub></td>
+  </tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screens/calls.webp" width="200" alt="Calls"><br><sub><b>Calls</b></sub></td>
+    <td align="center" valign="top"><img src="docs/screens/messages.webp" width="200" alt="Messages"><br><sub><b>Messages</b></sub></td>
+    <td align="center" valign="top"><img src="docs/screens/appearance.webp" width="200" alt="Appearance"><br><sub><b>Appearance</b></sub></td>
+    <td align="center" valign="top"><img src="docs/screens/backup.webp" width="200" alt="Backup"><br><sub><b>Backup</b></sub></td>
+  </tr>
+</table>
+
+### On the bike
+
+<table>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screens/real-message.webp" width="400" alt="A new SMS shown on the dash's message screen"><br><sub><b>A message, without picking up the phone</b></sub></td>
+    <td align="center" valign="top"><img src="docs/screens/real-widget.webp" width="400" alt="The square Zuki Nav widget on a home screen, showing 267 km of range, fuel bars and ODO"><br><sub><b>Range, fuel and ODO on your home screen</b></sub></td>
+  </tr>
+</table>
+
 ## Here's what we do differently
 
 - **The Maps you already use.** Real Google Maps guidance on the dash, with
@@ -25,6 +59,10 @@ fiddle with your phone while riding.
   chop your ride into pieces. With a Maps route open, your ride stays one
   ride even through a long lunch. Stops are listed with where and how long,
   and a long jam is told apart from a red light.
+- **Your ride as a poster.** Every ride's route turns into a Strava-style
+  map doodle, coloured by speed, with your distance, speeds and engine
+  temperature on it. Make it see-through to drop over your own photo, then
+  share it to Instagram or WhatsApp or save it, in one tap.
 - **Distance from the bike itself.** Trip distance comes from your bike's own
   trip meter, so it matches the dash, not a phone GPS guess.
 - **Engine temperature you can act on.** The dash sends it but nothing showed
@@ -39,8 +77,6 @@ fiddle with your phone while riding.
 - **Easy on the battery.** Between turns the phone is left to sleep, GPS
   shares what Google Maps already gets, and with **Wake On Ignition** the
   app doesn't even run while the bike is parked.
-- **Rides worth sharing.** A one-tap route image for Instagram or WhatsApp,
-  and a month-in-review card at the start of each month.
 - **Updates inside the app**, and a **backup after every ride** to your own
   Google Drive or Downloads folder.
 
@@ -92,8 +128,22 @@ fiddle with your phone while riding.
   the map. Label them Fuel, Chai Break, Food, Photos and so on.
 - **Route maps** (optional): your path drawn on a map, coloured by speed or
   engine temperature, with the start, end and top speed marked. Works offline.
-- **Share Image**: a ready-to-post picture of the route with your choice of
-  stats, on a transparent, dark or light background.
+- **Share Image**: turns any ride into a ready-to-post route doodle.
+
+  <table>
+    <tr>
+      <td align="center" valign="top"><img src="docs/screens/share-story.webp" width="250" alt="A ride's route doodle with distance, speeds and engine temperature, laid over a photo of a Gixxer SF 250 in the hills"><br><sub><b>Transparent, over a photo from the ride</b></sub></td>
+      <td align="center" valign="top"><img src="docs/screens/share-card.webp" width="320" alt="The Share Image preview: a route coloured by speed with the ride's stats"><br><sub><b>The image as the app makes it</b></sub></td>
+    </tr>
+  </table>
+
+  - **Background**: Transparent (a sticker for your own photo or story),
+    Dark or Light.
+  - **Line**: your accent colour, coloured by speed, or plain white.
+  - **Stats**: pick any of Distance, Time, Avg Speed, Top Speed and Max
+    Engine Temp, and add the trip name.
+  - **Share** straight to Instagram, WhatsApp and the like, or **Save** it to
+    your gallery. Your choices are remembered for next time.
 - **Month Recap**: at the start of each month, a card with last month's
   km, rides and riding time, ready to share.
 - **Merge With Next Ride**: joins two rides into one if you ever need to.
