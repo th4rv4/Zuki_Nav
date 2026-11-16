@@ -262,6 +262,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
                     ui.row("Speed Alert", "The dash warns above this, km/h. Empty to turn off.",
                         ui.input(prefs.speedAlertKmh.takeIf { it > 0 }?.toString() ?: "", "Off", numeric = true) {
                             prefs.speedAlertKmh = it.toIntOrNull()?.coerceIn(0, 999) ?: 0
+                            DashService.instance?.wake()
                         }),
                 ),
                 ui.sectionHeader(R.drawable.ic_sec_wave, "Welcome"),

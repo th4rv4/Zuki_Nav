@@ -99,7 +99,11 @@ class DashService : Service(), ClusterLink.Listener {
         }
     }
 
-    private val navListener: (NavSnapshot?) -> Unit = { updateNotification() }
+    private val navListener: (NavSnapshot?) -> Unit = { nav ->
+        updateNotification()
+        // A route starting wakes the loop at once instead of at the next minute.
+        if (nav != null && !loopFast) wake()
+    }
 
     /**
      * Follows the phone's Bluetooth switch. When it goes off the link is
@@ -340,10 +344,30 @@ class DashService : Service(), ClusterLink.Listener {
         override fun run() {
             if (link.state != ClusterLink.State.READY) return
             step()
-            // Every 200 ms while something is moving on the dash; once a
-            // second on a ride without a route, when only the clock is sent.
-            main.postDelayed(this, if (busy()) 200 else IDLE_TICK_MS)
+            // Every 200 ms while something is moving on the dash. On a ride
+            // without a route only the clock goes out, so the loop sleeps until
+            // the next minute; anything that needs the dash sooner calls wake().
+            loopFast = busy()
+            main.postDelayed(this, if (loopFast) 200 else msToNextMinute())
         }
+    }
+
+    /** True while the loop runs every 200 ms. */
+    private var loopFast = false
+
+    /** Runs the send loop now, e.g. a route started or a flag needs sending. */
+    fun wake() {
+        main.post {
+            if (link.state != ClusterLink.State.READY) return@post
+            main.removeCallbacks(loop)
+            main.post(loop)
+        }
+    }
+
+    /** Just after the next minute starts, so the dash clock flips on time. */
+    private fun msToNextMinute(): Long {
+        val now = System.currentTimeMillis()
+        return (60_000L - now % 60_000L + 50L).coerceIn(200L, IDLE_MAX_MS)
     }
 
     /** Navigation, the startup animation, a Dash Test or the end of a route: frames every 200 ms. */
@@ -516,7 +540,7 @@ class DashService : Service(), ClusterLink.Listener {
         main.postDelayed(clearMessageIcon, MESSAGE_SCREEN_MS)
     }
 
-    private val clearMessageIcon = Runnable { clearSmsLeft = CLEAR_REPEATS }
+    private val clearMessageIcon = Runnable { clearSmsLeft = CLEAR_REPEATS; wake() }
 
     // The greeting on the call screen right now, if any.
     private var callText: String? = null
@@ -572,8 +596,8 @@ class DashService : Service(), ClusterLink.Listener {
         // after reconnecting carry it, so an indicator lit before the bike
         // was switched off doesn't stay on.
         when (alert) {
-            Alert.ClearMissed -> { clearMissedLeft = CLEAR_REPEATS; return }
-            Alert.ClearMessages -> { clearSmsLeft = CLEAR_REPEATS; return }
+            Alert.ClearMissed -> { clearMissedLeft = CLEAR_REPEATS; wake(); return }
+            Alert.ClearMessages -> { clearSmsLeft = CLEAR_REPEATS; wake(); return }
             else -> Unit
         }
         if (link.state != ClusterLink.State.READY) {
@@ -710,8 +734,8 @@ class DashService : Service(), ClusterLink.Listener {
         /** After this long parked, no more quick direct tries. */
         private const val DEEP_SLEEP_MS = 60 * 60_000L
         private const val CLEAR_REPEATS = 3
-        /** The send loop's pace on a ride without a route. */
-        private const val IDLE_TICK_MS = 1_000L
+        /** Longest the send loop sleeps on a ride without a route. */
+        private const val IDLE_MAX_MS = 60_050L
 
         /** Compass arrows clockwise from north: one turn of the spinning arrow. */
         private val SPIN = listOf(
@@ -815,6 +839,7 @@ class DashService : Service(), ClusterLink.Listener {
             s.main.post {
                 s.testFrame = { m -> s.iconTestFrame(iconId, m) }
                 s.testUntil = System.currentTimeMillis() + 8_000
+                s.wake()
                 AppLog.d("Dash", "Testing icon $iconId (${ClusterIcon.fromId(iconId)?.label ?: "unlisted"})")
             }
             return true
@@ -832,6 +857,7 @@ class DashService : Service(), ClusterLink.Listener {
                     SuzukiFrames.navigationText(ClusterIcon.STRAIGHT.id, toTurn, eta, remaining, m.checksum)
                 }
                 s.testUntil = System.currentTimeMillis() + 15_000
+                s.wake()
                 val f = SuzukiFrames.navigationText(ClusterIcon.STRAIGHT.id, toTurn, eta, remaining)
                 AppLog.d("Dash", "Testing text \"$toTurn\" \"$eta\" \"$remaining\": ${SuzukiFrames.hex(f)}")
             }
