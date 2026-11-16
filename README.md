@@ -1,24 +1,166 @@
 # Zuki Nav
 
-Google Maps turn-by-turn directions on the dash of Suzuki two-wheelers that
-have **Suzuki Ride Connect**, over Bluetooth LE.
+**Google Maps turn-by-turn on your Suzuki's dash.** If your bike or scooter
+has **Suzuki Ride Connect**, Zuki Nav puts the next turn, the distance to it
+and your arrival time on the dash, straight from the Google Maps you already
+use. Along the way it keeps a diary of every ride, watches your engine
+temperature, learns your real fuel range and handles calls so you don't have
+to touch the phone.
 
-**This project is aimed at the Suzuki Ride Connect models sold in India**
-(Suzuki Motorcycle India's Gixxer, V-Strom SX, Access, Burgman Street and
-Avenis ranges). It was built from the Indian Suzuki Ride Connect app and
-defaults to left-hand traffic. Suzuki bikes sold elsewhere use other
-connectivity systems and are not supported.
+Free, open source, no account, no ads. Everything stays on your phone.
 
-Suzuki Ride Connect only navigates with Mappls. This app reads the guidance
-notification Google Maps already shows and sends it to the cluster using the
-cluster's own protocol (see [docs/PROTOCOL.md](docs/PROTOCOL.md)).
+**Website:** [th4rv4.github.io/Zuki_Nav](https://th4rv4.github.io/Zuki_Nav/) ·
+**Download:** [latest release](https://github.com/th4rv4/Zuki_Nav/releases/latest)
 
 Unofficial and not affiliated with Suzuki. Use at your own risk, and don't
 fiddle with your phone while riding.
 
-**Website:** [th4rv4.github.io/Zuki_Nav](https://th4rv4.github.io/Zuki_Nav/)
+## Here's what we do differently
 
-## Supported models
+- **The Maps you already use.** Real Google Maps guidance on the dash, with
+  its live traffic, reroutes and your saved places. Nothing new to learn.
+- **Every Ride Connect model.** Gixxer, Gixxer 250, V-Strom SX, Access,
+  Burgman Street and Avenis, and also the TFT editions and the e-ACCESS.
+- **Trips that understand a day out.** A chai break or a fuel stop doesn't
+  chop your ride into pieces. With a Maps route open, your ride stays one
+  ride even through a long lunch. Stops are listed with where and how long,
+  and a long jam is told apart from a red light.
+- **Distance from the bike itself.** Trip distance comes from your bike's own
+  trip meter, so it matches the dash, not a phone GPS guess.
+- **Engine temperature you can act on.** The dash sends it but nothing showed
+  it. Zuki Nav shows it live, keeps a 30-minute graph, and can flash
+  **WARMED UP** and **ENGINE HOT** on the dash.
+- **Calls handled for you.** Unknown numbers can be declined while you ride
+  (a second call from the same number still rings through), WhatsApp chats
+  can get an automatic "riding, will call back" reply, and bank and OTP
+  SMS can be kept off the dash.
+- **Range that learns your bike.** It works out how many km you really get
+  from each fuel bar, so the range left gets better with every tank.
+- **Easy on the battery.** Between turns the phone is left to sleep, GPS
+  shares what Google Maps already gets, and with **Wake On Ignition** the
+  app doesn't even run while the bike is parked.
+- **Rides worth sharing.** A one-tap route image for Instagram or WhatsApp,
+  and a month-in-review card at the start of each month.
+- **Updates inside the app**, and a **backup after every ride** to your own
+  Google Drive or Downloads folder.
+
+## On the ride
+
+- **Turn arrows on the dash**: the arrow, the distance to the turn, your
+  ETA and the distance left, kept up to date several times a second.
+- **Calls**: incoming, answered and missed calls (phone and WhatsApp) with
+  the caller's name.
+- **Messages**: new WhatsApp messages and SMS with the sender's name and how
+  many are unread. **Skip Business SMS** keeps bank, OTP and promo
+  messages off the dash.
+- **Reject Unknown Callers** (optional): declines calls from numbers not in
+  your contacts, only while riding or always. **Allow Repeat Callers** lets a
+  second call within 5 minutes ring through, in case it's urgent. The dash can
+  show **REJECTED** so you know it happened.
+- **Auto-Reply** (optional): answers WhatsApp chats with your own message
+  while you ride. Choose contacts only, and how often the same chat gets a
+  reply (every 15 or 30 minutes, or once per ride). Group chats are skipped.
+- **Greeting**: the dash welcomes you by name when you switch on, with an
+  optional spin of the compass needle.
+- **Speed Alert**: sets the dash's own speed warning.
+- **Engine alerts**: **WARMED UP** once the engine reaches your warm-up
+  temperature, and **ENGINE HOT** when it reaches your limit, again every
+  5 minutes while it stays hot.
+- **The Ride tab**: a live copy of your dash on the phone, with the next
+  turn, speed, fuel, engine temperature, ODO and both trip meters, the ride
+  in progress and this month's totals.
+
+## After the ride
+
+- **Trips**: every ride is saved with its distance, riding and stationary
+  time, average and top speed, engine temperature and the ODO at start and
+  end. Rename, star, share or delete them.
+- **How rides are split** (in plain words):
+  - The ride goes on as long as the bike is switched on, even standing
+    still.
+  - Switch off for under 10 minutes and you're still on the same ride; the
+    break shows as a stop.
+  - With a Google Maps route open, the ride waits up to 2 hours, so a long
+    lunch on a trip stays one ride. Reaching your destination or closing the
+    route brings back the 10 minutes.
+  - Switched off for 2 minutes or more, or standing still for 5 minutes or
+    more (a long jam), counts as a **stop**. Red lights are just stationary
+    time.
+  - While the bike is off, the Current Ride card shows when the ride will end
+    by itself, and an **End Ride** button if you're done early (with Undo).
+- **Stops**: a timeline of each part of the ride and each stop, marked on
+  the map. Label them Fuel, Chai Break, Food, Photos and so on.
+- **Route maps** (optional): your path drawn on a map, coloured by speed or
+  engine temperature, with the start, end and top speed marked. Works offline.
+- **Share Image**: a ready-to-post picture of the route with your choice of
+  stats, on a transparent, dark or light background.
+- **Month Recap**: at the start of each month, a card with last month's
+  km, rides and riding time, ready to share.
+- **Merge With Next Ride**: joins two rides into one if you ever need to.
+- **Parked Spot**: where the bike was switched off, with walking directions
+  back to it.
+
+## Your bike
+
+- **Fuel**: Zuki Nav notices a refill when the fuel bars go up and asks for
+  the litres and amount paid (both optional). It works out mileage and cost
+  per km, and the range left from what each bar really gives you.
+- **Thermals**: the engine temperature on a cold-to-hot gauge, a graph of
+  the last 30 minutes, and each ride's highest and average temperature.
+- **Service**: reminders for chain maintenance, general service and your own
+  jobs, every so many km, months, or both, counted from the bike's ODO.
+  A notification comes when one is close and when it's due.
+- **Papers**: keep your PUC, insurance and driving licence (and any other
+  paper) with photos or PDFs, and get a reminder 15 days before one
+  expires and on the day.
+- **Home screen widget**: a small square showing range, fuel bars and ODO,
+  and whether the bike is connected.
+
+## Setting up
+
+1. Install the APK from the [latest release](https://github.com/th4rv4/Zuki_Nav/releases/latest).
+2. Open Zuki Nav. The setup screen walks you through:
+   - **Nearby Devices** and **Notification Access** (this is how it reads
+     Google Maps, calls and messages; no other permission is needed for them).
+   - **Close Suzuki Ride Connect**: the dash talks to one app at a time.
+   - **Your Name** for the greeting (optional).
+3. Switch the ignition on, pick your bike from the list and tap **Finish Setup**.
+4. Start a route in Google Maps and ride.
+
+Tips:
+- **Wake On Ignition** (Settings, Android 12 and newer) lets Android wake
+  Zuki Nav when you switch on, so nothing runs while you're parked.
+- Trips with start and end places, routes and parked spot need location
+  allowed **all the time**, because the ride ends with the phone in your pocket.
+- If the dash shows nothing, check that the bike isn't paired in your
+  phone's Bluetooth settings; the Ride tab tells you if it is.
+
+## Settings at a glance
+
+- **Dash**: speed alert, startup animation, greeting and how long it shows.
+- **Calls** and **Messages**: what reaches the dash, Reject Unknown Callers,
+  Auto-Reply.
+- **Appearance**: System, Light, Dark or AMOLED, and an accent colour (or
+  your wallpaper's colours on Android 12 and newer).
+- **Backup & Restore**: one zip with everything, in a folder you choose,
+  optionally after every ride. Restoring checks the file first and changes
+  nothing if it's damaged.
+- **Updates**: checks this page for a new version and installs it, if you
+  allow it to. That's the only time the app goes online, apart from place
+  names for your trips.
+- **Troubleshooting**: Dash Test (try every turn icon on your dash), what's
+  being sent, and the log to share when reporting a problem.
+
+## For the technically curious
+
+Suzuki Ride Connect only navigates with Mappls. Zuki Nav reads the guidance
+notification Google Maps already shows and sends it to the cluster over
+Bluetooth LE, using the cluster's own protocol (see
+[docs/PROTOCOL.md](docs/PROTOCOL.md)). It was built from the Indian Suzuki
+Ride Connect app and defaults to left-hand traffic. Suzuki bikes sold outside
+India use other connectivity systems and are not supported.
+
+### Supported models
 
 Every vehicle Suzuki Ride Connect 8.0 can pair with. The model is detected
 from the cluster's Bluetooth name (`S` + family letter + model code, e.g.
@@ -54,78 +196,7 @@ model above, but no model has been tested on a real bike yet. The author's
 own bike is a Gixxer SF 250. Reports from other models are welcome,
 especially results from **Icon Test → Cycle All**.
 
-## What it sends
-
-- Turn arrow, distance to the turn, ETA and remaining distance, every 200 ms
-- Clock (and optional speed-alert limit) every 2 s, where the model takes it
-- Rider name on connect
-- Incoming, answered and missed calls (phone and WhatsApp), with the
-  caller's name
-- New WhatsApp and SMS messages, with the sender's name and unread count
-
-**Skip Business SMS** (off by default) leaves out SMS from registered
-business senders, such as banks, OTPs, government and promotions
-(`AD-HPGOVT-S`, `VM-HDFCBK`), so only messages from people reach the
-dash.
-
-Calls and messages are read from the phone's notifications, through the
-same Notification Access that reads Google Maps; no extra permission is
-needed. When you clear the missed-call or message notifications on the
-phone, the dash clears its indicators too. Both can be turned off in
-Settings.
-
-## What it shows from the bike
-
-The dash reports its fuel gauge, ODO and both trip meters every few
-seconds. The Ride tab shows them live, and keeps the last readings (with
-when they were received) after the ignition is off.
-
-## Trips
-
-Every ride is saved as a trip, from ignition on to ignition off. A stop
-with the engine off for less than 3 minutes (a fuel stop) stays part of
-the same ride. Distance comes from Trip A, with the ODO covering any
-stretch where Trip A was reset. Each trip has its distance, moving time,
-average and top speed, time stopped, and the ODO at the start and end.
-
-Trips can be renamed, starred, shared or deleted. Up to 300 trips are
-kept; starred ones are never removed. Rides under 0.5 km are skipped
-unless **Skip Short Rides** is turned off.
-
-**Start And End Places** (off by default) names where each ride started
-and ended, using the phone's location. It needs location allowed all the
-time, because a ride ends with the ignition off while the app is in the
-background. Mileage and range are on the Fuel tab (see below).
-
-**Merge With Next Ride** on a trip's page joins it with the ride after
-it, for when stops split one outing into several trips (a trip ends 3
-minutes after the ignition goes off). Distances and riding time add up, the
-routes join into one map, and the time in between shows as a stop, like
-"2 stops, 15 min". Merged trips get a **Stops** page: a timeline of each leg
-(distance, time, top speed) and each stop (where, arrive and leave, how long),
-with the stops marked in amber on the map. Tap a stop to label it (Fuel,
-Chai Break, Food, Photos, Bike Check, Rest, or your own with Other); your own
-labels come back as quick picks. A trip that ends where it started is called
-"<place> Round Trip". Rides whose place names couldn't be looked up get
-another try the next time the Trips tab is opened with internet.
-
-**Record Route** (off by default, same location permission) saves a GPS
-point every few seconds while riding. Each trip then shows its route on a
-plain dark map, coloured by speed, by engine temperature, or in one colour,
-with the start, the end and the top speed marked. **Expand** opens it full
-screen with pinch to zoom, and **Open In Google Maps** opens the ride as a
-path through up to 8 stops. The Trips list shows a small preview of each
-route. Nothing is downloaded: the map is drawn from your own points, so it
-works offline but shows no street names.
-
-**Share Image** on a trip's map makes a 1080 × 1440 PNG of the route, Strava
-style, to post on Instagram, WhatsApp and the like, or save to Pictures/Zuki
-Nav. Pick a Transparent (a sticker over your own photo), Dark or Light
-background, an Accent, Speed or plain line (white, or black on Light), and which of Distance, Time, Avg
-Speed, Top Speed and Max Engine Temp go on it, plus the trip name. Your
-choices are remembered.
-
-## How the turn arrow is chosen
+### How the turn arrow is chosen
 
 1. **The Maps arrow itself.** Google Maps ships its arrows as named drawables
    (`maneuver_turn_sharp_left`, `maneuver_roundabout_enter_and_exit_cw_slight_right`, …).
@@ -139,161 +210,15 @@ choices are remembered.
 This approach, and the Maps notification layouts, follow
 [KTM-Nav-GEN3](https://github.com/Pavanayi1/KTM-Nav-GEN3) (MIT).
 
-## Setup
-
-1. Build and install (below).
-2. Open Zuki Nav. The **Set Up Zuki Nav** screen lists what is needed:
-   - **Nearby Devices**: tap **Grant**.
-   - **Notification Access**: tap **Grant** and switch Zuki Nav on.
-   - **Close Suzuki Ride Connect**: tap **Force Stop**. The dash accepts
-     one phone at a time.
-   - **Your Name** (optional): the dash greets you with it when it
-     connects. It can be changed later in Settings.
-3. Turn the ignition on. Under **Find Your Bike**, tap your bike (it is
-   listed with its model name), then **Finish Setup**.
-4. Start a route in Google Maps. The **Ride** tab shows the next turn and
-   what is being sent to the dash.
-
-## App layout
-
-- **Ride**: the day, time and connection status, and your rider avatar
-  (tap it to pick your initial, an icon or a photo). Below it, a live card
-  with the next turn (its arrow ringed by the distance to the turn, which
-  empties over the last 500 m, like the dash's own bar), a speedometer,
-  fuel or battery cells, engine temperature, and ETA with distance left; then ODO and Trip A/B,
-  the ride in progress, and a Connect/Disconnect button. When the bike is off, the numbers are the last
-  readings and the screen says when they were synced.
-- **Trips**: this month's distance, rides and riding time, then saved rides
-  grouped by day, with a Starred filter and a route preview. Each ride opens
-  its details and route map. Trip Settings (Record Trips, Skip Short Rides,
-  Start And End Places, Record Route) are at the bottom.
-- **Bike**: Fuel, Thermals and Service, picked with a switcher at the top.
-  - **Fuel**: range, mileage and refills (see Fuel below).
-  - **Thermals**: the live engine temperature on a cold-to-hot gauge, a Temp
-    Monitor graph of the last 30 minutes with your limits drawn in, the ride's
-    highest and average temperature and time above Hot, the hottest point of
-    recent trips, and Thermal Settings (see Engine temperature below).
-  - **Service**: maintenance reminders (see Maintenance below).
-- **Dash Test** (Settings > Troubleshooting): show any turn icon on the dash, mark it **Looks Right** or
-  **Looks Wrong** (the next icon follows automatically), see progress for
-  all 64 icons, and **Share Results**. **Text Test** sends your own text
-  into the number spots under the arrow. Tests only run while Google Maps
-  isn't navigating.
-
-Optional extras in Settings > Dash: **Startup Animation** spins the compass arrow
-on the dash after "Welcome", and **Startup Greeting** shows a short text on the
-dash's call screen for 3, 5, 10 or 15 seconds (Shown For). The dash always puts its own
-"CALLER:" label above it; no other screen can show text. Both are skipped when a route is already running,
-and a route starting mid-animation or mid-greeting takes over at once.
-- **Settings**: a short menu. The rider card at the top opens your name and
-  bike (Change Bike). Then **Dash** (speed alert, startup animation and
-  greeting), **Calls** (dash alerts and Reject Unknown Callers),
-  **Messages**, **Appearance**, **Connect
-  Automatically** (a switch: reconnect on ignition and after the phone
-  restarts), **Wake On Ignition**, **Backup & Restore**, **Updates**, **Troubleshooting** (Dash Test, what is being sent
-  to the dash, traffic side, Reload Maps Arrows and the log) and **About &
-  Support**. Trip, fuel, engine and maintenance settings sit at the bottom of
-  the Trips tab and each part of the Bike tab.
-
-**Fuel**: Zuki Nav notices a refill when the fuel bars go up and asks (in
-a notification) for the litres and the amount paid; both are optional.
-From full tank to full tank it works out km/l and cost per km, and it
-learns how many km you ride on each fuel bar to show the range left next to
-the fuel cells, with a warning below a limit you set. Everything is on the
-**Fuel** tab (or tap the fuel cells on the Ride tab). Tank Size and Reserve come from your
-model and can be changed under Fuel Settings on the Fuel tab. It is worked out from the bars
-and the ODO rather than a fuel sensor, so the first tank is an estimate and
-range only learns while the app is connected: keep the phone connected on
-long rides for the best numbers.
-
-**Battery while parked**: after the bike goes off, Zuki Nav reconnects
-quickly for 5 minutes, then waits quietly with a quick check every 2
-minutes, and after an hour only uses Android's low-power wait. On Android 12
-and newer, **Wake On Ignition** (Settings, set up once with the ignition on)
-registers the bike with Android, so the phone's own Bluetooth watches for it:
-Zuki Nav then stops completely while the bike is parked and Android wakes it
-when the ignition comes on. Bluetooth has to stay on. Opening the app always
-connects straight away.
-
-**Battery while riding**: during a route Zuki Nav sends to the dash every
-200 ms as always. On a ride without a route it only needs to keep the dash
-clock right, so it sends the status frame when the minute changes (and
-straight away when a call or message is cleared or the speed alert changes),
-and checks once a second instead of five times.
-
-**Backup & Restore** (Settings) saves everything Zuki Nav keeps, trips and
-routes, fuel, reminders, your avatar and all settings including the saved
-bike, into one zip in a folder you choose (Google Drive, Downloads...),
-named with its date and time like `ZukiNav-2026-11-15_21-14.zip`. Each new
-backup replaces the previous one, so the folder only ever holds the latest.
-**Back Up After Every Trip** makes a fresh one each time a ride is saved. **Restore From Backup** shows the backup's date and contents,
-then replaces the app's data and restarts the app; a damaged or newer
-backup is refused without changing anything. Android permissions aren't in
-a backup, so on a new phone setup asks for them again.
-
-**Reject Unknown Callers** (Settings > Calls, off by default) declines
-phone calls from numbers that aren't in your contacts, while riding or
-always. Zuki Nav reads your phone app's incoming-call notification (a saved
-contact shows a name, anyone else a number) and presses its own Decline
-button, so your caller ID app stays as it is. Declined calls still show as
-missed calls. **Allow Repeat Callers** lets a second call from the same
-number within 5 minutes ring through, and **Show On Dash** shows REJECTED
-CALL for 3 seconds. WhatsApp calls aren't affected.
-
-**Maintenance**: the Service tab keeps reminders for Chain Maintenance
-(every 500 km to start with), General Service (set the interval from your
-owner's manual) and any of your own, each due every so many km, months, or
-both. They count from the ODO on the dash, so km ridden without the app are
-caught up the next time the bike connects. A phone notification arrives when
-one is close (Remind Me Early, 50 km by default, or a week before a date) and
-again when it's due, with **Mark Done** and **Snooze 100 km** buttons.
-Month-based reminders are checked twice a day even when the bike isn't
-connected. Each reminder has its own on/off switch. Chain Maintenance
-and General Service start off: turn one on when you've just done that job,
-and it counts from the ODO at that moment (or from a Last Done At you
-entered). Off means it isn't tracked at all.
-
-**Engine temperature**: the dash sends the engine temperature in °C (Suzuki's
-own app receives it but never shows it). Zuki Nav shows it on the Ride tab as
-a bar from cold to hot, and in full on the Thermals tab. Set your own Engine
-Warm-Up Temp and Engine Heat Warning under Thermal Settings to get Warming
-Up, Normal and Hot labels and a warning when the engine runs hot; both are
-off until you set them. Two optional dash alerts use the call screen, each
-for 3, 5, 10 or 15 seconds (Shown For): **WARMED UP** once per ride when the
-engine reaches your warm-up temp (skipped during a route), and **ENGINE
-OVERHEAT** when it reaches your heat warning, again every 5 minutes while it
-stays hot (shown even during a route, but for 5 seconds at most so the arrows
-come back quickly). It only shows while the bike is connected, and each trip saves its
-highest and average engine temperature.
-
-**Appearance**: four themes (System, Light, Dark and AMOLED, which is true
-black) and an accent colour for the gauge, rings and buttons: Aurora,
-Ember, Viridian, Ultraviolet, Solar, Glacier, Sakura or Graphite. On
-Android 12 and up, **Wallpaper** takes the colours from your phone's
-wallpaper. Fuel and warning colours are the same in every accent.
-
-## Updates
-
-**Settings → Updates → Check For Updates** looks at this repository's
-latest GitHub release. If it is newer than the installed app, it shows
-what changed and a **Download And Install** button; Android then asks to
-confirm the update. Settings are kept. The first time, Android asks to
-allow Zuki Nav to install apps.
-
-With **Check On Launch** on, the app checks at most once a day when it
-opens and shows a message if a new version is out. The app only goes
-online to talk to GitHub.
+### Turn icons
 
 Run **Dash Test → Cycle All** once to check every icon on your dash.
+Icons 1 to 46 have all been checked on a Gixxer SF 250. Icons 47 to 64
+depend on the traffic side and the model: on a Gixxer SF 250, icon 46 is a
+"!" and 47 to 64 are blank. The app sends the icon the Traffic Side setting
+asks for either way.
 
-> **Some icons may not show.** Icons 47 to 64 depend on the traffic side
-> (right-hand-traffic roundabouts are 47–52) and on the Suzuki model. On a
-> Gixxer SF 250, icon 46 is a "!" and 47 to 64 are blank. The app sends the
-> icon the Traffic Side setting asks for either way.
-
-Icons 1 to 46 have all been checked on a Gixxer SF 250 dash.
-
-## Build
+### Build
 
 GitHub Actions (`.github/workflows/build.yml`) builds when a version tag
 is pushed, or when started by hand (Actions → Build → Run workflow). Plain
@@ -334,13 +259,22 @@ For a signed release, add `RELEASE_STORE_FILE`, `RELEASE_STORE_PASSWORD`,
 `RELEASE_KEY_ALIAS` and `RELEASE_KEY_PASSWORD` to `local.properties` (or set
 them as environment variables) and run `./gradlew assembleRelease`.
 
-## Layout
+### Code layout
 
 ```
 protocol/   frame builder, checksum, distance format, icon table, model table (pure Kotlin)
 nav/        Maps notification parsing, arrow fingerprinting, listener
 ble/        GATT client
 service/    foreground service, boot receiver
+trips/      ride and stop rules, route recording, trip storage
+alerts/     calls, messages, Reject Unknown Callers, Auto-Reply
+fuel/       refills, mileage and range
+thermal/    engine temperature and its alerts
+maint/      service reminders
+papers/     PUC, insurance and licence with expiry reminders
+backup/     Backup & Restore
+update/     in-app updates from GitHub releases
+widget/     home screen widget
 ui/         screens (Ride, Trips, Dash Test, Settings, Setup), themes and shared components
 ```
 
