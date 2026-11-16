@@ -297,7 +297,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             "Allow Repeat Callers", "A second call from the same number within 5 min rings through, in case it's urgent",
             prefs.rejectAllowRepeat,
         ) { prefs.rejectAllowRepeat = it }
-        val onDash = ui.switchRow("Show On Dash", "Shows REJECTED CALL for 3 s, except during a route", prefs.rejectShowOnDash) {
+        val onDash = ui.switchRow("Show On Dash", "Shows REJECTED on the dash's message screen. During a route it sits below the arrow", prefs.rejectShowOnDash) {
             prefs.rejectShowOnDash = it
         }
         extras.addAll(listOf(whenRow, repeat, onDash))

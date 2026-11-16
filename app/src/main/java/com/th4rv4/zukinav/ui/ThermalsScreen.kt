@@ -152,10 +152,6 @@ class ThermalsScreen(host: MainActivity) : Screen(host) {
                 save(it.toIntOrNull()?.coerceIn(0, 254) ?: 0)
                 render()
             }
-        val warmTime = ui.durationRow(prefs.warmedUpAlertSeconds) { prefs.warmedUpAlertSeconds = it }
-            .apply { visibility = shownIf(prefs.warmedUpDashAlert) }
-        val hotTime = ui.durationRow(prefs.overheatAlertSeconds) { prefs.overheatAlertSeconds = it }
-            .apply { visibility = shownIf(prefs.overheatDashAlert) }
         val testRow = ui.hstack(
             8,
             ui.button("Test Warmed Up", Ui.Btn.SECONDARY, 44) { test(overheat = false) },
@@ -167,17 +163,13 @@ class ThermalsScreen(host: MainActivity) : Screen(host) {
                 limitInput(prefs.engineWarmC) { prefs.engineWarmC = it }),
             ui.row("Engine Heat Warning", "°C. At or above this: Hot, with a warning on the Ride tab. Empty to turn off",
                 limitInput(prefs.engineHotC) { prefs.engineHotC = it }),
-            ui.switchRow("Warmed Up Alert On Dash", "Shows WARMED UP on the dash once per ride when the engine reaches your warm-up temp",
-                prefs.warmedUpDashAlert) { prefs.warmedUpDashAlert = it; warmTime.visibility = shownIf(it) },
-            warmTime,
-            ui.switchRow("Overheat Alert On Dash", "Shows ENGINE OVERHEAT on the dash when the engine reaches your heat warning, then every 5 min while hot",
-                prefs.overheatDashAlert) { prefs.overheatDashAlert = it; hotTime.visibility = shownIf(it) },
-            hotTime,
+            ui.switchRow("Warmed Up Alert On Dash", "Shows WARMED UP on the dash's message screen once per ride when the engine reaches your warm-up temp. During a route it sits below the arrow",
+                prefs.warmedUpDashAlert) { prefs.warmedUpDashAlert = it },
+            ui.switchRow("Overheat Alert On Dash", "Shows ENGINE HOT on the dash's message screen when the engine reaches your heat warning, then every 5 min while hot. During a route it sits below the arrow",
+                prefs.overheatDashAlert) { prefs.overheatDashAlert = it },
             testRow.apply { setPadding(0, ui.dp(10), 0, ui.dp(10)) },
         )
     }
-
-    private fun shownIf(on: Boolean) = if (on) View.VISIBLE else View.GONE
 
     private fun test(overheat: Boolean) {
         val sent = DashService.instance?.testThermalAlert(overheat) ?: false

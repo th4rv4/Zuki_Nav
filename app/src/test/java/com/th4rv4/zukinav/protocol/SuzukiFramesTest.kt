@@ -106,7 +106,7 @@ class SuzukiFramesTest {
             SuzukiFrames.hex(SuzukiFrames.missedCall("Mom", 2)),
         )
         assertEquals(
-            "A5 35 FF 4E 03 4D 6F 6D 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 57 FF FF 03 7F",
+            "A5 35 FF 59 03 4D 6F 6D 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 57 FF FF 0E 7F",
             SuzukiFrames.hex(SuzukiFrames.message("Mom", 3, whatsapp = true)),
         )
     }

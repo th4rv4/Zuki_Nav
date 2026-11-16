@@ -71,12 +71,6 @@ class DashService : Service(), ClusterLink.Listener {
     private var greetingPending = false
 
     // The text on the dash's call screen right now (greeting or alert), if any.
-    private var callText: String? = null
-    private var callMode = SuzukiFrames.Checksum.SUM
-    private var callShownAt = 0L
-    private var callEndAt = 0L
-    private var callIsOverheat = false
-    private val closeCall = Runnable { closeCallText() }
     private var retries = 0
     /** When the bike was last lost (or the search began); 0 while connected. */
     private var lostAt = 0L
@@ -316,11 +310,11 @@ class DashService : Service(), ClusterLink.Listener {
             val events = Thermals.onReading(c, System.currentTimeMillis(), prefs.engineWarmC, prefs.engineHotC)
             if (ThermalSession.Event.OVERHEAT in events && prefs.overheatDashAlert) {
                 AppLog.d("Thermals", "Engine $c°C: overheat alert")
-                showDashMessage(OVERHEAT_TEXT, duringRoute = true)
+                showDashMessage(OVERHEAT_TEXT)
             }
             if (ThermalSession.Event.WARMED_UP in events && prefs.warmedUpDashAlert) {
                 AppLog.d("Thermals", "Engine $c°C: warmed up alert")
-                showDashMessage(WARMED_UP_TEXT, duringRoute = false)
+                showDashMessage(WARMED_UP_TEXT)
             }
         }
         val changed = data.copy(speedKmh = 0) != bike?.copy(speedKmh = 0)
@@ -429,17 +423,10 @@ class DashService : Service(), ClusterLink.Listener {
             greetingPending = false
             testFrame = null
         }
-        // Text on the call screen would hide the arrows: close it, except
-        // Engine Overheat, which stays up to ROUTE_ALERT_MAX_MS.
+        // A route starting mid-greeting closes it: the call screen would hide the arrows.
         if (nav != null && callText != null) {
-            if (!callIsOverheat) {
-                AppLog.d("Dash", "Route active, \"$callText\" closed")
-                closeCallText()
-            } else if (callEndAt > callShownAt + ROUTE_ALERT_MAX_MS) {
-                callEndAt = callShownAt + ROUTE_ALERT_MAX_MS
-                main.removeCallbacks(closeCall)
-                main.postDelayed(closeCall, (callEndAt - now).coerceAtLeast(0))
-            }
+            AppLog.d("Dash", "Route active, greeting closed")
+            closeCallText()
         }
         val splash = nav == null && splashWait == 0 && splashLeft > 0
         if (nav == null && splashWait > 0) splashWait--
@@ -502,33 +489,51 @@ class DashService : Service(), ClusterLink.Listener {
     }
 
     /**
-     * The greeting uses the dash's incoming-call screen, the only one with
-     * free text. Left alone the dash keeps it up for about 14 s with the
-     * light flashing, so after the rider's chosen time it is marked as
-     * answered, which closes it cleanly.
+     * After Welcome and the animation: the rider's greeting. It stays on the
+     * call screen, the only screen the app can close on time (marking the
+     * "call" answered), so it lasts exactly Shown For; the message screen
+     * would keep it up for 10 s.
      */
     private fun showGreeting(mode: SuzukiFrames.Checksum) {
         greetingPending = false
         if (NavRepository.current != null) return
-        showCallText(prefs.startupGreeting, mode, prefs.greetingSeconds * 1000L, overheat = false)
+        showCallText(prefs.startupGreeting, mode, prefs.greetingSeconds * 1000L)
     }
 
-    /** Puts [text] on the call screen for [ms], then closes it. A newer text replaces an older one. */
-    private fun showCallText(text: String, mode: SuzukiFrames.Checksum, ms: Long, overheat: Boolean) {
+    /**
+     * Puts [text] on the dash's SMS message screen ("SMS1" over the text).
+     * It reads as a note, not a call to pick up. Without a route the dash
+     * shows a big envelope for about 10 s, and nothing the app sends closes it
+     * sooner; during a route the arrow and distance stay up and the text
+     * replaces ETA and remaining for those 10 s. Afterwards the status frames
+     * clear the unread-message icon it lit next to the clock.
+     */
+    private fun showMessageText(text: String, mode: SuzukiFrames.Checksum) {
+        val show = SuzukiFrames.message(text, count = 1, whatsapp = false, mode = mode)
+        AppLog.d("Dash", "-> ${SuzukiFrames.hex(show)} (\"$text\")")
+        repeat(3) { i -> main.postDelayed({ link.send(show) }, i * 200L) }
+        main.removeCallbacks(clearMessageIcon)
+        main.postDelayed(clearMessageIcon, MESSAGE_SCREEN_MS)
+    }
+
+    private val clearMessageIcon = Runnable { clearSmsLeft = CLEAR_REPEATS }
+
+    // The greeting on the call screen right now, if any.
+    private var callText: String? = null
+    private var callMode = SuzukiFrames.Checksum.SUM
+    private val closeCall = Runnable { closeCallText() }
+
+    /** Puts [text] on the call screen for [ms], then marks it answered, which closes it. */
+    private fun showCallText(text: String, mode: SuzukiFrames.Checksum, ms: Long) {
         main.removeCallbacks(closeCall)
-        val now = System.currentTimeMillis()
         callText = text
         callMode = mode
-        callShownAt = now
-        callEndAt = now + ms
-        callIsOverheat = overheat
         val show = SuzukiFrames.call(text, ringing = true, mode = mode)
         AppLog.d("Dash", "-> ${SuzukiFrames.hex(show)} (\"$text\" for ${ms / 1000} s)")
         repeat(3) { i -> main.postDelayed({ link.send(show) }, i * 200L) }
         main.postDelayed(closeCall, ms)
     }
 
-    /** Marks the call screen text as answered, which closes it. */
     private fun closeCallText() {
         main.removeCallbacks(closeCall)
         val text = callText ?: return
@@ -538,33 +543,24 @@ class DashService : Service(), ClusterLink.Listener {
     }
 
     /**
-     * A short message on the dash's call screen for the rider's chosen time,
-     * then closed the same way as the greeting. [duringRoute] false skips it
-     * while navigating, so the arrows aren't covered; Engine Overheat is cut
-     * to [ROUTE_ALERT_MAX_MS] during a route.
+     * A short alert on the message screen. It never hides the turn arrow:
+     * during a route the text shows below it, so alerts show with or
+     * without one.
      */
-    private fun showDashMessage(text: String, duringRoute: Boolean, seconds: Int? = null): Boolean {
+    private fun showDashMessage(text: String): Boolean {
         if (link.state != ClusterLink.State.READY) return false
-        if (!duringRoute && NavRepository.current != null) {
-            AppLog.d("Dash", "Route active, \"$text\" skipped")
-            return false
-        }
-        val mode = ClusterModels.fromBleName(link.deviceName ?: prefs.clusterName).checksum
-        val overheat = text == OVERHEAT_TEXT
-        var ms = (seconds ?: if (overheat) prefs.overheatAlertSeconds else prefs.warmedUpAlertSeconds) * 1000L
-        if (overheat && NavRepository.current != null) ms = ms.coerceAtMost(ROUTE_ALERT_MAX_MS)
-        showCallText(text, mode, ms, overheat)
+        showMessageText(text, ClusterModels.fromBleName(link.deviceName ?: prefs.clusterName).checksum)
         return true
     }
 
-    /** Reject Unknown Callers with Show On Dash: REJECTED CALL for 3 s, not over the arrows. */
+    /** Reject Unknown Callers with Show On Dash: REJECTED on the dash. */
     fun showRejectedCall() {
-        main.post { showDashMessage(REJECTED_TEXT, duringRoute = false, seconds = 3) }
+        main.post { showDashMessage(REJECTED_TEXT) }
     }
 
     /** From the Thermals tab: shows one of the alerts now. False if the dash isn't connected. */
     fun testThermalAlert(overheat: Boolean): Boolean =
-        showDashMessage(if (overheat) OVERHEAT_TEXT else WARMED_UP_TEXT, duringRoute = true)
+        showDashMessage(if (overheat) OVERHEAT_TEXT else WARMED_UP_TEXT)
 
     /** Nav screen with dots in the number spots: the dash has no blank character. */
     private fun dotsFrame(icon: Int, mode: SuzukiFrames.Checksum): ByteArray =
@@ -727,9 +723,10 @@ class DashService : Service(), ClusterLink.Listener {
         /** Let the "Welcome" screen show for about 3 s before the animation. */
         private const val SPLASH_WAIT_TICKS = 15
         /** Longest Engine Overheat stays over the arrows during a route. */
-        private const val ROUTE_ALERT_MAX_MS = 5_000L
-        const val OVERHEAT_TEXT = "ENGINE OVERHEAT"
-        const val REJECTED_TEXT = "REJECTED CALL"
+        /** How long the dash keeps a message up by itself. */
+        private const val MESSAGE_SCREEN_MS = 11_000L
+        const val OVERHEAT_TEXT = "ENGINE HOT"
+        const val REJECTED_TEXT = "REJECTED"
         const val WARMED_UP_TEXT = "WARMED UP"
         const val ACTION_STOP = "com.th4rv4.zukinav.STOP"
 

@@ -293,16 +293,18 @@ object SuzukiFrames {
      * Message frame ("?5"): SMS or WhatsApp.
      *
      *   [2]      0xFF
-     *   [3]      'N' for a new message
+     *   [3]      'Y' pops the message screen up, as Ride Connect does for
+     *            every new message; 'N' only updates the unread icon
      *   [4]      number of unread messages of this kind (raw byte)
      *   [5..24]  sender, ASCII, NUL padded
-     *   [25]     'N' SMS, 'W' WhatsApp
+     *   [25]     'N' SMS, 'W' WhatsApp ('X' is a calendar alert: a blank
+     *            envelope on the Gixxer)
      *   [26..27] 0xFF
      */
     fun message(sender: String, count: Int, whatsapp: Boolean = false, mode: Checksum = Checksum.SUM): ByteArray {
         val f = newFrame('5')
         f[2] = FF
-        f[3] = 'N'.code.toByte()
+        f[3] = 'Y'.code.toByte()
         f[4] = count.coerceIn(0, 255).toByte()
         f.putAscii(5, asciiOnly(sender.replace("+", "")).take(20))
         f[25] = (if (whatsapp) 'W' else 'N').code.toByte()
