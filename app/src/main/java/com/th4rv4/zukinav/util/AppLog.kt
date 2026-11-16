@@ -11,7 +11,8 @@ import java.util.concurrent.CopyOnWriteArrayList
 /** In-memory log shown on the main screen, mirrored to logcat under "ZukiNav". */
 object AppLog {
 
-    private const val MAX = 400
+    // Enough for a ride of a couple of hours.
+    private const val MAX = 3000
     private val lines = ArrayDeque<String>()
     private val listeners = CopyOnWriteArrayList<() -> Unit>()
     private val main = Handler(Looper.getMainLooper())
