@@ -27,6 +27,24 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
     private var wakeRow: View? = null
     private val wakeSummary = ui.text("", 12f, Palette.MUTED)
     private val wakeAction = ui.text("", 12f, Palette.ON_ACCENT, Ui.Weight.BOLD)
+    private val bannerDetail = ui.text("", 12f, Palette.WARN)
+
+    /** Shown only when something the app needs is missing. */
+    private val setupBanner = LinearLayout(ui.ctx).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        background = ui.rounded(Palette.WARN_BG, 18, Palette.WARN_BORDER)
+        setPadding(ui.dp(14), ui.dp(12), ui.dp(14), ui.dp(12))
+        isClickable = true
+        isFocusable = true
+        addView(
+            ui.vstack(2, ui.text("Setup Needs Attention", 15f, Palette.WARN, Ui.Weight.BOLD), bannerDetail),
+            LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f),
+        )
+        addView(ui.text("›", 20f, Palette.WARN))
+        setOnClickListener { host.showSettingsPage(PAGE_CHECKLIST) }
+        visibility = View.GONE
+    }
 
     override val view: View
 
@@ -57,6 +75,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         view = host.page(
             ui.title("Settings").apply { setPadding(ui.dp(4), 0, 0, 0) },
             riderCard,
+            setupBanner,
             ui.listCard(
                 menuRow(PAGE_DASH, R.drawable.ic_sec_gauge, "Dash"),
                 menuRow(PAGE_CALLS, R.drawable.ic_set_dialer, "Calls"),
@@ -70,6 +89,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
                 menuRow(PAGE_UPDATES, R.drawable.ic_sec_download, "Updates"),
             ),
             ui.listCard(
+                menuRow(PAGE_CHECKLIST, R.drawable.ic_sec_wrench, "Setup Checklist"),
                 menuRow(PAGE_TROUBLESHOOTING, R.drawable.ic_sec_wrench, "Troubleshooting"),
                 menuRow(null, R.drawable.ic_heart, "About & Support") { host.showAbout() },
             ),
@@ -98,6 +118,15 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         summaries[PAGE_UPDATES]?.text = "Installed v${host.versionName()}"
         summaries[PAGE_BACKUP]?.text = if (prefs.backupLastAt > 0) "Last backup " + whenText(prefs.backupLastAt) else "No backup yet"
         summaries[PAGE_TROUBLESHOOTING]?.text = "Dash Test, arrows, logs"
+        val problems = SetupChecklist.problems(host)
+        val total = SetupChecklist.items(host) {}.count { it.needed }
+        setupBanner.visibility = if (problems.isEmpty()) View.GONE else View.VISIBLE
+        if (problems.isNotEmpty()) {
+            bannerDetail.text = problems.first().title + (if (problems.size > 1) " and ${problems.size - 1} more" else "") +
+                " · ${total - problems.size} of $total done"
+        }
+        summaries[PAGE_CHECKLIST]?.text = if (problems.isEmpty()) "All set" else "${problems.size} to fix"
+        summaries[PAGE_CHECKLIST]?.setTextColor(if (problems.isEmpty()) Palette.OK else Palette.WARN)
     }
 
     /** Wake On Ignition: Set Up, or On with a tap to turn it off. */
@@ -215,6 +244,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         PAGE_APPEARANCE -> appearancePage()
         PAGE_UPDATES -> updatesPage()
         PAGE_BACKUP -> backupPage()
+        PAGE_CHECKLIST -> SetupChecklist.page(host) { onWakeTap() }
         else -> troubleshootingPage()
     }
 
@@ -650,6 +680,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         const val PAGE_UPDATES = "updates"
         const val PAGE_BACKUP = "backup"
         const val PAGE_TROUBLESHOOTING = "troubleshooting"
+        const val PAGE_CHECKLIST = "checklist"
     }
 }
 

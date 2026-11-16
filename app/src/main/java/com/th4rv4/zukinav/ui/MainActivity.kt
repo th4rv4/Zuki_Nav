@@ -243,7 +243,7 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun bluetoothOn(): Boolean {
+    fun bluetoothOn(): Boolean {
         val adapter = getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter ?: return true
         return adapter.isEnabled
     }
@@ -278,7 +278,7 @@ class MainActivity : Activity() {
 
     /** Android's own "turn on Bluetooth?" prompt, or Bluetooth settings where that is not allowed. */
     @android.annotation.SuppressLint("MissingPermission")
-    private fun turnOnBluetooth() {
+    fun turnOnBluetooth() {
         val canAsk = Build.VERSION.SDK_INT < 31 || granted(Manifest.permission.BLUETOOTH_CONNECT)
         try {
             if (canAsk) {
@@ -409,6 +409,11 @@ class MainActivity : Activity() {
     }
 
     /** Opens Dash Test from Settings > Troubleshooting, with the Settings tab still selected. */
+    /** Re-reads what the current screen shows, e.g. after a permission prompt. */
+    fun refreshScreen() {
+        current?.onShow()
+    }
+
     fun showDashTest() = swapTo(screen("dash") { DashTestScreen(this) })
 
     /** Which part of the Bike tab is open: Fuel, Thermals or Service. */
@@ -496,6 +501,32 @@ class MainActivity : Activity() {
     }
 
     fun mapsInstalled(): Boolean = isInstalled(MapsIconTemplates.MAPS_PKG)
+
+    /** Notifications allowed (asked for from Android 13). */
+    fun hasNotificationPermission(): Boolean =
+        Build.VERSION.SDK_INT < 33 || granted(Manifest.permission.POST_NOTIFICATIONS)
+
+    fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIFICATIONS)
+    }
+
+    /** Android leaves the app running in the background without battery limits. */
+    fun batteryUnrestricted(): Boolean =
+        getSystemService(android.os.PowerManager::class.java)?.isIgnoringBatteryOptimizations(packageName) ?: true
+
+    /** Android's prompt to let the app run without battery limits, or its settings list where that fails. */
+    @android.annotation.SuppressLint("BatteryLife")
+    fun askBatteryUnrestricted() {
+        try {
+            startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, android.net.Uri.parse("package:$packageName")))
+        } catch (e: Exception) {
+            try {
+                startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            } catch (e2: Exception) {
+                openAppInfo(packageName)
+            }
+        }
+    }
 
     fun setupComplete(): Boolean = hasBlePermissions() && hasListenerAccess() && prefs.clusterAddress != null
 
@@ -784,6 +815,7 @@ class MainActivity : Activity() {
         /** From the ongoing notification: opens the Ride tab. */
         const val EXTRA_OPEN_RIDE = "open_ride"
         const val EXTRA_MAINTENANCE = "maintenance"
+        private const val REQ_NOTIFICATIONS = 9
         const val BIKE_FUEL = 0
         const val BIKE_THERMALS = 1
         const val BIKE_SERVICE = 2
