@@ -231,7 +231,7 @@ object ShareImage {
     private const val FILE_NAME = "zuki-nav-ride.png"
 }
 
-/** Hands the shared PNG to other apps, read-only, from the app's cache. */
+/** Hands a shared ride image or log file to other apps, read-only, from the app's cache. */
 class ShareFileProvider : ContentProvider() {
 
     override fun onCreate(): Boolean = true
@@ -248,7 +248,8 @@ class ShareFileProvider : ContentProvider() {
         return ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY)
     }
 
-    override fun getType(uri: Uri): String = "image/png"
+    override fun getType(uri: Uri): String =
+        if (uri.lastPathSegment?.endsWith(".txt") == true) "text/plain" else "image/png"
 
     override fun query(uri: Uri, projection: Array<out String>?, selection: String?, args: Array<out String>?, sort: String?): Cursor {
         val f = file(uri)

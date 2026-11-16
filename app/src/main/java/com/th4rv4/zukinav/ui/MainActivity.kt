@@ -611,7 +611,28 @@ class MainActivity : Activity() {
         startActivity(Intent.createChooser(send, subject))
     }
 
-    fun shareLog() = shareText("Zuki Nav log", AppLog.snapshot().joinToString("\n"))
+    /**
+     * Sends the log as a .txt file: pasted as one long message, apps cut it
+     * off after a few hundred lines.
+     */
+    fun shareLog() {
+        val name = "zuki-nav-log-" + java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm", java.util.Locale.US).format(java.util.Date()) + ".txt"
+        try {
+            val dir = java.io.File(cacheDir, "share").apply { mkdirs() }
+            dir.listFiles { f -> f.name.startsWith("zuki-nav-log-") }?.forEach { it.delete() }
+            java.io.File(dir, name).writeText(AppLog.snapshot().joinToString("\n"))
+            val uri = android.net.Uri.parse("content://${ShareFileProvider.authority(this)}/$name")
+            val send = Intent(Intent.ACTION_SEND)
+                .setType("text/plain")
+                .putExtra(Intent.EXTRA_SUBJECT, "Zuki Nav log")
+                .putExtra(Intent.EXTRA_STREAM, uri)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            startActivity(Intent.createChooser(send, "Share log").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+        } catch (e: Exception) {
+            AppLog.d("Share", "Could not write the log: $e")
+            shareText("Zuki Nav log", AppLog.snapshot().joinToString("\n"))
+        }
+    }
 
     fun showLogDialog() {
         val body = TextView(this).apply {

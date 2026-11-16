@@ -62,6 +62,8 @@ class DashService : Service(), ClusterLink.Listener {
     private var helloLeft = 0
     private var endFramesLeft = 0
     private var navWasActive = false
+    /** A Maps route reached the dash since the last clear (for the log only). */
+    private var routeShown = false
     /** Dash Test frame (an icon or test text) and until when to show it. */
     private var testFrame: ((ClusterModel) -> ByteArray)? = null
     private var testUntil = 0L
@@ -457,6 +459,7 @@ class DashService : Service(), ClusterLink.Listener {
 
         when {
             nav != null -> {
+                routeShown = true
                 val frame = navFrame(nav, model)
                 val hex = SuzukiFrames.hex(frame)
                 if (hex != lastNavHex) {
@@ -481,7 +484,8 @@ class DashService : Service(), ClusterLink.Listener {
                 navWasActive = false
                 // A short clear is enough before the greeting.
                 endFramesLeft = if (greetingPending) 3 else 10
-                AppLog.d("Dash", "Navigation ended, clearing dash")
+                AppLog.d("Dash", if (routeShown) "Navigation ended, clearing dash" else "Startup done, clearing dash")
+                routeShown = false
             }
         }
         if (endFramesLeft > 0 && test == null && nav == null && !splash) {

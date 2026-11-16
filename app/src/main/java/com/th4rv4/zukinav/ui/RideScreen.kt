@@ -270,8 +270,14 @@ class RideScreen(host: MainActivity) : Screen(host) {
         val lineVis = if (wantLine) View.VISIBLE else View.GONE
         val cardVis = if (wantCard) View.VISIBLE else View.GONE
         // Only touch what changed, so this settles after one more layout.
-        if (row.visibility != lineVis) row.visibility = lineVis
-        if (card.visibility != cardVis) card.visibility = cardVis
+        if (row.visibility == lineVis && card.visibility == cardVis) return
+        // Changed after this layout pass, not during it: a change made inside
+        // the pass can be dropped, leaving a blank gap where the card was.
+        view.post {
+            row.visibility = lineVis
+            card.visibility = cardVis
+            view.requestLayout()
+        }
     }
 
     /** Two short lines, the day then the time: "Today" / "3:22 PM". */
