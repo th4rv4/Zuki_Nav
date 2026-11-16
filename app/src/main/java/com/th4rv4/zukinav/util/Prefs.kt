@@ -326,6 +326,11 @@ class Prefs(context: Context) {
         get() = sp.getString(K_TRIP_ACTIVE, null)
         set(v) = sp.edit().putString(K_TRIP_ACTIVE, v).apply()
 
+    /** Shown on the setup screen after a restore, until setup is finished. */
+    var restoredNote: String?
+        get() = sp.getString(K_RESTORED_NOTE, null)
+        set(v) = sp.edit().putString(K_RESTORED_NOTE, v).apply()
+
     /** Whether a Maps route is open, see RouteState. */
     var routeState: String?
         get() = sp.getString(K_ROUTE_STATE, null)
@@ -365,6 +370,7 @@ class Prefs(context: Context) {
         private const val K_TRIPS_PLACES = "trip_places"
         private const val K_TRIP_ACTIVE = "active_trip"
         private const val K_ROUTE_STATE = "route_state"
+        private const val K_RESTORED_NOTE = "restored_note"
         private const val K_BIKE_AT = "last_bike_at"
         private const val K_UPDATE_AUTO = "update_check_on_launch"
         private const val K_THEME = "theme"

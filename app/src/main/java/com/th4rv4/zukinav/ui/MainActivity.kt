@@ -799,6 +799,68 @@ class MainActivity : Activity() {
     }
 
     /** Starts the app afresh, e.g. after a restore, so everything reads the restored data. */
+    /**
+     * Restore From Backup, from Settings or the setup screen: picks the zip,
+     * shows what's in it, restores and restarts.
+     */
+    fun restoreFromBackup() {
+        pickBackupToRestore { uri ->
+            if (uri == null) return@pickBackupToRestore
+            Thread {
+                val info = try {
+                    contentResolver.openInputStream(uri)?.use { com.th4rv4.zukinav.backup.Backup.peek(it) }
+                } catch (e: com.th4rv4.zukinav.backup.Backup.NewerBackup) {
+                    runOnUiThread { toast(e.message ?: "Update Zuki Nav first") }
+                    return@Thread
+                } catch (e: Exception) {
+                    null
+                }
+                runOnUiThread {
+                    if (info == null) {
+                        toast("That isn't a Zuki Nav backup")
+                        return@runOnUiThread
+                    }
+                    val made = backupTime(info.createdAt)
+                    AlertDialog.Builder(this, dialogTheme)
+                        .setTitle("Restore This Backup?")
+                        .setMessage(
+                            "From $made (Zuki Nav v${info.appVersion})\n" +
+                                "${info.trips} trips · ${info.routes} routes · bike, fuel, papers, reminders and settings\n\n" +
+                                "This replaces what's in the app now. The app restarts when it's done.",
+                        )
+                        .setPositiveButton("Restore") { _, _ ->
+                            Thread {
+                                val ok = try {
+                                    contentResolver.openInputStream(uri)?.use { com.th4rv4.zukinav.backup.Backup.restore(this, it) } != null
+                                } catch (e: Exception) {
+                                    com.th4rv4.zukinav.util.AppLog.d("Backup", "Restore failed: $e")
+                                    false
+                                }
+                                runOnUiThread {
+                                    if (ok) {
+                                        prefs.restoredNote = "Restored from $made · ${info.trips} " + (if (info.trips == 1) "ride" else "rides")
+                                        toast("Restored. Restarting…")
+                                        window.decorView.postDelayed({ restartApp() }, 800)
+                                    } else {
+                                        toast("Couldn't restore that file. Nothing was changed.")
+                                    }
+                                }
+                            }.start()
+                        }
+                        .setNegativeButton("Cancel", null)
+                        .show()
+                }
+            }.start()
+        }
+    }
+
+    /** "17 Nov, 1:28 AM" */
+    private fun backupTime(at: Long): String {
+        val d = java.time.Instant.ofEpochMilli(at).atZone(java.time.ZoneId.systemDefault())
+        val pattern = if (android.text.format.DateFormat.is24HourFormat(this)) "d MMM, HH:mm" else "d MMM, h:mm a"
+        return d.format(java.time.format.DateTimeFormatter.ofPattern(pattern, java.util.Locale.US))
+    }
+
     fun restartApp() {
         stopService(Intent(this, com.th4rv4.zukinav.service.DashService::class.java))
         val launch = packageManager.getLaunchIntentForPackage(packageName)

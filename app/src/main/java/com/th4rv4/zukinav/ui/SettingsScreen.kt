@@ -596,54 +596,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             }
         }
 
-        fun restore() {
-            host.pickBackupToRestore { uri ->
-                if (uri == null) return@pickBackupToRestore
-                Thread {
-                    val info = try {
-                        host.contentResolver.openInputStream(uri)?.use { com.th4rv4.zukinav.backup.Backup.peek(it) }
-                    } catch (e: com.th4rv4.zukinav.backup.Backup.NewerBackup) {
-                        host.runOnUiThread { host.toast(e.message ?: "Update Zuki Nav first") }
-                        return@Thread
-                    } catch (e: Exception) {
-                        null
-                    }
-                    host.runOnUiThread {
-                        if (info == null) {
-                            host.toast("That isn't a Zuki Nav backup")
-                            return@runOnUiThread
-                        }
-                        android.app.AlertDialog.Builder(host, host.dialogTheme)
-                            .setTitle("Restore This Backup?")
-                            .setMessage(
-                                "From ${whenText(info.createdAt)} (Zuki Nav v${info.appVersion})\n" +
-                                    "${info.trips} trips · ${info.routes} routes · fuel, reminders and settings\n\n" +
-                                    "This replaces what's in the app now. The app restarts when it's done.",
-                            )
-                            .setPositiveButton("Restore") { _, _ ->
-                                Thread {
-                                    val ok = try {
-                                        host.contentResolver.openInputStream(uri)?.use { com.th4rv4.zukinav.backup.Backup.restore(host, it) } != null
-                                    } catch (e: Exception) {
-                                        com.th4rv4.zukinav.util.AppLog.d("Backup", "Restore failed: $e")
-                                        false
-                                    }
-                                    host.runOnUiThread {
-                                        if (ok) {
-                                            host.toast("Restored. Restarting…")
-                                            view.postDelayed({ host.restartApp() }, 800)
-                                        } else {
-                                            host.toast("Couldn't restore that file. Nothing was changed.")
-                                        }
-                                    }
-                                }.start()
-                            }
-                            .setNegativeButton("Cancel", null)
-                            .show()
-                    }
-                }.start()
-            }
-        }
+        fun restore() = host.restoreFromBackup()
 
         val fileRow = ui.row("Backup Folder", null, ui.text("Change", 13f, Palette.ACCENT_SOFT, Ui.Weight.MEDIUM)).apply {
             ((getChildAt(0) as? LinearLayout) ?: this).addView(fileValue)

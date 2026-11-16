@@ -26,6 +26,9 @@ class SetupScreen(host: MainActivity) : Screen(host) {
     private val scanButton: Button = ui.button("Scan For Bike", Ui.Btn.SECONDARY, 48) { if (scanning) stopScan() else startScan() }
     private val finishButton: Button = ui.button("Finish Setup") { finish() }
 
+    private lateinit var restoreCard: LinearLayout
+    private lateinit var restoredNote: android.widget.TextView
+
     private var scanning = false
     private val found = LinkedHashMap<String, String>() // address -> name
 
@@ -47,6 +50,29 @@ class SetupScreen(host: MainActivity) : Screen(host) {
             head,
             ui.text("A few things, once. After this the app connects to your bike on its own.", 14f, Palette.MUTED),
         ).apply { setPadding(ui.dp(4), 0, ui.dp(4), 0) }
+
+        // A fresh install: bring everything back from a backup instead.
+        restoreCard = LinearLayout(ui.ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = ui.rounded(Palette.ACCENT_BG, 20, Accents.withAlpha(Palette.ACCENT_SOFT, 0x59))
+            setPadding(ui.dp(16), ui.dp(14), ui.dp(16), ui.dp(14))
+            addView(ui.iconTile(com.th4rv4.zukinav.R.drawable.ic_set_backup, 40, 20, Palette.ACCENT_SOFT, Palette.ACCENT_BG, 12),
+                LinearLayout.LayoutParams(ui.dp(40), ui.dp(40)).apply { marginEnd = ui.dp(12) })
+            addView(
+                ui.vstack(
+                    2,
+                    ui.text("Have A Backup?", 16f, Palette.TEXT, Ui.Weight.MEDIUM),
+                    ui.text("Bring back your rides, bike, fuel, papers and settings", 13f, Palette.MUTED),
+                ),
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = ui.dp(10) },
+            )
+            addView(smallButton("Restore") { host.restoreFromBackup() })
+        }
+        restoredNote = ui.text("", 13f, Palette.OK).apply {
+            background = ui.rounded(Palette.OK_BG, 16, Palette.OK_BORDER)
+            setPadding(ui.dp(14), ui.dp(12), ui.dp(14), ui.dp(12))
+        }
 
         val nameCard = ui.card(
             ui.text("Your Name", 16f, Palette.TEXT, Ui.Weight.MEDIUM),
@@ -71,10 +97,18 @@ class SetupScreen(host: MainActivity) : Screen(host) {
             ui.text("Works with Suzuki Ride Connect models sold in India.", 12f, Palette.MUTED),
         )
 
-        view = host.page(intro, checklist, nameCard, bikeCard, finishButton)
+        view = host.page(intro, restoredNote, restoreCard, checklist, nameCard, bikeCard, finishButton)
     }
 
     override fun onShow() {
+        val note = prefs.restoredNote
+        restoredNote.visibility = if (note != null) View.VISIBLE else View.GONE
+        if (note != null) {
+            val bike = prefs.clusterName?.let { " · " + ClusterModels.fromBleName(it).displayName } ?: ""
+            restoredNote.text = "$note$bike. Allow the permissions below and you're done."
+        }
+        // Only on a fresh install: not after a restore, and not from Settings > Change Bike.
+        restoreCard.visibility = if (note == null && prefs.clusterAddress == null) View.VISIBLE else View.GONE
         renderChecklist()
         renderResults()
         if (host.hasBlePermissions() && prefs.clusterAddress == null && !scanning) startScan()
@@ -182,6 +216,7 @@ class SetupScreen(host: MainActivity) : Screen(host) {
 
     private fun finish() {
         if (!host.setupComplete()) return
+        prefs.restoredNote = null
         if (DashService.instance == null) host.startLink()
         host.showTab(MainActivity.Tab.RIDE)
     }
