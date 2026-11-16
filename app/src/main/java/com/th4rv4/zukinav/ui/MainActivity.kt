@@ -93,6 +93,7 @@ class MainActivity : Activity() {
         setIntent(intent)
         openRefillFrom(intent)
         openMaintenanceFrom(intent)
+        if (intent.getBooleanExtra(EXTRA_OPEN_RIDE, false) && setupComplete()) showTab(Tab.RIDE)
     }
 
     /** From a maintenance reminder notification: opens the Service tab. */
@@ -779,6 +780,9 @@ class MainActivity : Activity() {
     companion object {
         /** Opens the refill form for this refill id (from the "Refuelled?" notification). */
         const val EXTRA_REFILL = "refill"
+
+        /** From the ongoing notification: opens the Ride tab. */
+        const val EXTRA_OPEN_RIDE = "open_ride"
         const val EXTRA_MAINTENANCE = "maintenance"
         const val BIKE_FUEL = 0
         const val BIKE_THERMALS = 1

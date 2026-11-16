@@ -28,6 +28,7 @@ import com.th4rv4.zukinav.fuel.Refill
 import com.th4rv4.zukinav.maint.MaintNotifier
 import com.th4rv4.zukinav.maint.MaintStore
 import com.th4rv4.zukinav.nav.NavRepository
+import com.th4rv4.zukinav.nav.RouteWatch
 import com.th4rv4.zukinav.nav.NavSnapshot
 import com.th4rv4.zukinav.protocol.BikeData
 import com.th4rv4.zukinav.protocol.ClusterIcon
@@ -101,6 +102,9 @@ class DashService : Service(), ClusterLink.Listener {
         }
     }
 
+    /** The bike went off or a ride started or ended: the notification says so. */
+    private val tripListener: () -> Unit = { main.post { updateNotification() } }
+
     private val navListener: (NavSnapshot?) -> Unit = { nav ->
         updateNotification()
         // A route starting wakes the loop at once instead of at the next minute.
@@ -138,6 +142,7 @@ class DashService : Service(), ClusterLink.Listener {
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(bluetoothReceiver, filter, RECEIVER_NOT_EXPORTED)
         else registerReceiver(bluetoothReceiver, filter)
         NavRepository.addListener(navListener)
+        TripLog.addListener(tripListener)
         TripLog.finishIfIdle(this)
     }
 
@@ -162,6 +167,7 @@ class DashService : Service(), ClusterLink.Listener {
         try { unregisterReceiver(bluetoothReceiver) } catch (_: Exception) {}
         main.removeCallbacksAndMessages(null)
         NavRepository.removeListener(navListener)
+        TripLog.removeListener(tripListener)
         link.release()
         notifyState()
         RangeWidget.refresh(this)
@@ -227,7 +233,8 @@ class DashService : Service(), ClusterLink.Listener {
         // can take minutes to notice the bike).
         val slow = isSaving()
         // Wake On Ignition: Android watches for the bike, so stop until it does.
-        if (slow && prefs.autoConnect && Wake.isSetUp(this)) {
+        // ...but not while a Maps route is open: the notification shows the way left.
+        if (slow && prefs.autoConnect && Wake.isSetUp(this) && !RouteWatch.isOpen(this)) {
             AppLog.d("Dash", "No bike for ${FAST_WINDOW_MS / 60_000} min, sleeping until Android sees it again")
             link.disconnect()
             stopSelf()
@@ -326,6 +333,7 @@ class DashService : Service(), ClusterLink.Listener {
         val changed = data.copy(speedKmh = 0) != bike?.copy(speedKmh = 0)
         val speedChanged = data.speedKmh != bike?.speedKmh
         bike = data
+        updateNotification()
         prefs.lastBikeAt = System.currentTimeMillis()
         if (changed) {
             prefs.lastBike = data
@@ -664,7 +672,8 @@ class DashService : Service(), ClusterLink.Listener {
         if (instance == null) return
         val n = buildNotification()
         val e = n.extras
-        val key = "${e.getCharSequence(Notification.EXTRA_TITLE)}\u0000${e.getCharSequence(Notification.EXTRA_TEXT)}"
+        val key = "${e.getCharSequence(Notification.EXTRA_TITLE)}\u0000${e.getCharSequence(Notification.EXTRA_TEXT)}\u0000" +
+            "${e.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER)}\u0000${if (e.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER)) n.`when` else 0}"
         if (key == lastNotificationText) return
         lastNotificationText = key
         getSystemService(NotificationManager::class.java).notify(NOTIF_ID, n)
@@ -697,37 +706,85 @@ class DashService : Service(), ClusterLink.Listener {
         }
     }
 
+    /** Engine temperature as last shown: refreshed at most every 30 s, at once when it turns hot. */
+    private var shownEngineC: Int? = null
+    private var shownEngineAt = 0L
+
+    private fun engineForNotification(now: Long): Int? {
+        val live = bike?.engineTempC?.takeIf { link.state == ClusterLink.State.READY } ?: return null.also { shownEngineC = null }
+        val hot = prefs.engineHotC
+        val shown = shownEngineC
+        if (shown == null || now - shownEngineAt >= ENGINE_REFRESH_MS || (live >= hot) != (shown >= hot)) {
+            shownEngineC = live
+            shownEngineAt = now
+        }
+        return shownEngineC
+    }
+
     private fun buildNotification(): Notification {
         val open = PendingIntent.getActivity(
-            this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
+            this, 0,
+            Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN_RIDE, true)
+                .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val stop = PendingIntent.getService(
-            this, 1, Intent(this, DashService::class.java).setAction(ACTION_STOP), PendingIntent.FLAG_IMMUTABLE,
-        )
-        val nav = NavRepository.current
-        val title = when {
-            bluetoothOff -> "Bluetooth Is Off"
-            else -> null
-        } ?: when (link.state) {
-            ClusterLink.State.READY -> "Connected To Dash"
-            ClusterLink.State.CONNECTING -> "Waiting For Bike"
-            ClusterLink.State.DISCONNECTED -> "Not Connected"
+        val now = System.currentTimeMillis()
+        val linkNow = when {
+            bluetoothOff -> NotifText.Link.BLUETOOTH_OFF
+            link.state == ClusterLink.State.READY -> NotifText.Link.CONNECTED
+            TripLog.bikeOff -> NotifText.Link.BIKE_OFF
+            else -> NotifText.Link.WAITING
         }
-        val text = nav?.let { "${it.icon?.label ?: "-"} · ${it.instruction ?: ""}" } ?: "No Active Navigation"
+        val nav = NavRepository.current?.takeIf { RouteWatch.isOpen(this, now) }
+        val data = bike ?: prefs.lastBike
+        val range = data?.takeIf { it.fuelBars != null }?.let { FuelStore.range(this, it.odoKm)?.km }
+        val shown = NotifText.compose(
+            NotifText.Input(
+                link = linkNow,
+                engineC = engineForNotification(now),
+                hotC = prefs.engineHotC,
+                routeKmLeft = nav?.remainingMeters?.let { it / 1000.0 },
+                eta = nav?.eta,
+                rangeKm = range,
+            ),
+        )
+        val title: CharSequence = if (shown.hot) {
+            android.text.SpannableString(shown.title).apply {
+                setSpan(android.text.style.ForegroundColorSpan(HOT_COLOR), 0, length, 0)
+            }
+        } else {
+            shown.title
+        }
+        // The ride timer, while riding.
+        val rideStart = if (linkNow == NotifText.Link.CONNECTED) TripLog.active(this)?.start else null
         return Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_nav)
             .setContentTitle(title)
-            .setContentText(text)
+            .setContentText(shown.text)
             .setContentIntent(open)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .addAction(Notification.Action.Builder(null, "Stop", stop).build())
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .apply {
+                if (shown.hot) setColor(HOT_COLOR)
+                if (rideStart != null) {
+                    setWhen(rideStart)
+                    setShowWhen(true)
+                    setUsesChronometer(true)
+                } else {
+                    setShowWhen(false)
+                }
+            }
             .build()
     }
 
     companion object {
         private const val CHANNEL = "dash_link"
         private const val NOTIF_ID = 17
+
+        /** How often the engine temperature in the notification may change. */
+        private const val ENGINE_REFRESH_MS = 30_000L
+        private val HOT_COLOR = 0xFFFF5A6E.toInt()
         private const val REFILL_CHANNEL = "refills"
         const val REFILL_NOTIF_ID = 18
         private const val CONNECT_TIMEOUT_MS = 20_000L

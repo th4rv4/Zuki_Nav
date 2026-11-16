@@ -63,7 +63,7 @@ class RangeWidget : AppWidgetProvider() {
             val connected = DashService.linkState == ClusterLink.State.READY
             val bars = data?.fuelBars
             val battery = if (bars == null) data?.batteryPercent else null
-            val range = if (bars != null && data != null) FuelStore.range(ctx, data.odoKm) else null
+            val range = if (bars != null) data?.let { FuelStore.range(ctx, it.odoKm) } else null
             val colors = Colors.of(ctx, prefs.theme)
 
             val value = when {
