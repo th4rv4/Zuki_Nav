@@ -46,6 +46,13 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         visibility = View.GONE
     }
 
+    /** Search: while something is typed, results replace the menu. */
+    private val results = ui.listCard().apply { visibility = View.GONE }
+    private val noResults = ui.text("Nothing matches. Try another word, like \"fuel\" or \"calls\".", 13f, Palette.MUTED)
+        .apply { visibility = View.GONE }
+    private val menuParts = ArrayList<View>()
+    private lateinit var searchBox: android.widget.EditText
+
     override val view: View
 
     init {
@@ -72,8 +79,22 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         }
         connect.addView(icon(R.drawable.ic_set_bluetooth), 0, iconParams())
 
+        searchBox = ui.input("", "Search Settings") { search(it) }.apply {
+            gravity = Gravity.START or Gravity.CENTER_VERTICAL
+            textSize = 15f
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH
+            setPadding(ui.dp(14), ui.dp(12), ui.dp(14), ui.dp(12))
+            background = ui.rounded(Palette.SURFACE, 14, Palette.BORDER)
+            setCompoundDrawablesRelativeWithIntrinsicBounds(android.R.drawable.ic_menu_search, 0, 0, 0)
+            compoundDrawablePadding = ui.dp(8)
+            compoundDrawablesRelative[0]?.setTint(Palette.MUTED)
+        }
         view = host.page(
             ui.title("Settings").apply { setPadding(ui.dp(4), 0, 0, 0) },
+            searchBox,
+            results,
+            noResults,
             riderCard,
             setupBanner,
             ui.listCard(
@@ -96,9 +117,72 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
             ui.text("Zuki Nav ${host.versionName()} · Unofficial, not affiliated with Suzuki", 12f, Palette.MUTED)
                 .apply { gravity = Gravity.CENTER },
         )
+        (noResults.parent as? android.view.ViewGroup)?.let { box ->
+            // The page itself takes focus first, so the keyboard doesn't pop up on its own.
+            box.isFocusableInTouchMode = true
+            box.descendantFocusability = android.view.ViewGroup.FOCUS_BEFORE_DESCENDANTS
+            for (i in box.indexOfChild(noResults) + 1 until box.childCount) menuParts += box.getChildAt(i)
+        }
+    }
+
+    private var searching = false
+
+    /** Shows the settings matching [query] in place of the menu. */
+    private fun search(query: String) {
+        val found = SettingsIndex.search(query)
+        val active = query.isNotBlank()
+        if (active != searching) {
+            searching = active
+            menuParts.forEach { it.visibility = if (active) View.GONE else View.VISIBLE }
+            // The banner decides for itself when the menu is back.
+            if (!active) onShow()
+        }
+        results.removeAllViews()
+        results.visibility = if (active && found.isNotEmpty()) View.VISIBLE else View.GONE
+        noResults.visibility = if (active && found.isEmpty()) View.VISIBLE else View.GONE
+        for (e in found.take(12)) {
+            val texts = ui.vstack(
+                2,
+                ui.text(e.title, 15f, Palette.TEXT, Ui.Weight.MEDIUM),
+                ui.text(e.detail, 12f, Palette.MUTED),
+                ui.text(e.path, 11f, Palette.ACCENT_SOFT, Ui.Weight.BOLD),
+            )
+            val row = LinearLayout(ui.ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, ui.dp(10), 0, ui.dp(10))
+                isClickable = true
+                isFocusable = true
+                background = android.graphics.drawable.RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(Palette.RIPPLE), null, ui.rounded(android.graphics.Color.WHITE, 8),
+                )
+                addView(texts, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+                addView(ui.text("›", 20f, Palette.MUTED))
+                setOnClickListener { open(e.target) }
+            }
+            results.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        }
+    }
+
+    private fun open(target: SettingsIndex.Target) {
+        hideKeyboard()
+        when (target) {
+            is SettingsIndex.Target.Page ->
+                if (target.key == SettingsKeys.MENU) searchBox.setText("") else host.showSettingsPage(target.key)
+            is SettingsIndex.Target.Bike -> host.showBikeSection(target.section)
+            SettingsIndex.Target.Trips -> host.showTab(MainActivity.Tab.TRIPS)
+            SettingsIndex.Target.Checklist -> host.showSettingsPage(PAGE_CHECKLIST)
+        }
+    }
+
+    private fun hideKeyboard() {
+        searchBox.clearFocus()
+        host.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
+            ?.hideSoftInputFromWindow(searchBox.windowToken, 0)
     }
 
     override fun onShow() {
+        if (searching) return
         if (wakeRow != null) showWake()
         avatar.show(prefs.avatar, prefs.riderName)
         riderName.text = prefs.riderName.ifBlank { "Rider" }
@@ -672,14 +756,14 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
     }
 
     companion object {
-        const val PAGE_RIDER = "rider"
-        const val PAGE_DASH = "dash"
-        const val PAGE_CALLS = "calls"
-        const val PAGE_MESSAGES = "messages"
-        const val PAGE_APPEARANCE = "appearance"
-        const val PAGE_UPDATES = "updates"
-        const val PAGE_BACKUP = "backup"
-        const val PAGE_TROUBLESHOOTING = "troubleshooting"
+        const val PAGE_RIDER = SettingsKeys.RIDER
+        const val PAGE_DASH = SettingsKeys.DASH
+        const val PAGE_CALLS = SettingsKeys.CALLS
+        const val PAGE_MESSAGES = SettingsKeys.MESSAGES
+        const val PAGE_APPEARANCE = SettingsKeys.APPEARANCE
+        const val PAGE_UPDATES = SettingsKeys.UPDATES
+        const val PAGE_BACKUP = SettingsKeys.BACKUP
+        const val PAGE_TROUBLESHOOTING = SettingsKeys.TROUBLESHOOTING
         const val PAGE_CHECKLIST = "checklist"
     }
 }
