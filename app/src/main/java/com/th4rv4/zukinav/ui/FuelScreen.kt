@@ -18,7 +18,6 @@ import com.th4rv4.zukinav.fuel.FuelBook
 import com.th4rv4.zukinav.fuel.FuelStore
 import com.th4rv4.zukinav.fuel.Range
 import com.th4rv4.zukinav.fuel.Refill
-import com.th4rv4.zukinav.protocol.ClusterModels
 import com.th4rv4.zukinav.service.DashService
 import com.th4rv4.zukinav.trips.TripFormat
 import java.util.Locale
@@ -37,7 +36,6 @@ object FuelFormat {
  */
 class FuelScreen(host: MainActivity) : Screen(host) {
 
-    private val subtitle = ui.text("", 13f, Palette.MUTED)
     private val rangeText = TextView(ui.ctx).apply {
         typeface = DashFonts.numbers
         textSize = 46f
@@ -67,7 +65,7 @@ class FuelScreen(host: MainActivity) : Screen(host) {
     override val view: View
 
     init {
-        val header = host.bikeHeader(MainActivity.BIKE_FUEL, subtitle)
+        val header = host.bikeHeader(MainActivity.BIKE_FUEL)
         val hero = ui.card(cap("Range Left").apply { gravity = Gravity.CENTER }, rangeText, rangeNote, gapDp = 4, padDp = 18)
         val stats = ui.hstack(
             8,
@@ -137,8 +135,6 @@ class FuelScreen(host: MainActivity) : Screen(host) {
 
     private fun render() {
         val spec = FuelStore.spec(host)
-        val model = ClusterModels.fromBleName(prefs.clusterName).displayName
-        subtitle.text = if (spec == null) model else "$model · ${FuelFormat.litres(spec.tankLitres)} L tank"
         petrolOnly.visibility = if (spec == null) View.VISIBLE else View.GONE
         petrolViews.forEach { it.visibility = if (spec == null) View.GONE else View.VISIBLE }
 

@@ -143,6 +143,25 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
             radiusDp = 22,
         )
 
+        val alertCard = ui.card(
+            LinearLayout(ui.ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(ui.text("Alert Test", 15f, Palette.TEXT, Ui.Weight.MEDIUM),
+                    LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                addView(ui.text("Shown for about 10 s", 12f, Palette.MUTED))
+            },
+            ui.text("Shows the engine alerts on the dash's message screen, the way they come up on a ride.", 12f, Palette.MUTED),
+            ui.hstack(
+                8,
+                ui.button("Warmed Up", Ui.Btn.SECONDARY, 48) { testAlert(overheat = false) },
+                ui.button("Engine Hot", Ui.Btn.SECONDARY, 48) { testAlert(overheat = true) },
+                weighted = true,
+            ),
+            gapDp = 12,
+            radiusDp = 22,
+        )
+
         val back = ui.text("‹", 30f, Palette.TEXT).apply {
             isClickable = true
             isFocusable = true
@@ -163,6 +182,7 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
             currentCard,
             allCard,
             textCard,
+            alertCard,
             ui.text(ICON_WARNING, 12f, Palette.WARN),
             ui.hstack(8, cycleButton, ui.button("Share Results", Ui.Btn.SECONDARY) { share() }, weighted = true),
         )
@@ -170,6 +190,11 @@ class DashTestScreen(host: MainActivity) : Screen(host) {
 
     override fun onShow() {
         select(current, send = false)
+    }
+
+    private fun testAlert(overheat: Boolean) {
+        val sent = com.th4rv4.zukinav.service.DashService.instance?.testThermalAlert(overheat) ?: false
+        if (!sent) host.toast("Connect the bike first: turn the ignition on with the app connected")
     }
 
     override fun onHide() {

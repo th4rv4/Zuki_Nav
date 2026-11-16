@@ -20,7 +20,6 @@ import java.util.Locale
  */
 class MaintenanceScreen(host: MainActivity) : Screen(host) {
 
-    private val odoLine = ui.text("", 13f, Palette.MUTED)
     private val list = ui.vstack(10)
     private val changed: () -> Unit = { render() }
     private val papers = PapersSection(host)
@@ -31,7 +30,7 @@ class MaintenanceScreen(host: MainActivity) : Screen(host) {
     init {
         val add = ui.button("+ Add Reminder", Ui.Btn.SECONDARY, 48) { ReminderSheet(host, null).show() }
         view = host.page(
-            host.bikeHeader(MainActivity.BIKE_SERVICE, odoLine),
+            host.bikeHeader(MainActivity.BIKE_SERVICE),
             list,
             add,
             *papers.views.toTypedArray(),
@@ -72,8 +71,6 @@ class MaintenanceScreen(host: MainActivity) : Screen(host) {
     private fun render() {
         val s = MaintStore.state(host)
         val odo = s.odoKm
-        odoLine.text = if (odo != null) "ODO ${MaintBook.km(odo)} km, read from the dash"
-        else "Connect the bike once to read the ODO"
         list.removeAllViews()
         val now = System.currentTimeMillis()
         s.reminders.forEach { r ->

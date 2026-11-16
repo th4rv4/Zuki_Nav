@@ -78,8 +78,7 @@ class TripsScreen(host: MainActivity) : Screen(host) {
             gapDp = 10,
         )
         view = host.page(
-            ui.vstack(2, ui.title("Trips"), ui.text("Saved from the dash, ignition on to ignition off", 13f, Palette.MUTED))
-                .apply { setPadding(ui.dp(4), 0, 0, 0) },
+            ui.title("Trips").apply { setPadding(ui.dp(4), 0, 0, 0) },
             recapCard,
             monthCard,
             ui.segmented(listOf("All", "Starred"), 0, fill = true) { starredOnly = it == 1; render() },

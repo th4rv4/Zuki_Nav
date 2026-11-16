@@ -78,7 +78,7 @@ class ThermalsScreen(host: MainActivity) : Screen(host) {
         tripBars.onPick = { i -> barTrips.getOrNull(i)?.let { host.showTrip(it.id) } }
 
         view = host.page(
-            host.bikeHeader(MainActivity.BIKE_THERMALS, ui.text("Engine temperature from the dash", 13f, Palette.MUTED)),
+            host.bikeHeader(MainActivity.BIKE_THERMALS),
             noReading,
             gaugeCard,
             monitor,
@@ -152,12 +152,6 @@ class ThermalsScreen(host: MainActivity) : Screen(host) {
                 save(it.toIntOrNull()?.coerceIn(0, 254) ?: 0)
                 render()
             }
-        val testRow = ui.hstack(
-            8,
-            ui.button("Test Warmed Up", Ui.Btn.SECONDARY, 44) { test(overheat = false) },
-            ui.button("Test Overheat", Ui.Btn.SECONDARY, 44) { test(overheat = true) },
-            weighted = true,
-        )
         return ui.listCard(
             ui.row("Engine Warm-Up Temp", "°C. Below this: Warming Up. Empty to turn off",
                 limitInput(prefs.engineWarmC) { prefs.engineWarmC = it }),
@@ -167,13 +161,7 @@ class ThermalsScreen(host: MainActivity) : Screen(host) {
                 prefs.warmedUpDashAlert) { prefs.warmedUpDashAlert = it },
             ui.switchRow("Overheat Alert On Dash", "Shows ENGINE HOT on the dash's message screen when the engine reaches your heat warning, then every 5 min while hot. During a route it sits below the arrow",
                 prefs.overheatDashAlert) { prefs.overheatDashAlert = it },
-            testRow.apply { setPadding(0, ui.dp(10), 0, ui.dp(10)) },
         )
-    }
-
-    private fun test(overheat: Boolean) {
-        val sent = DashService.instance?.testThermalAlert(overheat) ?: false
-        if (!sent) host.toast("Connect the bike first: turn the ignition on with the app connected")
     }
 
     private fun number() = TextView(ui.ctx).apply {

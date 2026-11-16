@@ -426,7 +426,7 @@ class MainActivity : Activity() {
     }
 
     /** "Bike" and the Fuel / Thermals / Service switcher, at the top of each of the three. */
-    fun bikeHeader(section: Int, subtitle: View? = null): View {
+    fun bikeHeader(section: Int): View {
         val switcher = ui.segmented(listOf("Fuel", "Thermals", "Service"), section, fill = true, stay = false) { i ->
             if (i != bikeSection) showBikeSection(i)
         }
@@ -434,7 +434,6 @@ class MainActivity : Activity() {
             10,
             ui.title("Bike").apply { setPadding(ui.dp(4), 0, 0, 0) },
             switcher,
-            *listOfNotNull(subtitle?.apply { setPadding(ui.dp(4), 0, ui.dp(4), 0) }).toTypedArray(),
         )
     }
 

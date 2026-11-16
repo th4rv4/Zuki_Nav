@@ -594,7 +594,7 @@ class DashService : Service(), ClusterLink.Listener {
         main.post { showDashMessage(REJECTED_TEXT) }
     }
 
-    /** From the Thermals tab: shows one of the alerts now. False if the dash isn't connected. */
+    /** From Dash Test: shows one of the engine alerts now. False if the dash isn't connected. */
     fun testThermalAlert(overheat: Boolean): Boolean =
         showDashMessage(if (overheat) OVERHEAT_TEXT else WARMED_UP_TEXT)
 
