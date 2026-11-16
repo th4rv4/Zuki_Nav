@@ -32,7 +32,23 @@ class RideScreen(host: MainActivity) : Screen(host) {
 
     private val rideValue = ui.text("", 16f, Palette.TEXT, Ui.Weight.MEDIUM)
     private val rideTop = ui.text("", 13f, Palette.MUTED)
+    private val rideTime = ui.text("", 12f, Palette.MUTED)
+    private val rideHint = ui.text("", 12f, Palette.TEXT_SOFT)
+    private val endRideButton: Button = ui.button("End Ride", Ui.Btn.SECONDARY, heightDp = 40) { endRide() }
+    private val rideOffRow: LinearLayout
+    private val rideMain: LinearLayout
+    private val savedText = ui.text("", 14f, Palette.TEXT, Ui.Weight.MEDIUM)
+    private val undoButton: Button = ui.button("Undo", Ui.Btn.SECONDARY, heightDp = 40) { undoEnd() }
+    private val savedRow: LinearLayout
     private val rideCard: LinearLayout
+
+    /** The ride End Ride just saved, while Undo is offered. */
+    private var ended: TripLog.Ended? = null
+    private val endedTimeout = Runnable {
+        ended = null
+        refresh()
+    }
+    private val tripListener: () -> Unit = { view.post { refresh() } }
 
     private val avatar = AvatarView(host.ui.ctx)
     private val linkButton: Button = ui.button("Connect") { toggleLink() }
@@ -108,7 +124,14 @@ class RideScreen(host: MainActivity) : Screen(host) {
             addView(avatar, LinearLayout.LayoutParams(ui.dp(46), ui.dp(46)))
         }
 
-        rideCard = ui.card(
+        rideOffRow = LinearLayout(ui.ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(rideHint, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = ui.dp(10) })
+            addView(endRideButton)
+        }
+        rideMain = ui.vstack(
+            6,
             ui.text("CURRENT RIDE", 11f, Palette.MUTED, Ui.Weight.BOLD).apply { letterSpacing = 0.08f },
             LinearLayout(ui.ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -116,8 +139,16 @@ class RideScreen(host: MainActivity) : Screen(host) {
                 addView(rideValue, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
                 addView(rideTop)
             },
-            gapDp = 6,
-        ).apply {
+            rideTime,
+            rideOffRow,
+        )
+        savedRow = LinearLayout(ui.ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(savedText, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = ui.dp(10) })
+            addView(undoButton)
+        }
+        rideCard = ui.card(rideMain, savedRow, gapDp = 0).apply {
             isClickable = true
             isFocusable = true
             setOnClickListener { host.showTab(MainActivity.Tab.TRIPS) }
@@ -136,6 +167,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
         TripStore.addListener(monthListener)
         com.th4rv4.zukinav.trips.Parking.addListener(parkedListener)
         MaintStore.addListener(monthListener)
+        TripLog.addListener(tripListener)
         reloadMonth()
         refresh()
         view.postDelayed(clockTick, 30_000)
@@ -148,6 +180,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
         TripStore.removeListener(monthListener)
         com.th4rv4.zukinav.trips.Parking.removeListener(parkedListener)
         MaintStore.removeListener(monthListener)
+        TripLog.removeListener(tripListener)
         view.removeCallbacks(clockTick)
     }
 
@@ -164,17 +197,13 @@ class RideScreen(host: MainActivity) : Screen(host) {
         val state = DashService.linkState
         val running = DashService.instance != null
 
-        statusSlot.removeAllViews()
-        statusSlot.addView(
-            when (state) {
-                ClusterLink.State.READY -> ui.pill("Connected", Palette.OK, Palette.OK_BG)
-                ClusterLink.State.CONNECTING -> ui.pill("Waiting", Palette.WARN, Palette.WARN_BG)
-                ClusterLink.State.DISCONNECTED -> when {
-                    running && DashService.bluetoothOff -> ui.pill("Bluetooth Off", Palette.WARN, Palette.WARN_BG)
-                    else -> ui.pill(if (running) "Searching" else "Stopped", Palette.MUTED, Palette.INSET)
-                }
-            },
-        )
+        // Maps updates about every second: only rebuild the pill when it changes.
+        val pillKey = "$state $running ${DashService.bluetoothOff}"
+        if (pillKey != shownPill) {
+            shownPill = pillKey
+            statusSlot.removeAllViews()
+            statusSlot.addView(pill(state, running))
+        }
 
         avatar.show(prefs.avatar, prefs.riderName)
         val nav = NavRepository.current
@@ -209,11 +238,28 @@ class RideScreen(host: MainActivity) : Screen(host) {
         )
 
         val ride = if (prefs.recordTrips) TripLog.active(host) else null
-        rideCard.visibility = if (ride == null) View.GONE else View.VISIBLE
+        val justEnded = ended
+        rideCard.visibility = if (ride == null && justEnded == null) View.GONE else View.VISIBLE
+        rideMain.visibility = if (ride != null) View.VISIBLE else View.GONE
+        savedRow.visibility = if (ride == null && justEnded != null) View.VISIBLE else View.GONE
+        if (justEnded != null) savedText.text = "Ride Saved · " + TripFormat.distance(justEnded.trip.distanceKm)
         if (ride != null) {
-            rideValue.text = TripFormat.distance(ride.distanceKm) + " · " +
-                TripFormat.duration((ride.lastAt - ride.start) / 1000)
+            val trip = ride.toTrip()
+            rideValue.text = TripFormat.distance(ride.distanceKm) + " · " + TripFormat.duration(trip.durationSeconds)
             rideTop.text = "Top ${ride.topSpeed} km/h"
+            val still = trip.ridingSeconds - trip.movingSeconds
+            rideTime.text = "Riding ${TripFormat.duration(trip.movingSeconds)}" +
+                (if (still >= 60) " · Stationary ${TripFormat.duration(still)}" else "") +
+                (if (trip.stops > 0) " · ${trip.stops} " + (if (trip.stops == 1) "stop" else "stops") else "")
+            val endsAt = TripLog.endsAt(host)
+            rideOffRow.visibility = if (endsAt != null) View.VISIBLE else View.GONE
+            if (endsAt != null) {
+                val left = ((endsAt - System.currentTimeMillis() + 59_999) / 60_000).coerceAtLeast(1)
+                rideHint.text = when {
+                    com.th4rv4.zukinav.nav.RouteWatch.isOpen(host) -> "Route open · ride continues"
+                    else -> "Ends by itself in $left min"
+                }
+            }
         }
 
         // Follows the actual link: while the bike is away the app keeps looking
@@ -235,6 +281,38 @@ class RideScreen(host: MainActivity) : Screen(host) {
                 linkButton.setTextColor(Palette.ON_ACCENT)
             }
         }
+    }
+
+    private var shownPill: String? = null
+
+    private fun pill(state: ClusterLink.State, running: Boolean): View = when (state) {
+        ClusterLink.State.READY -> ui.pill("Connected", Palette.OK, Palette.OK_BG)
+        ClusterLink.State.CONNECTING -> ui.pill("Waiting", Palette.WARN, Palette.WARN_BG)
+        ClusterLink.State.DISCONNECTED -> when {
+            running && DashService.bluetoothOff -> ui.pill("Bluetooth Off", Palette.WARN, Palette.WARN_BG)
+            else -> ui.pill(if (running) "Searching" else "Stopped", Palette.MUTED, Palette.INSET)
+        }
+    }
+
+    /** End Ride: saves the ride now, with Undo offered for a few seconds. */
+    private fun endRide() {
+        val e = TripLog.endRide(host)
+        if (e == null) {
+            host.toast("Ride ended · too short to save")
+        } else {
+            ended = e
+            view.removeCallbacks(endedTimeout)
+            view.postDelayed(endedTimeout, UNDO_MS)
+        }
+        refresh()
+    }
+
+    private fun undoEnd() {
+        val e = ended ?: return
+        ended = null
+        view.removeCallbacks(endedTimeout)
+        TripLog.undoEnd(host, e)
+        refresh()
     }
 
     private fun reloadMonth() {
@@ -304,4 +382,9 @@ class RideScreen(host: MainActivity) : Screen(host) {
 
     private fun formatTime(t: LocalTime): String =
         t.format(DateTimeFormatter.ofPattern(if (DateFormat.is24HourFormat(host)) "HH:mm" else "h:mm a", Locale.US))
+
+    private companion object {
+        /** How long Undo is offered after End Ride. */
+        const val UNDO_MS = 5_000L
+    }
 }

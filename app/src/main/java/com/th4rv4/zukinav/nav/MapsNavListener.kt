@@ -64,7 +64,9 @@ class MapsNavListener : NotificationListenerService() {
     override fun onListenerConnected() {
         AppLog.d("Maps", "Notification access active")
         try {
-            activeNotifications?.forEach { if (isMapsGuidance(it)) handle(it) }
+            val guidance = activeNotifications?.filter { isMapsGuidance(it) }.orEmpty()
+            guidance.forEach { handle(it) }
+            if (guidance.isEmpty()) RouteWatch.onNoneShown(this)
         } catch (e: Exception) {
             AppLog.d("Maps", "Could not read active notifications: $e")
         }
@@ -82,6 +84,7 @@ class MapsNavListener : NotificationListenerService() {
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         if (isMapsGuidance(sbn)) {
             AppLog.d("Maps", "Guidance notification removed")
+            RouteWatch.onRemoved(this)
             lastEta = null
             lastRemaining = null
             NavRepository.scheduleEnd()
@@ -205,6 +208,7 @@ class MapsNavListener : NotificationListenerService() {
         val critical = e.getCharSequence(EXTRA_SHORT_CRITICAL_TEXT)?.toString()
         val lht = prefs.leftHandTraffic
 
+        RouteWatch.onPosted(this, title)
         val parsed = NavText.parse(title, text, sub, critical, LocalTime.now(), lht)
         logExtrasIfNew(e)
 

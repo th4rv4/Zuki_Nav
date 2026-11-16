@@ -81,13 +81,14 @@ object RouteStore {
  */
 object RouteRecorder {
 
-    private const val INTERVAL_MS = 2_000L
     private const val FLUSH_EVERY = 15
 
     private var tripId: Long? = null
     private var appContext: Context? = null
     private var last: RoutePoint? = null
     private val pending = ArrayList<RoutePoint>()
+    private val plan = GpsPlan()
+    private var listening: GpsPlan.Mode = GpsPlan.Mode.OFF
 
     private val listener = LocationListener { loc: Location -> onLocation(loc) }
 
@@ -96,23 +97,62 @@ object RouteRecorder {
     /** The newest point kept for the ride being recorded, if any. */
     val lastPoint: RoutePoint? get() = last
 
-    /** Starts (or carries on) recording for [id]. Main thread. */
-    @SuppressLint("MissingPermission")
-    fun start(ctx: Context, id: Long) {
-        if (tripId == id) return
-        stop()
-        if (!Places.hasForeground(ctx)) return
-        val lm = ctx.getSystemService(LocationManager::class.java) ?: return
-        try {
-            if (!lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                AppLog.d("Route", "GPS is off, no route for this ride")
-                return
-            }
-            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, INTERVAL_MS, Route.MIN_STEP_M.toFloat(), listener, Looper.getMainLooper())
-            appContext = ctx.applicationContext
+    /**
+     * Records the route of ride [id], given the latest dash [speedKmh] (null
+     * when there's no new reading) and whether the key is on and a Maps route
+     * is open. Picks how to get fixes, see [GpsPlan]. Main thread.
+     */
+    fun update(ctx: Context, id: Long, speedKmh: Int?, keyOn: Boolean, routeOpen: Boolean) {
+        if (tripId != id) {
+            stop()
             tripId = id
             last = null
+            appContext = ctx.applicationContext
             AppLog.d("Route", "Recording the route of ride $id")
+        }
+        speedKmh?.let { plan.onReading(it) }
+        if (plan.update(System.currentTimeMillis(), keyOn, routeOpen)) listen(ctx, plan.mode)
+    }
+
+    /** Stops recording and saves what is left. Main thread. */
+    fun stop() {
+        val ctx = appContext ?: return
+        val id = tripId
+        listen(ctx, GpsPlan.Mode.OFF)
+        plan.update(System.currentTimeMillis(), keyOn = false, routeOpen = false)
+        if (id != null) flush(ctx, id)
+        tripId = null
+        last = null
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun listen(ctx: Context, mode: GpsPlan.Mode) {
+        if (mode == listening) return
+        val lm = ctx.getSystemService(LocationManager::class.java) ?: return
+        try {
+            lm.removeUpdates(listener)
+        } catch (_: Exception) {
+        }
+        listening = GpsPlan.Mode.OFF
+        if (mode == GpsPlan.Mode.OFF) {
+            tripId?.let { flush(ctx, it) }
+            AppLog.d("Route", "GPS off")
+            return
+        }
+        if (!Places.hasForeground(ctx)) return
+        try {
+            if (mode == GpsPlan.Mode.SHARED) {
+                lm.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, 1_000L, Route.MIN_STEP_M.toFloat(), listener, Looper.getMainLooper())
+                AppLog.d("Route", "Using the fixes Maps gets")
+            } else {
+                if (!lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                    AppLog.d("Route", "GPS is off, no route for now")
+                    return
+                }
+                lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, mode.intervalMs, Route.MIN_STEP_M.toFloat(), listener, Looper.getMainLooper())
+                AppLog.d("Route", "GPS every ${mode.intervalMs / 1000} s")
+            }
+            listening = mode
         } catch (e: SecurityException) {
             AppLog.d("Route", "No location permission for the route")
         } catch (e: Exception) {
@@ -120,28 +160,17 @@ object RouteRecorder {
         }
     }
 
-    /** Stops recording and saves what is left. Main thread. */
-    fun stop() {
-        val ctx = appContext ?: return
-        val id = tripId
-        try {
-            ctx.getSystemService(LocationManager::class.java)?.removeUpdates(listener)
-        } catch (_: Exception) {
-        }
-        if (id != null) flush(ctx, id)
-        tripId = null
-        last = null
-    }
-
     private fun onLocation(loc: Location) {
         val ctx = appContext ?: return
         val id = tripId ?: return
         if (loc.hasAccuracy() && loc.accuracy > 40f) return
+        val now = System.currentTimeMillis()
+        plan.onFix(now, if (loc.hasSpeed()) loc.speed * 3.6f else null)
         val bike = DashService.liveBike
         val p = RoutePoint(
             lat = loc.latitude,
             lng = loc.longitude,
-            at = System.currentTimeMillis(),
+            at = now,
             speedKmh = bike?.speedKmh ?: (loc.speed * 3.6f).toInt(),
             engineC = bike?.engineTempC,
         )

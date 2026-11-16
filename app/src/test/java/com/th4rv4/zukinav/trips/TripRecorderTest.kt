@@ -27,7 +27,7 @@ class TripRecorderTest {
         // Ignition off: nothing ends yet...
         assertNull(t.finishIfIdle(now + 60_000))
         // ...until the dash has been quiet for 3 minutes.
-        val trip = t.finishIfIdle(now + TripRecorder.GAP_MS)
+        val trip = t.finishIfIdle(now + TripRecorder.OFF_LIMIT_MS)
         assertNotNull(trip)
         trip!!
         assertEquals(10.0, trip.distanceKm, 0.15)
@@ -52,7 +52,7 @@ class TripRecorderTest {
         val t = TripRecorder()
         t.onReading(r(40, 100, 1.0), 0)
         t.onReading(r(40, 101, 2.0), 5_000)
-        val first = t.onReading(r(0, 101, 2.0), 5_000 + TripRecorder.GAP_MS)
+        val first = t.onReading(r(0, 101, 2.0), 5_000 + TripRecorder.OFF_LIMIT_MS)
         assertEquals(1.0, first!!.distanceKm, 0.01)
         assertTrue(t.justStarted)
     }
@@ -84,7 +84,7 @@ class TripRecorderTest {
         }
         // Survives a restart part-way.
         t.active = TripRecorder.Active.decode(t.active!!.encode())
-        val trip = t.finishIfIdle(now + TripRecorder.GAP_MS)!!
+        val trip = t.finishIfIdle(now + TripRecorder.OFF_LIMIT_MS)!!
         assertEquals(100, trip.maxEngineC)
         assertEquals(70, trip.avgEngineC)
         // Saved before engine temperature was added.
@@ -95,7 +95,7 @@ class TripRecorderTest {
     @Test fun noEngineTemperature() {
         val t = TripRecorder()
         t.onReading(r(40, 100, 1.0), 0)
-        val trip = t.finishIfIdle(TripRecorder.GAP_MS)!!
+        val trip = t.finishIfIdle(TripRecorder.OFF_LIMIT_MS)!!
         assertNull(trip.maxEngineC)
         assertNull(trip.avgEngineC)
     }
