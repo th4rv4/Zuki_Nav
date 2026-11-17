@@ -53,7 +53,7 @@ object SettingsIndex {
         // Connection
         Entry("Connect Automatically", "On ignition and after the phone restarts", "Settings", page(SettingsKeys.MENU), "auto connect bluetooth boot start"),
         Entry("Wake On Ignition", "Sleeps while parked, wakes at switch-on", "Settings", page(SettingsKeys.MENU), "battery sleep companion parked ignition"),
-        Entry("Setup Checklist", "Permissions and battery, all in one place", "Settings", Target.Checklist, "permission bluetooth notification access location battery unrestricted optimization contacts caller name fix problem"),
+        Entry("Setup Checklist", "Permissions and battery, all in one place", "Settings", Target.Checklist, "permission bluetooth notification access location battery unrestricted optimization contacts caller name ride connect suzuki uninstall fix problem"),
         // Backup and updates
         Entry("Back Up Now", "Everything in one zip", "Settings › Backup & Restore", page(SettingsKeys.BACKUP), "backup save export drive"),
         Entry("Restore From Backup", "Bring everything back from a zip", "Settings › Backup & Restore", page(SettingsKeys.BACKUP), "restore import new phone"),

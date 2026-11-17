@@ -634,7 +634,19 @@ class MainActivity : Activity() {
         }
     }
 
-    /** Opens a package's App Info page, e.g. to force-stop Suzuki Ride Connect. */
+    /** Suzuki Ride Connect is on the phone; it holds the dash and can cut Zuki Nav off mid-ride. */
+    fun rideConnectInstalled(): Boolean = isInstalled(RIDE_CONNECT_PKG)
+
+    /** Android's uninstall prompt for Suzuki Ride Connect, or its App Info page where that fails. */
+    fun uninstallRideConnect() {
+        try {
+            startActivity(Intent(Intent.ACTION_DELETE, android.net.Uri.parse("package:$RIDE_CONNECT_PKG")))
+        } catch (e: Exception) {
+            openAppInfo(RIDE_CONNECT_PKG)
+        }
+    }
+
+    /** Opens a package's App Info page. */
     fun openAppInfo(pkg: String) {
         try {
             startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:$pkg")))
@@ -895,6 +907,7 @@ class MainActivity : Activity() {
         const val EXTRA_MAINTENANCE = "maintenance"
         private const val REQ_NOTIFICATIONS = 9
         private const val REQ_CONTACTS = 10
+        const val RIDE_CONNECT_PKG = "suzuki.com.suzuki"
         const val BIKE_FUEL = 0
         const val BIKE_THERMALS = 1
         const val BIKE_SERVICE = 2

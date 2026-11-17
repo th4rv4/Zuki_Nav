@@ -123,7 +123,7 @@ class SetupScreen(host: MainActivity) : Screen(host) {
         val ble = host.hasBlePermissions()
         val listener = host.hasListenerAccess()
         val maps = host.mapsInstalled()
-        val rcInstalled = host.isInstalled(RIDE_CONNECT_PKG)
+        val rcInstalled = host.rideConnectInstalled()
         val contacts = host.hasContactsPermission()
 
         val paired = prefs.clusterAddress != null
@@ -152,11 +152,22 @@ class SetupScreen(host: MainActivity) : Screen(host) {
                 tag = "Optional",
             ),
             ui.row(
-                "Close Ride Connect", "The dash takes one phone at a time",
-                if (rcInstalled) smallButton("Force Stop", primary = false) { host.openAppInfo(RIDE_CONNECT_PKG) }
-                else ui.text("Not Installed", 13f, Palette.OK),
-                ui.badge(if (rcInstalled) Ui.Badge.Step(5) else Ui.Badge.Done),
-            ),
+                "Remove Ride Connect",
+                if (rcInstalled) "Suzuki's app grabs the dash and can cut Zuki Nav off mid-ride. The dash takes one phone app at a time"
+                else "The dash takes one phone app at a time",
+                if (rcInstalled) {
+                    ui.button("Uninstall", Ui.Btn.WARN, 36) { host.uninstallRideConnect() }.apply {
+                        textSize = 13f
+                        setPadding(ui.dp(12), 0, ui.dp(12), 0)
+                    }
+                } else {
+                    ui.text("Not Installed", 13f, Palette.OK)
+                },
+                ui.badge(if (rcInstalled) Ui.Badge.Todo else Ui.Badge.Done),
+            ).apply {
+                // The reason in yellow while it's installed.
+                if (rcInstalled) ((getChildAt(1) as? LinearLayout)?.getChildAt(1) as? android.widget.TextView)?.setTextColor(Palette.WARN)
+            },
         )
         checklist.addView(card)
 
@@ -275,7 +286,6 @@ class SetupScreen(host: MainActivity) : Screen(host) {
     }
 
     private companion object {
-        const val RIDE_CONNECT_PKG = "suzuki.com.suzuki"
         /** The dash shows up to 20 characters. */
         const val MAX_NAME = 20
     }

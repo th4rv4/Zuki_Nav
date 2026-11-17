@@ -48,6 +48,11 @@ object SetupChecklist {
                 prefs.clusterAddress != null, true, "Set Up",
             ) { host.showSetup() },
             Item(
+                "Ride Connect Removed",
+                if (host.rideConnectInstalled()) "Still installed: it can take the dash away mid-ride" else "Not installed",
+                !host.rideConnectInstalled(), true, "Uninstall",
+            ) { host.uninstallRideConnect() },
+            Item(
                 "Notifications", "Reminders, refills and the ride notification",
                 host.hasNotificationPermission(), false, "Allow",
             ) { host.requestNotificationPermission() },

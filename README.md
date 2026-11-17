@@ -174,7 +174,8 @@ Real screens from a phone connected to a Gixxer SF 250. Every number came from t
      Google Maps, calls and messages; no other permission is needed for them).
    - **Contacts** (optional): shows callers with the name you saved them
      under, not the name their SIM is registered to. Read on the phone only.
-   - **Close Suzuki Ride Connect**: the dash talks to one app at a time.
+   - **Remove Suzuki Ride Connect**: the dash talks to one app at a time, and
+     Suzuki's app can take it back mid-ride. Setup has an Uninstall button.
    - **Your Name** for the greeting (optional).
 3. Switch the ignition on, pick your bike from the list and tap **Finish Setup**.
 4. Start a route in Google Maps and ride.

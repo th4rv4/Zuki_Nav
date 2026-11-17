@@ -26,6 +26,9 @@
     <!-- Setup Checklist: asks to let the app run without battery limits, so Android doesn't stop it mid-ride. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
+    <!-- Setup's Uninstall button for Suzuki Ride Connect opens Android's own uninstall prompt. -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+
     <!-- Checking GitHub for new releases and installing them. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
@@ -38,6 +41,8 @@
     <!-- Lets the app read Google Maps' drawables to build its arrow templates. -->
     <queries>
         <package android:name="com.google.android.apps.maps" />
+        <!-- Suzuki Ride Connect: setup checks whether it is installed, since it takes the dash away. -->
+        <package android:name="suzuki.com.suzuki" />
     </queries>
 
     <application
