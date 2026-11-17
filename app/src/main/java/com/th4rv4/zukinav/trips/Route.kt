@@ -42,12 +42,15 @@ object Route {
         points.filter { it.at >= start - 5_000 && it.at <= end + 10_000 }
 
     /** Distance in metres. */
-    fun metres(a: RoutePoint, b: RoutePoint): Double {
+    fun metres(a: RoutePoint, b: RoutePoint): Double = distanceM(a.lat, a.lng, b.lat, b.lng)
+
+    /** Distance in metres between two places. */
+    fun distanceM(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
         val r = 6_371_000.0
-        val dLat = Math.toRadians(b.lat - a.lat)
-        val dLng = Math.toRadians(b.lng - a.lng)
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLng = Math.toRadians(lng2 - lng1)
         val h = sin(dLat / 2) * sin(dLat / 2) +
-            cos(Math.toRadians(a.lat)) * cos(Math.toRadians(b.lat)) * sin(dLng / 2) * sin(dLng / 2)
+            cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) * sin(dLng / 2) * sin(dLng / 2)
         return 2 * r * atan2(sqrt(h), sqrt(1 - h))
     }
 

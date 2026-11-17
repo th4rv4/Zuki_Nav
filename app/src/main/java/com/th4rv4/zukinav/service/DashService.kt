@@ -38,6 +38,8 @@ import com.th4rv4.zukinav.protocol.DashDistance
 import com.th4rv4.zukinav.protocol.SuzukiFrames
 import com.th4rv4.zukinav.thermal.ThermalSession
 import com.th4rv4.zukinav.thermal.Thermals
+import com.th4rv4.zukinav.trips.DropJudge
+import com.th4rv4.zukinav.trips.DropWatch
 import com.th4rv4.zukinav.trips.TripLog
 import com.th4rv4.zukinav.ui.MainActivity
 import com.th4rv4.zukinav.util.AppLog
@@ -159,6 +161,7 @@ class DashService : Service(), ClusterLink.Listener {
     }
 
     override fun onDestroy() {
+        DropWatch.cancel()
         if (bike != null) {
             TripLog.onDisconnected(this)
             com.th4rv4.zukinav.trips.Parking.onBikeOff(this)
@@ -231,7 +234,8 @@ class DashService : Service(), ClusterLink.Listener {
         // Android's low-power background connect waits for it, with a quick
         // direct try every couple of minutes (the background connect alone
         // can take minutes to notice the bike).
-        val slow = isSaving()
+        // ...except while a dash lost mid-ride may come back any moment.
+        val slow = isSaving() && !TripLog.dashLost && !DropWatch.watching
         // Wake On Ignition: Android watches for the bike, so stop until it does.
         // ...but not while a Maps route is open: the notification shows the way left.
         if (slow && prefs.autoConnect && Wake.isSetUp(this) && !RouteWatch.isOpen(this)) {
@@ -267,6 +271,12 @@ class DashService : Service(), ClusterLink.Listener {
             when (state) {
                 ClusterLink.State.READY -> {
                     main.removeCallbacks(connectTimeout)
+                    DropWatch.cancel()
+                    main.removeCallbacks(lostGiveUp)
+                    if (TripLog.dashLost) AppLog.d("Dash", "Dash is back, the ride carries on")
+                    lastReadingAt = System.currentTimeMillis()
+                    main.removeCallbacks(silentCheck)
+                    main.postDelayed(silentCheck, SILENT_CHECK_MS)
                     retries = 0
                     lostAt = 0
                     slowLogged = false
@@ -282,9 +292,12 @@ class DashService : Service(), ClusterLink.Listener {
                 }
                 ClusterLink.State.DISCONNECTED -> {
                     if (lostAt == 0L) lostAt = System.currentTimeMillis()
-                    if (bike != null) {
+                    main.removeCallbacks(silentCheck)
+                    val last = bike
+                    if (last != null) {
                         TripLog.onDisconnected(this)
-                        com.th4rv4.zukinav.trips.Parking.onBikeOff(this)
+                        val fresh = System.currentTimeMillis() - lastReadingAt < DropJudge.FRESH_READING_MS
+                        DropWatch.start(this, last.speedKmh.takeIf { fresh }) { onDropJudged(it) }
                     }
                     bike = null
                     main.removeCallbacks(loop)
@@ -308,6 +321,66 @@ class DashService : Service(), ClusterLink.Listener {
         }
     }
 
+    // ---- dash dropping out --------------------------------------------------
+
+    /** When the last reading came from the dash; it sends one every 5 s. */
+    private var lastReadingAt = 0L
+
+    /** Where the last drop happened, for the parked spot if the dash never comes back. */
+    private var dropLat: Double? = null
+    private var dropLng: Double? = null
+
+    /**
+     * Connected but the dash has gone quiet: it sometimes stops talking
+     * without dropping the link. Reconnect instead of waiting for it.
+     */
+    private val silentCheck = object : Runnable {
+        override fun run() {
+            if (link.state != ClusterLink.State.READY) return
+            val quiet = System.currentTimeMillis() - lastReadingAt
+            if (quiet >= SILENT_MS) {
+                AppLog.d("Dash", "Dash silent for ${quiet / 1000} s, reconnecting")
+                link.disconnect()
+                return
+            }
+            main.postDelayed(this, SILENT_CHECK_MS)
+        }
+    }
+
+    /** What DropWatch made of the dash going quiet. */
+    private fun onDropJudged(j: DropJudge) {
+        if (link.state == ClusterLink.State.READY) return
+        dropLat = j.dropLat
+        dropLng = j.dropLng
+        when (j.verdict) {
+            DropJudge.Verdict.DASH_LOST -> {
+                AppLog.d("Dash", "Dash dropped while riding (${j.reason}): the ride goes on, reconnecting every 15 s")
+                TripLog.onDashLost(this)
+                // Back to quick retries, whatever the backoff had reached.
+                lostAt = System.currentTimeMillis()
+                main.removeCallbacks(lostGiveUp)
+                main.postDelayed(lostGiveUp, DropJudge.LOST_LIMIT_MS)
+            }
+            else -> {
+                AppLog.d("Dash", "Bike switched off (${j.reason})")
+                TripLog.confirmBikeOff(this)
+                com.th4rv4.zukinav.trips.Parking.onBikeOff(this, j.dropLat, j.dropLng)
+            }
+        }
+        updateNotification()
+        notifyState()
+    }
+
+    /** A dash lost mid-ride that never came back: count it as the bike off where it dropped. */
+    private val lostGiveUp = Runnable {
+        if (link.state == ClusterLink.State.READY || !TripLog.dashLost) return@Runnable
+        AppLog.d("Dash", "Dash not back in ${DropJudge.LOST_LIMIT_MS / 60_000} min: counting it as the bike off where it dropped")
+        TripLog.confirmBikeOff(this)
+        com.th4rv4.zukinav.trips.Parking.onBikeOff(this, dropLat, dropLng)
+        updateNotification()
+        notifyState()
+    }
+
     // ---- from the dash ------------------------------------------------------
 
     override fun onNotification(value: ByteArray) {
@@ -316,6 +389,7 @@ class DashService : Service(), ClusterLink.Listener {
     }
 
     private fun onBikeData(data: BikeData) {
+        lastReadingAt = System.currentTimeMillis()
         TripLog.onReading(this, data)
         data.fuelBars?.let { bars -> FuelStore.onReading(this, data.odoKm, bars)?.let { askAboutRefill(it) } }
         if (data.odoKm > 0) MaintNotifier.show(this, MaintStore.onOdo(this, data.odoKm))
@@ -732,6 +806,7 @@ class DashService : Service(), ClusterLink.Listener {
         val linkNow = when {
             bluetoothOff -> NotifText.Link.BLUETOOTH_OFF
             link.state == ClusterLink.State.READY -> NotifText.Link.CONNECTED
+            TripLog.dashLost -> NotifText.Link.DASH_LOST
             TripLog.bikeOff -> NotifText.Link.BIKE_OFF
             else -> NotifText.Link.WAITING
         }
@@ -788,6 +863,9 @@ class DashService : Service(), ClusterLink.Listener {
         private const val REFILL_CHANNEL = "refills"
         const val REFILL_NOTIF_ID = 18
         private const val CONNECT_TIMEOUT_MS = 20_000L
+        /** The dash sends a reading every 5 s; none for this long while connected means it has stopped talking. */
+        private const val SILENT_MS = 20_000L
+        private const val SILENT_CHECK_MS = 5_000L
         /** Fast reconnect attempts for this long after losing the bike. */
         private const val FAST_WINDOW_MS = 5 * 60_000L
         /** Then a quiet background wait of this long between quick direct tries. */

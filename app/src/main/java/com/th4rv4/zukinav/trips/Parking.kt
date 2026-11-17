@@ -30,12 +30,15 @@ object Parking {
      * being recorded; otherwise asks the phone once where it is, which is
      * next to the bike at that moment.
      */
-    fun onBikeOff(ctx: Context) {
+    fun onBikeOff(ctx: Context, atLat: Double? = null, atLng: Double? = null) {
         val app = ctx.applicationContext
         if (!Places.hasForeground(app)) return
         val now = System.currentTimeMillis()
         val p = RouteRecorder.lastPoint?.takeIf { now - it.at < FRESH_MS }
-        if (p != null) {
+        if (atLat != null && atLng != null) {
+            // Where the dash dropped, not where the phone is now.
+            store(app, atLat, atLng, now)
+        } else if (p != null) {
             store(app, p.lat, p.lng, now)
         } else {
             Places.locate(app) { lat, lng -> store(app, lat, lng, now) }

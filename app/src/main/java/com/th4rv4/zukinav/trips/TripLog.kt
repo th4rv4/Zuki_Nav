@@ -19,9 +19,6 @@ object TripLog {
     /** Rides shorter than this are not saved when Skip Short Rides is on. */
     const val SHORT_RIDE_KM = 0.5
 
-    /** A dash quiet this long is the key off rather than a Bluetooth dropout. */
-    private const val KEY_OFF_CONFIRM_MS = 30_000L
-
     private val main = Handler(Looper.getMainLooper())
     private val recorder = TripRecorder()
     private var restored = false
@@ -34,6 +31,10 @@ object TripLog {
     var bikeOff = false
         private set
 
+    /** The dash dropped out while riding; the ride goes on with GPS until it's back. */
+    var dashLost = false
+        private set
+
     private val listeners = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
     fun addListener(l: () -> Unit) { listeners.add(l) }
     fun removeListener(l: () -> Unit) { listeners.remove(l) }
@@ -42,13 +43,26 @@ object TripLog {
     /** While the key is off: checks every minute whether the ride has ended. */
     private val idleCheck = Runnable { appContext?.let { finishIfIdle(it) } }
 
-    /** The dash quiet this long after a dropout: the key is off, GPS can stop. */
-    private val keyOff = Runnable {
-        val ctx = appContext ?: return@Runnable
+    /** The dash went quiet and it was the key off (see DropJudge): GPS can stop. */
+    fun confirmBikeOff(ctx: Context) {
+        restore(ctx)
+        if (keyOn) return
         bikeOff = true
-        val id = recorder.active?.start ?: return@Runnable
+        dashLost = false
+        changed()
+        val id = recorder.active?.start ?: return
         AppLog.d("Trips", "Bike off")
         RouteRecorder.update(ctx, id, null, keyOn = false, routeOpen = RouteWatch.isOpen(ctx))
+    }
+
+    /** The dash dropped out while riding: keep the ride and its route going on GPS. */
+    fun onDashLost(ctx: Context) {
+        restore(ctx)
+        if (keyOn) return
+        dashLost = true
+        bikeOff = false
+        val id = recorder.active?.start
+        if (id != null && Prefs(ctx).recordRoute) RouteRecorder.update(ctx, id, null, keyOn = true, routeOpen = RouteWatch.isOpen(ctx))
         changed()
     }
 
@@ -69,16 +83,17 @@ object TripLog {
         val prefs = Prefs(ctx)
         restore(ctx)
         main.removeCallbacks(idleCheck)
-        main.removeCallbacks(keyOff)
-        val wasOff = bikeOff
+        val wasOff = bikeOff || dashLost
+        val gapWasRiding = dashLost
         keyOn = true
         bikeOff = false
+        dashLost = false
         if (!prefs.recordTrips) return
         val now = System.currentTimeMillis()
         val routeOpen = RouteWatch.isOpen(ctx, now)
         val here = RouteRecorder.lastPoint?.takeIf { now - it.at < 60_000L }?.let { it.lat to it.lng }
         val stopsBefore = recorder.active?.stops?.size ?: 0
-        recorder.onReading(d, now, routeOpen, here)?.let { save(ctx, it) }
+        recorder.onReading(d, now, routeOpen, here, gapWasRiding)?.let { save(ctx, it) }
         if (recorder.justStarted) {
             AppLog.d("Trips", "Ride started at ODO ${d.odoKm}")
             if (prefs.tripPlaces) Places.locate(ctx) { lat, lng -> main.post { recorder.setStartPlace(lat, lng); persist(ctx) } }
@@ -94,7 +109,11 @@ object TripLog {
         if (wasOff || recorder.justStarted) changed()
     }
 
-    /** The dash went quiet (usually the key off): note where, and end the ride if it stays off. */
+    /**
+     * The dash went quiet: note where, and end the ride if it stays off.
+     * Whether it was the key off or a dropout mid-ride is decided after,
+     * see [confirmBikeOff] and [onDashLost].
+     */
     fun onDisconnected(ctx: Context) {
         restore(ctx)
         keyOn = false
@@ -102,8 +121,6 @@ object TripLog {
         if (Prefs(ctx).tripPlaces) Places.locate(ctx) { lat, lng -> main.post { recorder.setEndPlace(lat, lng); persist(ctx) } }
         main.removeCallbacks(idleCheck)
         main.postDelayed(idleCheck, 60_000L)
-        main.removeCallbacks(keyOff)
-        main.postDelayed(keyOff, KEY_OFF_CONFIRM_MS)
     }
 
     /** A Maps route opened or closed: that changes when a parked ride ends. */

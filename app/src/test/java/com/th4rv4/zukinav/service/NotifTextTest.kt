@@ -44,4 +44,10 @@ class NotifTextTest {
         assertEquals("10 km", NotifText.distance(10.4))
         assertEquals("0.3 km", NotifText.distance(0.35))
     }
+
+    @Test fun dashLostMidRide() {
+        val s = NotifText.compose(Input(Link.DASH_LOST, rangeKm = 120))
+        assertEquals("Dash Not Answering", s.title)
+        assertEquals("", s.text)
+    }
 }

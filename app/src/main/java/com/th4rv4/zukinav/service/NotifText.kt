@@ -10,7 +10,7 @@ import java.util.Locale
  */
 object NotifText {
 
-    enum class Link { CONNECTED, WAITING, BIKE_OFF, BLUETOOTH_OFF }
+    enum class Link { CONNECTED, WAITING, BIKE_OFF, BLUETOOTH_OFF, DASH_LOST }
 
     data class Input(
         val link: Link,
@@ -33,6 +33,7 @@ object NotifText {
             hot -> "Engine Hot · ${i.engineC}°C"
             i.link == Link.CONNECTED -> "Connected"
             i.link == Link.BIKE_OFF -> "Bike Off"
+            i.link == Link.DASH_LOST -> "Dash Not Answering"
             else -> "Waiting For Bike"
         }
         val parts = ArrayList<String>()

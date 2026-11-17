@@ -144,7 +144,14 @@ class TripRecorder {
      * previous trip if this reading comes after the key was off long enough
      * to end it.
      */
-    fun onReading(d: BikeData, now: Long, routeOpen: Boolean = false, here: Pair<Double, Double>? = null): Trip? {
+    fun onReading(
+        d: BikeData,
+        now: Long,
+        routeOpen: Boolean = false,
+        here: Pair<Double, Double>? = null,
+        /** The dash was lost while riding since the last reading: the gap was riding, not a stop. */
+        gapWasRiding: Boolean = false,
+    ): Trip? {
         val finished = finishIfIdle(now, routeOpen)
         var a = active
         justStarted = a == null
@@ -162,7 +169,9 @@ class TripRecorder {
 
         val stepMs = now - a.lastAt
         // The key was off for a while: a stop, from when the bike came to rest.
-        if (stepMs >= KEY_OFF_STOP_MS) {
+        if (gapWasRiding) {
+            // Not a stop: the dash dropped out while riding.
+        } else if (stepMs >= KEY_OFF_STOP_MS) {
             val arrive = a.restSince ?: a.lastAt
             a = addStop(a, arrive, now, a.restLat ?: a.endLat ?: here?.first, a.restLng ?: a.endLng ?: here?.second)
         } else if (d.speedKmh > 0 && a.restSince != null && now - a.restSince >= HALT_STOP_MS) {
@@ -170,14 +179,14 @@ class TripRecorder {
             a = addStop(a, a.restSince, now, a.restLat ?: here?.first, a.restLng ?: here?.second)
         }
 
-        val moving = (d.speedKmh > 0 || a.lastSpeed > 0) && stepMs <= MAX_STEP_MS
+        val moving = gapWasRiding || ((d.speedKmh > 0 || a.lastSpeed > 0) && stepMs <= MAX_STEP_MS)
         val atRest = d.speedKmh == 0
         active = a.copy(
             lastAt = now,
             lastOdo = d.odoKm,
             lastTripA = d.tripAKm,
             lastSpeed = d.speedKmh,
-            distanceKm = a.distanceKm + step(a, d),
+            distanceKm = a.distanceKm + step(a, d, if (gapWasRiding) maxOf(MAX_STEP_KM, stepMs * MAX_KMH / 3_600_000.0) else MAX_STEP_KM),
             movingMs = a.movingMs + if (moving) stepMs.coerceAtLeast(0) else 0,
             topSpeed = maxOf(a.topSpeed, d.speedKmh),
             legTop = maxOf(a.legTop, d.speedKmh),
@@ -227,12 +236,12 @@ class TripRecorder {
         )
     }
 
-    private fun step(a: Active, d: BikeData): Double {
+    private fun step(a: Active, d: BikeData, maxKm: Double): Double {
         val byTripA = d.tripAKm - a.lastTripA
-        if (byTripA in 0.0..MAX_STEP_KM) return byTripA
+        if (byTripA in 0.0..maxKm) return byTripA
         // Trip A was reset, or the reading jumped: use the ODO for this stretch.
         val byOdo = (d.odoKm - a.lastOdo).toDouble()
-        return if (byOdo in 0.0..MAX_STEP_KM) byOdo else 0.0
+        return if (byOdo in 0.0..maxKm) byOdo else 0.0
     }
 
     companion object {
@@ -255,5 +264,8 @@ class TripRecorder {
 
         /** Farther than this between two readings is not real riding. */
         private const val MAX_STEP_KM = 5.0
+
+        /** Across a dash dropout while riding, no faster than this on average. */
+        private const val MAX_KMH = 150.0
     }
 }
