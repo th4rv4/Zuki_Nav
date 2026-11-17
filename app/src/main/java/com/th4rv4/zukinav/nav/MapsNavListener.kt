@@ -44,6 +44,8 @@ class MapsNavListener : NotificationListenerService() {
     private val alerts = AlertTracker(
         defaultSmsPackage = { try { Telephony.Sms.getDefaultSmsPackage(this) } catch (_: Exception) { null } },
         skipBusinessSms = { prefs.skipBusinessSms },
+        phoneState = { phoneState() },
+        log = { AppLog.d("Calls", it) },
     )
     /** Reject Unknown Callers: who was declined, and which call notifications were already looked at. */
     private val callFilter = CallFilter()
@@ -55,7 +57,8 @@ class MapsNavListener : NotificationListenerService() {
     private val alertTick = object : Runnable {
         override fun run() {
             deliver(alerts.tick(System.currentTimeMillis()))
-            if (alerts.hasPending) main.postDelayed(this, 500)
+            // Quick checks so the dash hears soon after the phone stops ringing.
+            if (alerts.hasPending) main.postDelayed(this, 250)
         }
     }
 
@@ -84,6 +87,14 @@ class MapsNavListener : NotificationListenerService() {
         }
     }
 
+    /** Why the last notification went, for the log. */
+    private var removeReason = 0
+
+    override fun onNotificationRemoved(sbn: StatusBarNotification, rankingMap: RankingMap?, reason: Int) {
+        removeReason = reason
+        super.onNotificationRemoved(sbn, rankingMap, reason)
+    }
+
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         if (isMapsGuidance(sbn)) {
             AppLog.d("Maps", "Guidance notification removed")
@@ -93,6 +104,9 @@ class MapsNavListener : NotificationListenerService() {
             NavRepository.scheduleEnd()
         } else if (sbn.packageName != packageName) {
             val n = notice(sbn)
+            if (n.category == AlertTracker.CATEGORY_CALL) {
+                AppLog.d("Calls", "Call notification removed (${reasonName(removeReason)}), phone ${phoneState().name.lowercase()}")
+            }
             callerLookups.remove(sbn.key)
             if (screenedCalls.remove(sbn.key) == true) return
             deliver(alerts.removed(n, System.currentTimeMillis()))
@@ -154,6 +168,31 @@ class MapsNavListener : NotificationListenerService() {
         }
         list.orEmpty().mapNotNull { it.uri } + e.getStringArray(Notification.EXTRA_PEOPLE).orEmpty().toList()
     } catch (_: Exception) { emptyList() }
+
+    /** Ringing or on a call, from Android's audio mode; needs no permission. */
+    private fun phoneState(): AlertTracker.PhoneState = try {
+        when (getSystemService(android.media.AudioManager::class.java)?.mode) {
+            android.media.AudioManager.MODE_RINGTONE -> AlertTracker.PhoneState.RINGING
+            android.media.AudioManager.MODE_IN_CALL,
+            android.media.AudioManager.MODE_IN_COMMUNICATION,
+            -> AlertTracker.PhoneState.IN_CALL
+            else -> AlertTracker.PhoneState.IDLE
+        }
+    } catch (_: Exception) {
+        AlertTracker.PhoneState.IDLE
+    }
+
+    private fun reasonName(r: Int): String = when (r) {
+        REASON_CLICK -> "tapped"
+        REASON_CANCEL -> "swiped"
+        REASON_CANCEL_ALL -> "cleared"
+        REASON_APP_CANCEL -> "by the phone app"
+        REASON_APP_CANCEL_ALL -> "by the phone app"
+        REASON_LISTENER_CANCEL -> "by Zuki Nav"
+        REASON_SNOOZED -> "snoozed"
+        REASON_GROUP_SUMMARY_CANCELED -> "group cleared"
+        else -> "reason $r"
+    }
 
     @Suppress("DEPRECATION")
     private fun callPerson(e: android.os.Bundle): Person? = try {
@@ -217,7 +256,7 @@ class MapsNavListener : NotificationListenerService() {
     private fun deliver(list: List<Alert>) {
         if (alerts.hasPending) {
             main.removeCallbacks(alertTick)
-            main.postDelayed(alertTick, 500)
+            main.postDelayed(alertTick, 250)
         }
         for (a in list) {
             // The phone app's own missed-call notice for a call we declined.

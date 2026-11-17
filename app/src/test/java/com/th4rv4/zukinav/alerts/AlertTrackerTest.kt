@@ -134,4 +134,75 @@ class AlertTrackerTest {
         // Saved.
         assertEquals("Nitin Cllg", checked.copy(savedName = "Nitin Cllg").screenName())
     }
+
+    @Test fun screenOffCallKeepsRingingUntilThePhoneStops() {
+        var state = AlertTracker.PhoneState.RINGING
+        val t = AlertTracker(phoneState = { state })
+        t.posted(call("c", 1), 0)
+        // The phone app drops its notification for the full-screen call page.
+        t.removed(call("c", 1), 2_000)
+        assertEquals(emptyList<Alert>(), t.tick(4_000))
+        // Shown again while it rings.
+        assertEquals(listOf(Alert.Ringing("Mom", false)), t.tick(20_000))
+        assertTrue(t.hasPending)
+        state = AlertTracker.PhoneState.IDLE
+        assertEquals(listOf(Alert.Missed("Mom", 1, false)), t.tick(25_000))
+    }
+
+    @Test fun screenOffCallAnsweredOnTheCallPage() {
+        var state = AlertTracker.PhoneState.RINGING
+        val t = AlertTracker(phoneState = { state })
+        t.posted(call("c", 1), 0)
+        t.removed(call("c", 1), 2_000)
+        t.tick(4_000)
+        state = AlertTracker.PhoneState.IN_CALL
+        assertEquals(listOf(Alert.Answered("Mom", false)), t.tick(9_000))
+        assertTrue(!t.hasPending)
+    }
+
+    @Test fun ringingNotificationComingBackIsTheSameCall() {
+        val state = AlertTracker.PhoneState.RINGING
+        val t = AlertTracker(phoneState = { state })
+        t.posted(call("c", 1), 0)
+        t.removed(call("c", 1), 2_000)
+        t.tick(4_000)
+        // Screen turned on: a new ringing notification, no second alert.
+        assertEquals(emptyList<Alert>(), t.posted(call("d", 1), 6_000))
+        // Ringing again, not a missed call waiting.
+        assertEquals(emptyList<Alert>(), t.tick(8_000).filterIsInstance<Alert.Missed>())
+        assertEquals(listOf(Alert.Answered("Mom", false)), t.posted(call("d", 2), 9_000))
+    }
+
+    @Test fun answeredAfterLongRingWithOngoingNotification() {
+        val t = AlertTracker(phoneState = { AlertTracker.PhoneState.RINGING })
+        t.posted(call("c", 1), 0)
+        t.removed(call("c", 1), 2_000)
+        t.tick(4_000)
+        assertEquals(listOf(Alert.Answered("Mom", false)), t.posted(call("o", 2), 10_000))
+    }
+
+    @Test fun ringingShownAgainWhileThePhoneRings() {
+        var state = AlertTracker.PhoneState.RINGING
+        val t = AlertTracker(phoneState = { state })
+        t.posted(call("c", 1), 0)
+        assertTrue(t.hasPending)
+        assertEquals(emptyList<Alert>(), t.tick(5_000))
+        assertEquals(listOf(Alert.Ringing("Mom", false)), t.tick(10_000))
+        // Notification gone with the screen off; still ringing.
+        t.removed(call("c", 1), 12_000)
+        assertEquals(emptyList<Alert>(), t.tick(14_000))
+        assertEquals(listOf(Alert.Ringing("Mom", false)), t.tick(20_000))
+        assertEquals(listOf(Alert.Ringing("Mom", false)), t.tick(30_000))
+        state = AlertTracker.PhoneState.IDLE
+        assertEquals(listOf(Alert.Missed("Mom", 1, false)), t.tick(44_000))
+        assertTrue(!t.hasPending)
+    }
+
+    @Test fun answeredCallIsNotShownAgain() {
+        val t = AlertTracker()
+        t.posted(call("c", 1), 0)
+        t.posted(call("c", 2), 3_000)
+        assertEquals(emptyList<Alert>(), t.tick(20_000))
+        assertTrue(!t.hasPending)
+    }
 }

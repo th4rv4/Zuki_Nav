@@ -63,7 +63,12 @@ class AlertTracker(
     private val defaultSmsPackage: () -> String? = { null },
     /** Leave out SMS from bank, OTP, government and promo senders. */
     private val skipBusinessSms: () -> Boolean = { false },
+    /** Whether the phone is ringing or on a call right now, whatever its notifications say. */
+    private val phoneState: () -> PhoneState = { PhoneState.IDLE },
+    private val log: (String) -> Unit = {},
 ) {
+
+    enum class PhoneState { IDLE, RINGING, IN_CALL }
 
     private class Call(
         var caller: String,
@@ -73,9 +78,16 @@ class AlertTracker(
         /** The name came from the contacts, so later updates can't improve it. */
         var saved: Boolean = false,
         var renamed: Boolean = false,
+        /** When it started ringing, and when the dash was last told. */
+        var since: Long = 0L,
+        var shownAt: Long = 0L,
+        /** Still being shown again on the dash; stops after [MAX_RING_WAIT_MS]. */
+        var repeating: Boolean = true,
     )
 
-    private class PendingMiss(val call: Call, val at: Long)
+    private class PendingMiss(val call: Call, val at: Long) {
+        var waitingLogged = false
+    }
 
     private val calls = HashMap<String, Call>()
     private val pendingMisses = ArrayList<PendingMiss>()
@@ -118,13 +130,32 @@ class AlertTracker(
 
     /** Settles calls that stopped ringing at least [MISS_DELAY_MS] ago. */
     fun tick(now: Long): List<Alert> {
-        if (pendingMisses.isEmpty()) return emptyList()
         val out = ArrayList<Alert>()
+        // The dash drops its incoming-call screen after about 15 s; show it
+        // again for as long as the phone rings.
+        for (c in calls.values) if (!c.answered) repeatRinging(c, now, out)
         val it = pendingMisses.iterator()
         while (it.hasNext()) {
             val p = it.next()
             if (now - p.at < MISS_DELAY_MS) continue
+            // With the screen off the phone app swaps its ringing notification
+            // for the full-screen call page, so the notification goes while
+            // the phone is still ringing. Wait for the ringing itself to stop.
+            val state = if (now - p.at < MAX_RING_WAIT_MS) phoneState() else PhoneState.IDLE
+            if (state == PhoneState.RINGING) {
+                if (!p.waitingLogged) {
+                    p.waitingLogged = true
+                    log("Call notification gone, phone still ringing")
+                }
+                repeatRinging(p.call, now, out)
+                continue
+            }
             it.remove()
+            if (state == PhoneState.IN_CALL) {
+                // Picked up on the full-screen call page or a headset.
+                out.add(Alert.Answered(p.call.caller, p.call.whatsapp))
+                continue
+            }
             missedCount++
             lastMissAt = now
             out.add(Alert.Missed(p.call.caller, missedCount, p.call.whatsapp))
@@ -132,8 +163,19 @@ class AlertTracker(
         return out
     }
 
-    /** True while a missed-call decision is waiting for [tick]. */
-    val hasPending: Boolean get() = pendingMisses.isNotEmpty()
+    private fun repeatRinging(c: Call, now: Long, out: MutableList<Alert>) {
+        if (!c.repeating) return
+        if (now - c.since > MAX_RING_WAIT_MS) {
+            c.repeating = false
+            return
+        }
+        if (now - c.shownAt < RING_REPEAT_MS) return
+        c.shownAt = now
+        out.add(Alert.Ringing(c.caller, c.whatsapp))
+    }
+
+    /** True while [tick] has work: a call ringing, or a missed-call decision waiting. */
+    val hasPending: Boolean get() = pendingMisses.isNotEmpty() || calls.values.any { !it.answered && it.repeating }
 
     // ---- calls ------------------------------------------------------------
 
@@ -148,19 +190,18 @@ class AlertTracker(
         val whatsapp = isWhatsApp(n.pkg)
         val existing = calls[n.key]
         if (incoming) {
-            if (existing == null) {
-                calls[n.key] = Call(caller, n.pkg, whatsapp, answered = false, saved = n.savedName != null)
+            // The same call coming back as a new notification, e.g. when the
+            // screen turns on while it rings: carry on with it.
+            val call = existing ?: pendingMisses.firstOrNull { it.call.pkg == n.pkg && !it.call.answered }?.let { back ->
+                pendingMisses.remove(back)
+                calls[n.key] = back.call
+                back.call
+            }
+            if (call == null) {
+                calls[n.key] = Call(caller, n.pkg, whatsapp, answered = false, saved = n.savedName != null, since = now, shownAt = now)
                 out.add(Alert.Ringing(caller, whatsapp))
-            } else if (!existing.answered && !existing.saved && !existing.renamed &&
-                caller != existing.caller && caller != UNKNOWN
-            ) {
-                // The phone app first shows the name the network sent, then
-                // swaps in the saved contact name a moment later. Show the
-                // better name once; a missed call uses it too.
-                existing.caller = caller
-                existing.saved = n.savedName != null
-                existing.renamed = true
-                out.add(Alert.Ringing(caller, whatsapp))
+            } else {
+                renameIfBetter(call, caller, n, whatsapp, now, out)
             }
             return
         }
@@ -174,7 +215,7 @@ class AlertTracker(
         }
         // A new "ongoing" notification from the app that was just ringing:
         // the same call, answered.
-        val swapped = pendingMisses.firstOrNull { it.call.pkg == n.pkg && now - it.at < MISS_DELAY_MS }
+        val swapped = pendingMisses.firstOrNull { it.call.pkg == n.pkg && (now - it.at < MISS_DELAY_MS || it.waitingLogged) }
         if (swapped != null) {
             pendingMisses.remove(swapped)
             calls[n.key] = Call(swapped.call.caller, n.pkg, whatsapp, answered = true)
@@ -185,8 +226,32 @@ class AlertTracker(
         }
     }
 
+    /**
+     * The phone app first shows the name the network sent, then swaps in the
+     * saved contact name a moment later. Show the better name once; a missed
+     * call uses it too.
+     */
+    private fun renameIfBetter(call: Call, caller: String, n: Notice, whatsapp: Boolean, now: Long, out: MutableList<Alert>) {
+        if (call.answered || call.saved || call.renamed || caller == call.caller || caller == UNKNOWN) return
+        call.caller = caller
+        call.saved = n.savedName != null
+        call.renamed = true
+        call.shownAt = now
+        out.add(Alert.Ringing(caller, whatsapp))
+    }
+
     private fun onMissedNotice(n: Notice, now: Long, out: MutableList<Alert>) {
         val isNew = missedNotices.add(n.key)
+        // The phone app says the call was missed: no need to wait for the
+        // ringing to wind down, tell the dash now.
+        val waiting = pendingMisses.firstOrNull { it.call.pkg == n.pkg && !it.call.answered }
+        if (isNew && waiting != null) {
+            pendingMisses.remove(waiting)
+            missedCount++
+            lastMissAt = now
+            out.add(Alert.Missed(waiting.call.caller, missedCount, waiting.call.whatsapp))
+            return
+        }
         // The phone app's own "Missed call" notification. Usually we have
         // already counted this call from its ringing; only count it when we
         // did not (e.g. the call came in before the dash link was up).
@@ -258,6 +323,10 @@ class AlertTracker(
 
         /** How long a call may be gone before it counts as missed. */
         const val MISS_DELAY_MS = 1_500L
+        /** The dash shows an incoming call for about 15 s; show it again this often while ringing. */
+        const val RING_REPEAT_MS = 10_000L
+        /** Longest a call is taken to ring after its notification went. */
+        const val MAX_RING_WAIT_MS = 120_000L
         /** A phone-app missed-call notification this soon after we counted one is the same call. */
         const val MISSED_NOTICE_WINDOW_MS = 30_000L
 
