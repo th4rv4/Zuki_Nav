@@ -22,6 +22,11 @@ data class Notice(
     val number: String? = null,
     /** The number was looked up in the contacts, so no [savedName] means it isn't saved. */
     val contactsChecked: Boolean = false,
+    /** Chat apps: the group's name, when the message is in a group. */
+    val groupName: String? = null,
+    val isGroup: Boolean = false,
+    /** Chat apps: the sender's phone number, when the notification carries it. */
+    val senderNumber: String? = null,
 ) {
     /**
      * Who Reject Unknown Callers judges the call by. With the contacts read,
@@ -30,8 +35,8 @@ data class Notice(
      */
     fun screenName(): String? = savedName
         ?: number?.takeIf { contactsChecked }
-        ?: callPerson?.takeIf { it.isNotBlank() }
-        ?: title
+        ?: callPerson?.takeIf { it.isNotBlank() }?.let { AlertTracker.cleanCaller(it) }
+        ?: title?.let { AlertTracker.cleanCaller(it) }
 }
 
 /** What to show on the dash. */
@@ -271,8 +276,11 @@ class AlertTracker(
                 (n.pkg in PHONE_PACKAGES || isWhatsApp(n.pkg)) &&
                 MISSED_WORDS.containsMatchIn("${n.title} ${n.text}".lowercase()))
 
-    private fun callerName(n: Notice): String =
-        (n.savedName ?: n.callPerson?.takeIf { it.isNotBlank() } ?: n.title?.takeIf { it.isNotBlank() } ?: UNKNOWN).trim()
+    private fun callerName(n: Notice): String {
+        val name = cleanCaller(n.savedName ?: n.callPerson?.takeIf { it.isNotBlank() } ?: n.title?.takeIf { it.isNotBlank() } ?: UNKNOWN)
+        // The dash can't show emoji or non-Latin letters: show the number instead.
+        return forDash(if (readable(name)) name else n.number ?: UNKNOWN)
+    }
 
     private fun callerFromMissedNotice(n: Notice): String {
         n.savedName?.let { return it }
@@ -281,7 +289,7 @@ class AlertTracker(
         val title = n.title.orEmpty()
         val text = n.text.orEmpty()
         val name = if (MISSED_WORDS.containsMatchIn(title.lowercase())) text else title
-        return name.trim().ifEmpty { "Unknown" }
+        return forDash(cleanCaller(name).ifEmpty { UNKNOWN })
     }
 
     // ---- messages ---------------------------------------------------------
@@ -293,7 +301,10 @@ class AlertTracker(
     }
 
     private fun onMessage(n: Notice, out: MutableList<Alert>) {
-        val sender = senderName(n) ?: return
+        val name = senderName(n) ?: return
+        // WhatsApp's own "new messages" notice, not a person.
+        if (isWhatsApp(n.pkg) && APP_TITLES.matches(name)) return
+        val sender = forDash(if (isWhatsApp(n.pkg)) whatsAppSender(n, name) else if (readable(name)) name else "Message")
         if (!isWhatsApp(n.pkg) && skipBusinessSms() && isBusinessSender(sender)) return
         val content = "$sender\u0000${n.text.orEmpty()}"
         // Messaging apps repost the same notification when anything changes;
@@ -302,6 +313,28 @@ class AlertTracker(
         messageNotices[n.key] = content
         messageCount++
         out.add(Alert.Message(sender, messageCount, isWhatsApp(n.pkg)))
+    }
+
+    /**
+     * Who a WhatsApp message is from, as the dash can show it:
+     *  - in a group: the group's name, whoever sent it (a group message
+     *    is often not for you; anything that is comes as a chat of its own)
+     *  - a saved contact: the saved name
+     *  - someone not saved: their number
+     * WhatsApp marks people who aren't saved with a "~" before the name they
+     * chose; that name can be anything, emoji included.
+     */
+    private fun whatsAppSender(n: Notice, name: String): String {
+        if (n.isGroup) {
+            val group = (n.groupName ?: n.title?.substringBefore(": ", ""))?.replace(COUNT_SUFFIX, "")?.trim()
+            if (group != null && readable(group)) return group
+        }
+        val unsaved = name.startsWith("~") || !readable(name)
+        if (!unsaved) return name
+        n.senderNumber?.let { return it }
+        // The number isn't on the notification: the name they chose, if the dash can show it.
+        val chosen = name.removePrefix("~").trim()
+        return if (readable(chosen)) chosen else "WhatsApp"
     }
 
     private fun senderName(n: Notice): String? {
@@ -347,6 +380,72 @@ class AlertTracker(
         )
 
         fun isWhatsApp(pkg: String): Boolean = pkg in WHATSAPP_PACKAGES
+
+        /**
+         * A caller name as the phone app shows it, tidied for the dash:
+         * without the "Likely:" the phone app puts before a name the network
+         * sent for a number you haven't saved, and without the invisible
+         * direction marks around numbers.
+         */
+        fun cleanCaller(name: String): String =
+            name.replace(DIRECTION_MARKS, "").replace(GUESS_PREFIX, "").trim().ifEmpty { name.trim() }
+
+        /**
+         * A phone number as it fits the dash, which shows about 13
+         * characters and can't draw "+": without the country code, as
+         * "98765 43210". Anything that isn't a number stays as it is.
+         */
+        fun forDash(name: String): String {
+            val compact = name.replace(DIRECTION_MARKS, "").replace(Regex("""[\s\-().]"""), "")
+            if (!PHONE.matches(compact)) return name
+            val digits = compact.removePrefix("+")
+            val national = when {
+                // With a country code: "+91…", or "91…" as WhatsApp writes it.
+                compact.startsWith("+") || digits.length > 11 -> withoutCountryCode(digits)
+                // A trunk 0 in front of a local number.
+                digits.length == 11 && digits.startsWith("0") -> digits.substring(1)
+                else -> digits
+            }
+            return if (national.length == 10) "${national.substring(0, 5)} ${national.substring(5)}" else national
+        }
+
+        /** Country calling codes never start with one another, so the first match is the one. */
+        private fun withoutCountryCode(digits: String): String {
+            for (len in 1..3) {
+                if (digits.take(len) in COUNTRY_CODES && digits.length - len >= 6) return digits.substring(len)
+            }
+            // A code not in the list: keep the last 10 digits, the usual length of a mobile number.
+            return digits.takeLast(10)
+        }
+
+        private val COUNTRY_CODES = setOf(
+            "1", "7",
+            "20", "27", "30", "31", "32", "33", "34", "36", "39", "40", "41", "43", "44", "45", "46", "47", "48", "49",
+            "51", "52", "53", "54", "55", "56", "57", "58", "60", "61", "62", "63", "64", "65", "66",
+            "81", "82", "84", "86", "90", "91", "92", "93", "94", "95", "98",
+            "211", "212", "213", "216", "218", "220", "221", "222", "223", "224", "225", "226", "227", "228", "229",
+            "230", "231", "232", "233", "234", "235", "236", "237", "238", "239", "240", "241", "242", "243", "244",
+            "245", "246", "248", "249", "250", "251", "252", "253", "254", "255", "256", "257", "258", "260", "261",
+            "262", "263", "264", "265", "266", "267", "268", "269", "290", "291", "297", "298", "299",
+            "350", "351", "352", "353", "354", "355", "356", "357", "358", "359", "370", "371", "372", "373", "374",
+            "375", "376", "377", "378", "380", "381", "382", "383", "385", "386", "387", "389",
+            "420", "421", "423", "500", "501", "502", "503", "504", "505", "506", "507", "508", "509",
+            "590", "591", "592", "593", "594", "595", "596", "597", "598", "599",
+            "670", "672", "673", "674", "675", "676", "677", "678", "679", "680", "681", "682", "683", "685", "686",
+            "687", "688", "689", "690", "691", "692", "850", "852", "853", "855", "856", "880", "886",
+            "960", "961", "962", "963", "964", "965", "966", "967", "968", "970", "971", "972", "973", "974", "975",
+            "976", "977", "992", "993", "994", "995", "996", "998",
+        )
+
+        private val PHONE = Regex("""^\+?\d{6,15}$""")
+
+        private val DIRECTION_MARKS = Regex("[\u200E\u200F\u202A-\u202E\u2066-\u2069]")
+        private val GUESS_PREFIX = Regex("""^(?i)(likely|probably|possibly)\s*:\s*""")
+
+        /** True if the dash can show something of [name]: at least one plain letter or digit. */
+        fun readable(name: String): Boolean = name.any { it.code < 0x7F && it.isLetterOrDigit() }
+
+        private val APP_TITLES = Regex("""(?i)whatsapp( business)?""")
 
         /**
          * Indian business SMS come from registered headers: two letters, a

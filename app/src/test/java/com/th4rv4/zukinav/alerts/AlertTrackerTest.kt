@@ -205,4 +205,35 @@ class AlertTrackerTest {
         assertEquals(emptyList<Alert>(), t.tick(20_000))
         assertTrue(!t.hasPending)
     }
+
+    @Test fun groupMessagesShowTheGroup() {
+        val t = AlertTracker()
+        val n = msg("g", "Gixxer Gang: ~ 💲🫀", "hi").copy(isGroup = true, groupName = "Gixxer Gang")
+        assertEquals(listOf(Alert.Message("Gixxer Gang", 1, true)), t.posted(n, 0))
+        // A saved contact in a group shows the group too.
+        val saved = msg("h", "Gixxer Gang: Prakhar SF250", "yo").copy(isGroup = true, groupName = "Gixxer Gang")
+        assertEquals(listOf(Alert.Message("Gixxer Gang", 2, true)), t.posted(saved, 0))
+    }
+
+    @Test fun unsavedSenderInADmShowsTheNumber() {
+        val t = AlertTracker()
+        val n = msg("d", "~ Rahul", "hello").copy(senderNumber = "+919876543210")
+        assertEquals(listOf(Alert.Message("98765 43210", 1, true)), t.posted(n, 0))
+        // No number on the notification: the name they chose, without the ~.
+        assertEquals(listOf(Alert.Message("Rahul", 2, true)), t.posted(msg("e", "~ Rahul", "again"), 0))
+        // Nothing the dash can draw.
+        assertEquals(listOf(Alert.Message("WhatsApp", 3, true)), t.posted(msg("f", "~ 💲🫀", "hi"), 0))
+    }
+
+    @Test fun whatsAppsOwnNoticeIsSkipped() {
+        val t = AlertTracker()
+        assertTrue(t.posted(msg("w", "WhatsApp", "5 messages from 2 chats"), 0).isEmpty())
+        assertEquals(1, t.posted(msg("p", "Prakhar SF250", "on my way"), 0).size)
+    }
+
+    @Test fun unreadableCallerShowsTheNumber() {
+        val t = AlertTracker()
+        val n = call("c", 1, "माँ").copy(number = "+919876543210")
+        assertEquals(listOf(Alert.Ringing("98765 43210", false)), t.posted(n, 0))
+    }
 }

@@ -140,7 +140,57 @@ class MapsNavListener : NotificationListenerService() {
             savedName = lookup?.name,
             number = lookup?.number,
             contactsChecked = lookup?.checked == true,
-        )
+        ).let { if (AlertTracker.isWhatsApp(sbn.packageName) && !isCall) withChat(it, n) else it }
+    }
+
+    private val chatLogged = HashSet<String>()
+
+    /** WhatsApp: the group's name and the sender's number, from the chat style of the notification. */
+    private fun withChat(base: Notice, n: Notification): Notice = try {
+        val e = n.extras
+        val group = e.getBoolean(Notification.EXTRA_IS_GROUP_CONVERSATION, false)
+        val title = e.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString()
+        @Suppress("DEPRECATION")
+        val messages = e.getParcelableArray(Notification.EXTRA_MESSAGES)
+        val last = messages?.let { Notification.MessagingStyle.Message.getMessagesFromBundleArray(it) }?.lastOrNull()
+        val person = last?.senderPerson
+        val ids = listOfNotNull(person?.key, person?.uri)
+        val number = ids.firstNotNullOfOrNull { phoneFromChatId(it) }
+        // For the log: what kind of sender id WhatsApp gave, never the id itself.
+        val kind = when {
+            number != null -> "number"
+            ids.any { it.endsWith("@lid") } -> "private id"
+            ids.isNotEmpty() -> "other id (" + ids.joinToString { idShape(it) } + ")"
+            else -> "none"
+        }
+        if (chatLogged.add("${base.key}|$kind")) {
+            if (chatLogged.size > 50) chatLogged.clear()
+            AppLog.d("Messages", "WhatsApp ${if (group) "group" else "chat"}: sender id is $kind")
+        }
+        base.copy(groupName = title, isGroup = group, senderNumber = number)
+    } catch (_: Exception) {
+        base
+    }
+
+    /** What an id looks like, without what's in it: "12 digits@c.us", "tel:", "letters". */
+    private fun idShape(id: String): String {
+        val scheme = id.substringBefore(':', "").takeIf { it.isNotEmpty() && it.all(Char::isLetter) }
+        if (scheme != null) return "$scheme:"
+        val head = id.substringBefore('@')
+        val domain = id.substringAfter('@', "").let { if (it.isEmpty()) "" else "@$it" }
+        val digits = head.count { it.isDigit() }
+        return if (digits == head.length && digits > 0) "$digits digits$domain" else "${head.length} chars$domain"
+    }
+
+    /** "919876543210@s.whatsapp.net" or "tel:+91…" -> "+919876543210"; other ids aren't numbers. */
+    private fun phoneFromChatId(id: String): String? {
+        val digits = when {
+            id.endsWith("@s.whatsapp.net") || id.endsWith("@c.us") -> id.substringBefore('@')
+            id.startsWith("tel:", ignoreCase = true) -> android.net.Uri.decode(id.substring(4))
+            else -> return null
+        }.filter { it.isDigit() || it == '+' }
+        if (digits.count { it.isDigit() } !in 6..15) return null
+        return if (digits.startsWith("+")) digits else "+$digits"
     }
 
     /**

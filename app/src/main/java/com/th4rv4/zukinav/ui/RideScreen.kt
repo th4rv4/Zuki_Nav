@@ -234,7 +234,12 @@ class RideScreen(host: MainActivity) : Screen(host) {
             },
             // Hidden while live, and during a route so turn instructions get the full width.
             syncedAt = if (live == null && data != null && nav == null) formatWhen(prefs.lastBikeAt) else null,
-            parked = if (live == null && nav == null) com.th4rv4.zukinav.trips.Parking.get(host) else null,
+            parked = if (live == null && nav == null) {
+                com.th4rv4.zukinav.trips.Parking.retryName(host)
+                com.th4rv4.zukinav.trips.Parking.get(host)
+            } else {
+                null
+            },
         )
 
         val ride = if (prefs.recordTrips) TripLog.active(host) else null

@@ -54,6 +54,29 @@ object Parking {
         }.start()
     }
 
+    private var lastNameTry = 0L
+
+    /**
+     * A parked spot saved without signal has no place name; try again, at
+     * most every 5 minutes, e.g. each time the Ride tab shows it.
+     */
+    fun retryName(ctx: Context) {
+        val app = ctx.applicationContext
+        val p = get(app) ?: return
+        if (p.place != null) return
+        val now = System.currentTimeMillis()
+        if (now - lastNameTry < 5 * 60_000L) return
+        lastNameTry = now
+        Thread {
+            val place = Places.name(app, p.lat, p.lng) ?: return@Thread
+            // Only if the spot hasn't changed in the meantime.
+            if (get(app)?.at != p.at) return@Thread
+            Prefs(app).parkedSpot = encode(p.copy(place = place))
+            AppLog.d("Parking", "Found the parked spot's place name")
+            main.post { listeners.forEach { it() } }
+        }.start()
+    }
+
     private fun encode(p: Parked): String =
         String.format(Locale.US, "%.6f;%.6f;%d;%s", p.lat, p.lng, p.at, p.place.orEmpty().replace(";", ","))
 
