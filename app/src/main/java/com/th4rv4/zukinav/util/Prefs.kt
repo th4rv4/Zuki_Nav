@@ -331,6 +331,11 @@ class Prefs(context: Context) {
         get() = sp.getString(K_RESTORED_NOTE, null)
         set(v) = sp.edit().putString(K_RESTORED_NOTE, v).apply()
 
+    /** Times the rider said no to the Contacts prompt; after two Android stops asking, so Allow opens App Info. */
+    var contactsDenials: Int
+        get() = sp.getInt(K_CONTACTS_DENIALS, 0)
+        set(v) = sp.edit().putInt(K_CONTACTS_DENIALS, v).apply()
+
     /** Whether a Maps route is open, see RouteState. */
     var routeState: String?
         get() = sp.getString(K_ROUTE_STATE, null)
@@ -371,6 +376,7 @@ class Prefs(context: Context) {
         private const val K_TRIP_ACTIVE = "active_trip"
         private const val K_ROUTE_STATE = "route_state"
         private const val K_RESTORED_NOTE = "restored_note"
+        const val K_CONTACTS_DENIALS = "contacts_denials"
         private const val K_BIKE_AT = "last_bike_at"
         private const val K_UPDATE_AUTO = "update_check_on_launch"
         private const val K_THEME = "theme"

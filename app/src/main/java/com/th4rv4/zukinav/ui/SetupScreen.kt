@@ -124,6 +124,7 @@ class SetupScreen(host: MainActivity) : Screen(host) {
         val listener = host.hasListenerAccess()
         val maps = host.mapsInstalled()
         val rcInstalled = host.isInstalled(RIDE_CONNECT_PKG)
+        val contacts = host.hasContactsPermission()
 
         val paired = prefs.clusterAddress != null
         progress.set(listOf(ble, listener, maps, paired).count { it }, 4)
@@ -145,10 +146,16 @@ class SetupScreen(host: MainActivity) : Screen(host) {
                 ui.badge(if (listener) Ui.Badge.Done else Ui.Badge.Step(3)),
             ),
             ui.row(
+                "Contacts", "Shows your saved names for callers on the dash. Read on the phone only",
+                if (contacts) ui.text("Allowed", 13f, Palette.OK) else smallButton("Allow") { host.requestContactsPermission() },
+                ui.badge(if (contacts) Ui.Badge.Done else Ui.Badge.Step(4)),
+                tag = "Optional",
+            ),
+            ui.row(
                 "Close Ride Connect", "The dash takes one phone at a time",
                 if (rcInstalled) smallButton("Force Stop", primary = false) { host.openAppInfo(RIDE_CONNECT_PKG) }
                 else ui.text("Not Installed", 13f, Palette.OK),
-                ui.badge(if (rcInstalled) Ui.Badge.Step(4) else Ui.Badge.Done),
+                ui.badge(if (rcInstalled) Ui.Badge.Step(5) else Ui.Badge.Done),
             ),
         )
         checklist.addView(card)

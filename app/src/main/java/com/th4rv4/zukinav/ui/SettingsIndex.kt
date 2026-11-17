@@ -40,7 +40,7 @@ object SettingsIndex {
         Entry("Startup Greeting", "Your text on the dash at switch-on", "Settings › Dash", page(SettingsKeys.DASH), "welcome hello name caller message"),
         // Calls
         Entry("Call Alerts", "Incoming and missed calls on the dash", "Settings › Calls", page(SettingsKeys.CALLS), "phone ring caller whatsapp missed incoming"),
-        Entry("Reject Unknown Callers", "Decline numbers not in your contacts", "Settings › Calls", page(SettingsKeys.CALLS), "block spam decline unknown numbers telemarketing"),
+        Entry("Reject Unknown Callers", "Decline numbers not in your contacts", "Settings › Calls", page(SettingsKeys.CALLS), "block spam decline unknown numbers telemarketing contacts"),
         Entry("Allow Repeat Callers", "A second call within 5 min rings through", "Settings › Calls", page(SettingsKeys.CALLS), "urgent emergency again twice"),
         Entry("Show Rejected On Dash", "REJECTED on the dash's message screen", "Settings › Calls", page(SettingsKeys.CALLS), "rejected declined"),
         // Messages
@@ -53,7 +53,7 @@ object SettingsIndex {
         // Connection
         Entry("Connect Automatically", "On ignition and after the phone restarts", "Settings", page(SettingsKeys.MENU), "auto connect bluetooth boot start"),
         Entry("Wake On Ignition", "Sleeps while parked, wakes at switch-on", "Settings", page(SettingsKeys.MENU), "battery sleep companion parked ignition"),
-        Entry("Setup Checklist", "Permissions and battery, all in one place", "Settings", Target.Checklist, "permission bluetooth notification access location battery unrestricted optimization fix problem"),
+        Entry("Setup Checklist", "Permissions and battery, all in one place", "Settings", Target.Checklist, "permission bluetooth notification access location battery unrestricted optimization contacts caller name fix problem"),
         // Backup and updates
         Entry("Back Up Now", "Everything in one zip", "Settings › Backup & Restore", page(SettingsKeys.BACKUP), "backup save export drive"),
         Entry("Restore From Backup", "Bring everything back from a zip", "Settings › Backup & Restore", page(SettingsKeys.BACKUP), "restore import new phone"),

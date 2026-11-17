@@ -35,7 +35,7 @@ object Backup {
     /** Settings that belong to this install only, so a restore leaves them alone. */
     private val LOCAL_KEYS = setOf(
         Prefs.K_BACKUP_URI, Prefs.K_BACKUP_FOLDER, Prefs.K_BACKUP_LAST, Prefs.K_BACKUP_LAST_SIZE, Prefs.K_BACKUP_AFTER_TRIP,
-        "active_trip",
+        "active_trip", Prefs.K_CONTACTS_DENIALS,
     )
 
     private val lock = Any()

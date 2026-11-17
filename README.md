@@ -85,7 +85,7 @@ Real screens from a phone connected to a Gixxer SF 250. Every number came from t
 - **Turn arrows on the dash**: the arrow, the distance to the turn, your
   ETA and the distance left, kept up to date several times a second.
 - **Calls**: incoming, answered and missed calls (phone and WhatsApp) with
-  the caller's name.
+  the caller's name, as saved in your contacts.
 - **Messages**: new WhatsApp messages and SMS with the sender's name and how
   many are unread. **Skip Business SMS** keeps bank, OTP and promo
   messages off the dash.
@@ -172,6 +172,8 @@ Real screens from a phone connected to a Gixxer SF 250. Every number came from t
 2. Open Zuki Nav. The setup screen walks you through:
    - **Nearby Devices** and **Notification Access** (this is how it reads
      Google Maps, calls and messages; no other permission is needed for them).
+   - **Contacts** (optional): shows callers with the name you saved them
+     under, not the name their SIM is registered to. Read on the phone only.
    - **Close Suzuki Ride Connect**: the dash talks to one app at a time.
    - **Your Name** for the greeting (optional).
 3. Switch the ignition on, pick your bike from the list and tap **Finish Setup**.

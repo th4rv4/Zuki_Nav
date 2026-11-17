@@ -509,6 +509,19 @@ class MainActivity : Activity() {
         if (Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIFICATIONS)
     }
 
+    /** Contacts allowed, so callers show with their saved names. */
+    fun hasContactsPermission(): Boolean = granted(Manifest.permission.READ_CONTACTS)
+
+    /** Android's Contacts prompt; once it has been turned down twice Android won't show it again, so App Info opens instead. */
+    fun requestContactsPermission() {
+        if (prefs.contactsDenials >= 2) {
+            toast("Allow Contacts under Permissions")
+            openAppInfo(packageName)
+        } else {
+            requestPermissions(arrayOf(Manifest.permission.READ_CONTACTS), REQ_CONTACTS)
+        }
+    }
+
     /** Android leaves the app running in the background without battery limits. */
     fun batteryUnrestricted(): Boolean =
         getSystemService(android.os.PowerManager::class.java)?.isIgnoringBatteryOptimizations(packageName) ?: true
@@ -557,6 +570,10 @@ class MainActivity : Activity() {
                 else finishLocationRequest()
             }
             REQ_LOCATION_BG -> finishLocationRequest()
+            REQ_CONTACTS -> {
+                if (hasContactsPermission()) prefs.contactsDenials = 0
+                else if (grantResults.isNotEmpty()) prefs.contactsDenials = prefs.contactsDenials + 1
+            }
         }
         current?.onShow()
     }
@@ -877,6 +894,7 @@ class MainActivity : Activity() {
         const val EXTRA_OPEN_RIDE = "open_ride"
         const val EXTRA_MAINTENANCE = "maintenance"
         private const val REQ_NOTIFICATIONS = 9
+        private const val REQ_CONTACTS = 10
         const val BIKE_FUEL = 0
         const val BIKE_THERMALS = 1
         const val BIKE_SERVICE = 2

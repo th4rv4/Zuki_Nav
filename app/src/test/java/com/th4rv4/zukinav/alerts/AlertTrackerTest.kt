@@ -97,4 +97,41 @@ class AlertTrackerTest {
         assertEquals(1, t.posted(sms.copy(key = "p", title = "Mom"), 0).size)
         assertEquals(1, t.posted(msg("w", "VM-HDFCBK", "hi"), 0).size)
     }
+
+    @Test fun networkNameSwappedForSavedNameWhileRinging() {
+        val t = AlertTracker()
+        // The phone app first shows the SIM's registered name, then the saved one.
+        assertEquals(listOf(Alert.Ringing("Ramesh Chand", false)), t.posted(call("c", 1, "Ramesh Chand"), 0))
+        assertEquals(listOf(Alert.Ringing("Nitin Cllg", false)), t.posted(call("c", 1, "Nitin Cllg"), 800))
+        // Only once.
+        assertEquals(emptyList<Alert>(), t.posted(call("c", 1, "Someone Else"), 1_200))
+        t.removed(call("c", 1), 20_000)
+        assertEquals(listOf(Alert.Missed("Nitin Cllg", 1, false)), t.tick(21_600))
+    }
+
+    @Test fun savedNameFromContactsWins() {
+        val t = AlertTracker()
+        val n = call("c", 1, "Ramesh Chand").copy(savedName = "Nitin Cllg", number = "+919876543210", contactsChecked = true)
+        assertEquals(listOf(Alert.Ringing("Nitin Cllg", false)), t.posted(n, 0))
+        // The phone app's later update can't change a name from the contacts.
+        assertEquals(emptyList<Alert>(), t.posted(call("c", 1, "Nitin"), 800))
+    }
+
+    @Test fun missedNoticeUsesSavedName() {
+        val t = AlertTracker()
+        val n = Notice("m", "com.google.android.dialer", "missed_call", 0, null, "Missed call", "Ramesh Chand", false, false,
+            savedName = "Nitin Cllg")
+        assertEquals(listOf(Alert.Missed("Nitin Cllg", 1, false)), t.posted(n, 0))
+    }
+
+    @Test fun screenNameWithAndWithoutContacts() {
+        val cnap = call("c", 1, "Ramesh Chand")
+        // Without Contacts: goes by what the phone app shows.
+        assertEquals("Ramesh Chand", cnap.copy(number = "+919876543210").screenName())
+        // With Contacts and the number not saved: judged by the number, so it's unknown.
+        val checked = cnap.copy(number = "+919876543210", contactsChecked = true)
+        assertTrue(CallFilter.isUnknown(checked.screenName()))
+        // Saved.
+        assertEquals("Nitin Cllg", checked.copy(savedName = "Nitin Cllg").screenName())
+    }
 }

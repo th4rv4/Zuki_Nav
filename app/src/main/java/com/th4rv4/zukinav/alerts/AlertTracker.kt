@@ -16,7 +16,23 @@ data class Notice(
     val text: String?,
     val ongoing: Boolean,
     val groupSummary: Boolean,
-)
+    /** The name the caller is saved under in the phone's contacts, when the app may read them. */
+    val savedName: String? = null,
+    /** The caller's number, when the notification carries it. */
+    val number: String? = null,
+    /** The number was looked up in the contacts, so no [savedName] means it isn't saved. */
+    val contactsChecked: Boolean = false,
+) {
+    /**
+     * Who Reject Unknown Callers judges the call by. With the contacts read,
+     * a number that isn't saved counts as unknown even when the network sends
+     * a name with it.
+     */
+    fun screenName(): String? = savedName
+        ?: number?.takeIf { contactsChecked }
+        ?: callPerson?.takeIf { it.isNotBlank() }
+        ?: title
+}
 
 /** What to show on the dash. */
 sealed interface Alert {
@@ -49,7 +65,15 @@ class AlertTracker(
     private val skipBusinessSms: () -> Boolean = { false },
 ) {
 
-    private class Call(val caller: String, val pkg: String, val whatsapp: Boolean, var answered: Boolean)
+    private class Call(
+        var caller: String,
+        val pkg: String,
+        val whatsapp: Boolean,
+        var answered: Boolean,
+        /** The name came from the contacts, so later updates can't improve it. */
+        var saved: Boolean = false,
+        var renamed: Boolean = false,
+    )
 
     private class PendingMiss(val call: Call, val at: Long)
 
@@ -125,7 +149,17 @@ class AlertTracker(
         val existing = calls[n.key]
         if (incoming) {
             if (existing == null) {
-                calls[n.key] = Call(caller, n.pkg, whatsapp, answered = false)
+                calls[n.key] = Call(caller, n.pkg, whatsapp, answered = false, saved = n.savedName != null)
+                out.add(Alert.Ringing(caller, whatsapp))
+            } else if (!existing.answered && !existing.saved && !existing.renamed &&
+                caller != existing.caller && caller != UNKNOWN
+            ) {
+                // The phone app first shows the name the network sent, then
+                // swaps in the saved contact name a moment later. Show the
+                // better name once; a missed call uses it too.
+                existing.caller = caller
+                existing.saved = n.savedName != null
+                existing.renamed = true
                 out.add(Alert.Ringing(caller, whatsapp))
             }
             return
@@ -173,9 +207,10 @@ class AlertTracker(
                 MISSED_WORDS.containsMatchIn("${n.title} ${n.text}".lowercase()))
 
     private fun callerName(n: Notice): String =
-        (n.callPerson?.takeIf { it.isNotBlank() } ?: n.title?.takeIf { it.isNotBlank() } ?: "Unknown").trim()
+        (n.savedName ?: n.callPerson?.takeIf { it.isNotBlank() } ?: n.title?.takeIf { it.isNotBlank() } ?: UNKNOWN).trim()
 
     private fun callerFromMissedNotice(n: Notice): String {
+        n.savedName?.let { return it }
         // Phone apps put "Missed call" in the title and the caller in the text,
         // or the other way round.
         val title = n.title.orEmpty()
@@ -211,6 +246,8 @@ class AlertTracker(
     }
 
     companion object {
+        const val UNKNOWN = "Unknown"
+
         const val CATEGORY_CALL = "call"
         const val CATEGORY_MISSED_CALL = "missed_call"
         const val CATEGORY_MESSAGE = "msg"

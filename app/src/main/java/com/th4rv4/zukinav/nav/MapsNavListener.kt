@@ -13,6 +13,7 @@ import com.th4rv4.zukinav.alerts.Alert
 import com.th4rv4.zukinav.alerts.AlertTracker
 import com.th4rv4.zukinav.alerts.AutoReply
 import com.th4rv4.zukinav.alerts.CallFilter
+import com.th4rv4.zukinav.alerts.ContactNames
 import com.th4rv4.zukinav.alerts.Notice
 import com.th4rv4.zukinav.protocol.ClusterIcon
 import com.th4rv4.zukinav.ble.ClusterLink
@@ -47,6 +48,8 @@ class MapsNavListener : NotificationListenerService() {
     /** Reject Unknown Callers: who was declined, and which call notifications were already looked at. */
     private val callFilter = CallFilter()
     private val screenedCalls = HashMap<String, Boolean>()
+    /** Caller names found for each call notification, by what it carried. */
+    private val callerLookups = HashMap<String, Pair<String, ContactNames.Lookup>>()
     private val autoReply by lazy { AutoReply(this, prefs) }
 
     private val alertTick = object : Runnable {
@@ -89,8 +92,10 @@ class MapsNavListener : NotificationListenerService() {
             lastRemaining = null
             NavRepository.scheduleEnd()
         } else if (sbn.packageName != packageName) {
+            val n = notice(sbn)
+            callerLookups.remove(sbn.key)
             if (screenedCalls.remove(sbn.key) == true) return
-            deliver(alerts.removed(notice(sbn), System.currentTimeMillis()))
+            deliver(alerts.removed(n, System.currentTimeMillis()))
         }
     }
 
@@ -105,18 +110,50 @@ class MapsNavListener : NotificationListenerService() {
         val n = sbn.notification
         val e = n.extras
         val person = callPerson(e)
+        val title = e.getCharSequence(Notification.EXTRA_TITLE)?.toString()
+        val isCall = n.category == AlertTracker.CATEGORY_CALL || n.category == AlertTracker.CATEGORY_MISSED_CALL
+        val lookup = if (isCall && !AlertTracker.isWhatsApp(sbn.packageName)) callerLookup(sbn, person, title) else null
         return Notice(
             key = sbn.key,
             pkg = sbn.packageName,
             category = n.category,
             callType = e.getInt(EXTRA_CALL_TYPE, 0),
             callPerson = person?.name?.toString(),
-            title = e.getCharSequence(Notification.EXTRA_TITLE)?.toString(),
+            title = title,
             text = e.getCharSequence(Notification.EXTRA_TEXT)?.toString(),
             ongoing = sbn.isOngoing,
             groupSummary = (n.flags and Notification.FLAG_GROUP_SUMMARY) != 0,
+            savedName = lookup?.name,
+            number = lookup?.number,
+            contactsChecked = lookup?.checked == true,
         )
     }
+
+    /**
+     * The saved contact name for a phone call, looked up once per call
+     * notification and again only when what it carries changes (the phone
+     * app updates it while ringing).
+     */
+    private fun callerLookup(sbn: StatusBarNotification, person: Person?, title: String?): ContactNames.Lookup {
+        val uris = (listOfNotNull(person?.uri) + peopleUris(sbn.notification.extras)).distinct()
+        val sig = "${uris.joinToString()}|$title|${ContactNames.allowed(this)}"
+        callerLookups[sbn.key]?.let { (s, l) -> if (s == sig) return l }
+        val l = ContactNames.lookup(this, uris, title)
+        if (callerLookups.size > 20) callerLookups.clear()
+        callerLookups[sbn.key] = sig to l
+        AppLog.d("Calls", "Caller name from ${l.source}")
+        return l
+    }
+
+    @Suppress("DEPRECATION")
+    private fun peopleUris(e: android.os.Bundle): List<String> = try {
+        val list = if (android.os.Build.VERSION.SDK_INT >= 33) {
+            e.getParcelableArrayList(Notification.EXTRA_PEOPLE_LIST, Person::class.java)
+        } else {
+            e.getParcelableArrayList<Person>(Notification.EXTRA_PEOPLE_LIST)
+        }
+        list.orEmpty().mapNotNull { it.uri } + e.getStringArray(Notification.EXTRA_PEOPLE).orEmpty().toList()
+    } catch (_: Exception) { emptyList() }
 
     @Suppress("DEPRECATION")
     private fun callPerson(e: android.os.Bundle): Person? = try {
@@ -137,7 +174,7 @@ class MapsNavListener : NotificationListenerService() {
         val incoming = n.callType == AlertTracker.TYPE_INCOMING || (n.callType == 0 && !n.ongoing)
         if (!incoming) return false
         if (!prefs.rejectAlways && DashService.linkState != ClusterLink.State.READY) return false
-        val caller = n.callPerson?.takeIf { it.isNotBlank() } ?: n.title
+        val caller = n.screenName()
         val decline = callFilter.shouldDecline(caller, prefs.rejectAllowRepeat, System.currentTimeMillis())
         screenedCalls[sbn.key] = decline
         if (!decline) {

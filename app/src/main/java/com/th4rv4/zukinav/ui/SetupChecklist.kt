@@ -52,6 +52,12 @@ object SetupChecklist {
                 host.hasNotificationPermission(), false, "Allow",
             ) { host.requestNotificationPermission() },
             Item(
+                "Contacts",
+                if (host.hasContactsPermission()) "Your saved names show for callers"
+                else "Not allowed: callers may show their SIM's registered name instead of your saved name",
+                host.hasContactsPermission(), false, "Allow",
+            ) { host.requestContactsPermission() },
+            Item(
                 "Location All The Time", "For trip places, routes and the parked spot",
                 Places.hasPermission(host), false, "Allow",
             ) { host.requestTripLocation { host.refreshScreen() } },
@@ -74,10 +80,19 @@ object SetupChecklist {
         val ui = host.ui
         val needed = ui.listCard()
         val optional = ui.listCard()
+        val neededCount = ui.text("", 11f, Palette.OK, Ui.Weight.BOLD).apply { letterSpacing = 0.08f }
+        val optionalCount = ui.text("", 11f, Palette.ACCENT_SOFT, Ui.Weight.BOLD).apply { letterSpacing = 0.08f }
         fun fill() {
             needed.removeAllViews()
             optional.removeAllViews()
-            for (item in items(host, onWake)) {
+            val all = items(host, onWake)
+            val toFix = all.count { it.needed && !it.ok }
+            neededCount.text = if (toFix == 0) "ALL DONE" else "$toFix TO FIX"
+            neededCount.setTextColor(if (toFix == 0) Palette.OK else Palette.WARN)
+            val left = all.count { !it.needed && !it.ok }
+            optionalCount.text = if (left == 0) "ALL DONE" else "$left LEFT"
+            optionalCount.setTextColor(if (left == 0) Palette.OK else Palette.ACCENT_SOFT)
+            for (item in all) {
                 val trailing: View = if (item.ok) {
                     ui.text("✓", 16f, Palette.OK, Ui.Weight.BOLD)
                 } else {
@@ -97,12 +112,25 @@ object SetupChecklist {
         return SettingsPage(
             host, "Setup Checklist",
             listOf(
-                ui.text("NEEDED", 11f, Palette.MUTED, Ui.Weight.BOLD).apply { letterSpacing = 0.12f },
+                header(host, "NEEDED", neededCount),
                 needed,
-                ui.text("OPTIONAL", 11f, Palette.MUTED, Ui.Weight.BOLD).apply { letterSpacing = 0.12f },
+                header(host, "OPTIONAL", optionalCount),
                 optional,
             ),
             showHook = { fill() },
         )
+    }
+
+    /** Section label with its count on the right, e.g. OPTIONAL ... 2 LEFT. */
+    private fun header(host: MainActivity, label: String, count: View): View {
+        val ui = host.ui
+        return LinearLayout(ui.ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            addView(
+                ui.text(label, 11f, Palette.MUTED, Ui.Weight.BOLD).apply { letterSpacing = 0.12f },
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f),
+            )
+            addView(count)
+        }
     }
 }

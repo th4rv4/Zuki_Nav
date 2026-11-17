@@ -243,8 +243,21 @@ class Ui(val ctx: Context) {
     }
 
     /** Title (+ optional subtitle) on the left, [trailing] on the right. */
-    fun row(title: String, subtitle: String? = null, trailing: View? = null, leading: View? = null): LinearLayout {
-        val texts = vstack(2, text(title, 15f, Palette.TEXT, Weight.MEDIUM)).apply {
+    fun row(title: String, subtitle: String? = null, trailing: View? = null, leading: View? = null, tag: String? = null): LinearLayout {
+        val head: View = if (tag == null) text(title, 15f, Palette.TEXT, Weight.MEDIUM) else LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(text(title, 15f, Palette.TEXT, Weight.MEDIUM))
+            addView(
+                text(tag.uppercase(), 9.5f, Palette.MUTED, Weight.BOLD).apply {
+                    letterSpacing = 0.1f
+                    background = rounded(Color.TRANSPARENT, 999, Palette.BORDER)
+                    setPadding(dp(6), dp(1), dp(6), dp(1))
+                },
+                LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(8) },
+            )
+        }
+        val texts = vstack(2, head).apply {
             if (subtitle != null) addView(text(subtitle, 12f, Palette.MUTED))
         }
         return LinearLayout(ctx).apply {

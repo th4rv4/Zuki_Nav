@@ -21,6 +21,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Optional: shows callers on the dash with the name they're saved under. Read on the phone only. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
     <!-- Setup Checklist: asks to let the app run without battery limits, so Android doesn't stop it mid-ride. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 

@@ -202,15 +202,28 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         summaries[PAGE_UPDATES]?.text = "Installed v${host.versionName()}"
         summaries[PAGE_BACKUP]?.text = if (prefs.backupLastAt > 0) "Last backup " + whenText(prefs.backupLastAt) else "No backup yet"
         summaries[PAGE_TROUBLESHOOTING]?.text = "Dash Test, arrows, logs"
-        val problems = SetupChecklist.problems(host)
-        val total = SetupChecklist.items(host) {}.count { it.needed }
+        val items = SetupChecklist.items(host) {}
+        val problems = items.filter { it.needed && !it.ok }
+        val total = items.count { it.needed }
+        val optionalLeft = items.count { !it.needed && !it.ok }
         setupBanner.visibility = if (problems.isEmpty()) View.GONE else View.VISIBLE
         if (problems.isNotEmpty()) {
             bannerDetail.text = problems.first().title + (if (problems.size > 1) " and ${problems.size - 1} more" else "") +
                 " · ${total - problems.size} of $total done"
         }
-        summaries[PAGE_CHECKLIST]?.text = if (problems.isEmpty()) "All set" else "${problems.size} to fix"
-        summaries[PAGE_CHECKLIST]?.setTextColor(if (problems.isEmpty()) Palette.OK else Palette.WARN)
+        val optionalText = if (optionalLeft > 0) " · $optionalLeft optional left" else ""
+        summaries[PAGE_CHECKLIST]?.text = when {
+            problems.isNotEmpty() -> "${problems.size} to fix$optionalText"
+            optionalLeft > 0 -> "All needed done$optionalText"
+            else -> "All set"
+        }
+        summaries[PAGE_CHECKLIST]?.setTextColor(
+            when {
+                problems.isNotEmpty() -> Palette.WARN
+                optionalLeft > 0 -> Palette.ACCENT_SOFT
+                else -> Palette.OK
+            },
+        )
     }
 
     /** Wake On Ignition: Set Up, or On with a tap to turn it off. */
@@ -415,8 +428,33 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         val onDash = ui.switchRow("Show On Dash", "Shows REJECTED on the dash's message screen. During a route it sits below the arrow", prefs.rejectShowOnDash) {
             prefs.rejectShowOnDash = it
         }
+        // Without Contacts, a number that comes with a network name looks like a saved one.
+        val contactsHint = LinearLayout(ui.ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            background = ui.rounded(Palette.WARN_BG, 14, Palette.WARN_BORDER)
+            setPadding(ui.dp(12), ui.dp(10), ui.dp(12), ui.dp(10))
+            addView(
+                ui.text(
+                    "Without Contacts, a number that comes with a network name can't be told apart from a saved one, " +
+                        "so some unknown callers may ring through.",
+                    12f, Palette.WARN,
+                ),
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = ui.dp(10) },
+            )
+            addView(ui.button("Allow", Ui.Btn.PRIMARY, 34) { host.requestContactsPermission() }.apply {
+                textSize = 12.5f
+                setPadding(ui.dp(12), 0, ui.dp(12), 0)
+            })
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                .apply { bottomMargin = ui.dp(10) }
+        }
+        fun showHint() {
+            contactsHint.visibility = if (prefs.rejectUnknown && !host.hasContactsPermission()) View.VISIBLE else View.GONE
+        }
         extras.addAll(listOf(whenRow, repeat, onDash))
         showExtras(prefs.rejectUnknown)
+        showHint()
         return SettingsPage(
             host, "Calls",
             listOf(
@@ -434,22 +472,27 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
                     ) {
                         prefs.rejectUnknown = it
                         showExtras(it)
+                        showHint()
                     },
                     whenRow,
                     repeat,
                     onDash,
                 ),
+                contactsHint,
                 ui.infoNote("How Unknown Callers Are Spotted") {
                     host.showInfo(
                         "Unknown Callers",
-                        "Zuki Nav goes by your phone app's incoming-call notification: a saved contact shows a name, " +
+                        "With Contacts allowed, Zuki Nav checks the caller's number against your saved contacts. Without it, " +
+                            "it goes by your phone app's incoming-call notification: a saved contact shows a name, " +
                             "anyone else a number, Unknown or Private number. It then presses the notification's own " +
                             "Decline button, so it doesn't replace your caller ID app.\n\nIt needs a phone app with a Decline " +
                             "button on that notification, as on most phones with Android 12 or newer. WhatsApp calls aren't " +
-                            "affected. If a caller ID app shows a name for a number you haven't saved, that call rings through.",
+                            "affected. Without Contacts, if the network or a caller ID app shows a name for a number you haven't saved, " +
+                            "that call rings through.",
                     )
                 },
             ),
+            showHook = { showHint() },
         )
     }
 
