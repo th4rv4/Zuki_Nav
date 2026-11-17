@@ -43,8 +43,9 @@ data class Notice(
 sealed interface Alert {
     data class Ringing(val caller: String, val whatsapp: Boolean) : Alert
     data class Answered(val caller: String, val whatsapp: Boolean) : Alert
-    data class Missed(val caller: String, val count: Int, val whatsapp: Boolean) : Alert
-    data class Message(val sender: String, val count: Int, val whatsapp: Boolean) : Alert
+    /** [fleeting]: shown, then cleared from the dash, so it doesn't stay as unread. */
+    data class Missed(val caller: String, val count: Int, val whatsapp: Boolean, val fleeting: Boolean = false) : Alert
+    data class Message(val sender: String, val count: Int, val whatsapp: Boolean, val fleeting: Boolean = false) : Alert
     /** The rider has dealt with the missed calls on the phone. */
     data object ClearMissed : Alert
     /** The rider has read or dismissed the messages on the phone. */
@@ -70,6 +71,10 @@ class AlertTracker(
     private val skipBusinessSms: () -> Boolean = { false },
     /** Whether the phone is ringing or on a call right now, whatever its notifications say. */
     private val phoneState: () -> PhoneState = { PhoneState.IDLE },
+    /** Missed calls from numbers you haven't saved aren't kept on the dash. */
+    private val missedSavedOnly: () -> Boolean = { false },
+    /** Chats and SMS from numbers you haven't saved pop up, but aren't kept as unread. */
+    private val messagesSavedOnly: () -> Boolean = { false },
     private val log: (String) -> Unit = {},
 ) {
 
@@ -88,6 +93,8 @@ class AlertTracker(
         var shownAt: Long = 0L,
         /** Still being shown again on the dash; stops after [MAX_RING_WAIT_MS]. */
         var repeating: Boolean = true,
+        /** A saved contact, or at least someone with a name; not a bare or hidden number. */
+        var known: Boolean = true,
     )
 
     private class PendingMiss(val call: Call, val at: Long) {
@@ -103,6 +110,8 @@ class AlertTracker(
     private var messageCount = 0
     /** Message notifications still on the phone, with what they last said. */
     private val messageNotices = HashMap<String, String>()
+    /** The same for messages that aren't counted as unread: groups, people you haven't saved. */
+    private val groupNotices = HashMap<String, String>()
 
     fun posted(n: Notice, now: Long): List<Alert> {
         if (n.groupSummary) return emptyList()
@@ -126,6 +135,7 @@ class AlertTracker(
             missedCount = 0
             out.add(Alert.ClearMissed)
         }
+        groupNotices.remove(n.key)
         if (messageNotices.remove(n.key) != null && messageNotices.isEmpty() && messageCount > 0) {
             messageCount = 0
             out.add(Alert.ClearMessages)
@@ -161,9 +171,7 @@ class AlertTracker(
                 out.add(Alert.Answered(p.call.caller, p.call.whatsapp))
                 continue
             }
-            missedCount++
-            lastMissAt = now
-            out.add(Alert.Missed(p.call.caller, missedCount, p.call.whatsapp))
+            missed(p.call, now, out)
         }
         return out
     }
@@ -203,7 +211,10 @@ class AlertTracker(
                 back.call
             }
             if (call == null) {
-                calls[n.key] = Call(caller, n.pkg, whatsapp, answered = false, saved = n.savedName != null, since = now, shownAt = now)
+                calls[n.key] = Call(
+                    caller, n.pkg, whatsapp, answered = false, saved = n.savedName != null,
+                    since = now, shownAt = now, known = knownCaller(n),
+                )
                 out.add(Alert.Ringing(caller, whatsapp))
             } else {
                 renameIfBetter(call, caller, n, whatsapp, now, out)
@@ -241,8 +252,25 @@ class AlertTracker(
         call.caller = caller
         call.saved = n.savedName != null
         call.renamed = true
+        call.known = call.known || knownCaller(n)
         call.shownAt = now
         out.add(Alert.Ringing(caller, whatsapp))
+    }
+
+    /**
+     * A missed call for the dash. One from a number you haven't saved is
+     * shown just long enough to close the ringing screen, then cleared, so
+     * it doesn't stay as a missed call (when [missedSavedOnly] is on).
+     */
+    private fun missed(call: Call, now: Long, out: MutableList<Alert>) {
+        lastMissAt = now
+        if (!call.known && missedSavedOnly()) {
+            log("Missed call from a number you haven't saved: not kept on the dash")
+            out.add(Alert.Missed(call.caller, maxOf(missedCount, 1), call.whatsapp, fleeting = missedCount == 0))
+            return
+        }
+        missedCount++
+        out.add(Alert.Missed(call.caller, missedCount, call.whatsapp))
     }
 
     private fun onMissedNotice(n: Notice, now: Long, out: MutableList<Alert>) {
@@ -252,18 +280,16 @@ class AlertTracker(
         val waiting = pendingMisses.firstOrNull { it.call.pkg == n.pkg && !it.call.answered }
         if (isNew && waiting != null) {
             pendingMisses.remove(waiting)
-            missedCount++
-            lastMissAt = now
-            out.add(Alert.Missed(waiting.call.caller, missedCount, waiting.call.whatsapp))
+            missed(waiting.call, now, out)
             return
         }
         // The phone app's own "Missed call" notification. Usually we have
         // already counted this call from its ringing; only count it when we
         // did not (e.g. the call came in before the dash link was up).
         if (isNew && now - lastMissAt > MISSED_NOTICE_WINDOW_MS && pendingMisses.isEmpty()) {
-            missedCount++
-            lastMissAt = now
-            out.add(Alert.Missed(callerFromMissedNotice(n), missedCount, isWhatsApp(n.pkg)))
+            val caller = callerFromMissedNotice(n)
+            val known = n.savedName != null || !CallFilter.isUnknown(caller)
+            missed(Call(caller, n.pkg, isWhatsApp(n.pkg), answered = false, known = known), now, out)
         }
     }
 
@@ -280,6 +306,16 @@ class AlertTracker(
         val name = cleanCaller(n.savedName ?: n.callPerson?.takeIf { it.isNotBlank() } ?: n.title?.takeIf { it.isNotBlank() } ?: UNKNOWN)
         // The dash can't show emoji or non-Latin letters: show the number instead.
         return forDash(if (readable(name)) name else n.number ?: UNKNOWN)
+    }
+
+    /**
+     * A saved contact, or a caller with a name. With the contacts read, a
+     * number that isn't saved is unknown even when the network sends a name.
+     */
+    private fun knownCaller(n: Notice): Boolean {
+        if (n.savedName != null) return true
+        val who = n.screenName()?.trim().orEmpty()
+        return who.isNotEmpty() && !who.startsWith("~") && !CallFilter.isUnknown(who)
     }
 
     private fun callerFromMissedNotice(n: Notice): String {
@@ -304,15 +340,28 @@ class AlertTracker(
         val name = senderName(n) ?: return
         // WhatsApp's own "new messages" notice, not a person.
         if (isWhatsApp(n.pkg) && APP_TITLES.matches(name)) return
-        val sender = forDash(if (isWhatsApp(n.pkg)) whatsAppSender(n, name) else if (readable(name)) name else "Message")
-        if (!isWhatsApp(n.pkg) && skipBusinessSms() && isBusinessSender(sender)) return
+        val whatsapp = isWhatsApp(n.pkg)
+        val sender = forDash(if (whatsapp) whatsAppSender(n, name) else if (readable(name)) name else "Message")
+        if (!whatsapp && skipBusinessSms() && isBusinessSender(sender)) return
+        val group = whatsapp && n.isGroup
+        // Groups, and with the switch on people you haven't saved, pop up
+        // but aren't kept as unread.
+        val passing = group || (messagesSavedOnly() && unsavedSender(name))
         val content = "$sender\u0000${n.text.orEmpty()}"
         // Messaging apps repost the same notification when anything changes;
         // only a different last message counts as new.
+        if (passing) {
+            if (groupNotices[n.key] == content) return
+            groupNotices[n.key] = content
+            if (groupNotices.size > 50) groupNotices.clear()
+            // Unread messages from saved contacts stay as they were.
+            out.add(Alert.Message(sender, maxOf(messageCount, 1), whatsapp, fleeting = messageCount == 0))
+            return
+        }
         if (messageNotices[n.key] == content) return
         messageNotices[n.key] = content
         messageCount++
-        out.add(Alert.Message(sender, messageCount, isWhatsApp(n.pkg)))
+        out.add(Alert.Message(sender, messageCount, whatsapp))
     }
 
     /**
@@ -324,6 +373,12 @@ class AlertTracker(
      * WhatsApp marks people who aren't saved with a "~" before the name they
      * chose; that name can be anything, emoji included.
      */
+    /** WhatsApp marks people you haven't saved with "~"; otherwise a bare number. */
+    private fun unsavedSender(name: String): Boolean {
+        val n = name.trim()
+        return n.startsWith("~") || CallFilter.isUnknown(n)
+    }
+
     private fun whatsAppSender(n: Notice, name: String): String {
         if (n.isGroup) {
             val group = (n.groupName ?: n.title?.substringBefore(": ", ""))?.replace(COUNT_SUFFIX, "")?.trim()

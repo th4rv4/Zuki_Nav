@@ -56,6 +56,16 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_SKIP_BIZ_SMS, false)
         set(v) = sp.edit().putBoolean(K_SKIP_BIZ_SMS, v).apply()
 
+    /** Missed calls from numbers you haven't saved aren't kept on the dash. */
+    var missedSavedOnly: Boolean
+        get() = sp.getBoolean(K_MISSED_SAVED_ONLY, true)
+        set(v) = sp.edit().putBoolean(K_MISSED_SAVED_ONLY, v).apply()
+
+    /** Chats and SMS from numbers you haven't saved pop up on the dash, but aren't kept as unread. */
+    var messagesSavedOnly: Boolean
+        get() = sp.getBoolean(K_MESSAGES_SAVED_ONLY, true)
+        set(v) = sp.edit().putBoolean(K_MESSAGES_SAVED_ONLY, v).apply()
+
     /** Spin the compass arrow on the dash after "Welcome", when no route is active. */
     var startupAnimation: Boolean
         get() = sp.getBoolean(K_SPLASH, false)
@@ -382,6 +392,8 @@ class Prefs(context: Context) {
         private const val K_THEME = "theme"
         private const val K_SPLASH = "startup_animation"
         private const val K_SKIP_BIZ_SMS = "skip_business_sms"
+        private const val K_MISSED_SAVED_ONLY = "missed_saved_only"
+        private const val K_MESSAGES_SAVED_ONLY = "messages_saved_only"
         private const val K_GREETING = "startup_greeting"
 
         const val THEME_SYSTEM = 0

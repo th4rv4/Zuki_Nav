@@ -44,6 +44,8 @@ class MapsNavListener : NotificationListenerService() {
     private val alerts = AlertTracker(
         defaultSmsPackage = { try { Telephony.Sms.getDefaultSmsPackage(this) } catch (_: Exception) { null } },
         skipBusinessSms = { prefs.skipBusinessSms },
+        missedSavedOnly = { prefs.missedSavedOnly },
+        messagesSavedOnly = { prefs.messagesSavedOnly },
         phoneState = { phoneState() },
         log = { AppLog.d("Calls", it) },
     )

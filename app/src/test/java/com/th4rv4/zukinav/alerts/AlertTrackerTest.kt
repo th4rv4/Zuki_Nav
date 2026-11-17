@@ -209,10 +209,16 @@ class AlertTrackerTest {
     @Test fun groupMessagesShowTheGroup() {
         val t = AlertTracker()
         val n = msg("g", "Gixxer Gang: ~ 💲🫀", "hi").copy(isGroup = true, groupName = "Gixxer Gang")
-        assertEquals(listOf(Alert.Message("Gixxer Gang", 1, true)), t.posted(n, 0))
+        // Pops up, but isn't kept as unread.
+        assertEquals(listOf(Alert.Message("Gixxer Gang", 1, true, fleeting = true)), t.posted(n, 0))
         // A saved contact in a group shows the group too.
         val saved = msg("h", "Gixxer Gang: Prakhar SF250", "yo").copy(isGroup = true, groupName = "Gixxer Gang")
-        assertEquals(listOf(Alert.Message("Gixxer Gang", 2, true)), t.posted(saved, 0))
+        assertEquals(listOf(Alert.Message("Gixxer Gang", 1, true, fleeting = true)), t.posted(saved, 0))
+        // A chat message counts as the first unread.
+        assertEquals(listOf(Alert.Message("Prakhar SF250", 1, true)), t.posted(msg("p", "Prakhar SF250", "on my way"), 0))
+        // A group message now keeps the unread count as it is.
+        val more = msg("g", "Gixxer Gang: Rahul", "ride?").copy(isGroup = true, groupName = "Gixxer Gang")
+        assertEquals(listOf(Alert.Message("Gixxer Gang", 1, true)), t.posted(more, 0))
     }
 
     @Test fun unsavedSenderInADmShowsTheNumber() {

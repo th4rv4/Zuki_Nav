@@ -627,6 +627,7 @@ class DashService : Service(), ClusterLink.Listener {
     }
 
     private val clearMessageIcon = Runnable { clearSmsLeft = CLEAR_REPEATS; wake() }
+    private val clearMissedIcon = Runnable { clearMissedLeft = CLEAR_REPEATS; wake() }
 
     // The greeting on the call screen right now, if any.
     private var callText: String? = null
@@ -698,6 +699,19 @@ class DashService : Service(), ClusterLink.Listener {
             is Alert.Message -> SuzukiFrames.message(alert.sender, alert.count, alert.whatsapp, mode)
             Alert.ClearMissed, Alert.ClearMessages -> null
         } ?: return
+        // Shown, then cleared so it doesn't stay as unread; anything that
+        // should stay cancels a clear still waiting.
+        when (alert) {
+            is Alert.Message -> {
+                main.removeCallbacks(clearMessageIcon)
+                if (alert.fleeting) main.postDelayed(clearMessageIcon, MESSAGE_SCREEN_MS)
+            }
+            is Alert.Missed -> {
+                main.removeCallbacks(clearMissedIcon)
+                if (alert.fleeting) main.postDelayed(clearMissedIcon, FLEETING_MISSED_MS)
+            }
+            else -> Unit
+        }
         AppLog.d("Dash", "-> ${SuzukiFrames.hex(frame)} (alert)")
         repeat(3) { i -> main.postDelayed({ link.send(frame) }, i * 200L) }
     }
@@ -888,6 +902,8 @@ class DashService : Service(), ClusterLink.Listener {
         /** Longest Engine Overheat stays over the arrows during a route. */
         /** How long the dash keeps a message up by itself. */
         private const val MESSAGE_SCREEN_MS = 11_000L
+        /** An unsaved number's missed call: just long enough to close the ringing screen. */
+        private const val FLEETING_MISSED_MS = 4_000L
         const val OVERHEAT_TEXT = "ENGINE HOT"
         const val REJECTED_TEXT = "REJECTED"
         const val WARMED_UP_TEXT = "WARMED UP"

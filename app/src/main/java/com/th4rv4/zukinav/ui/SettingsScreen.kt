@@ -462,6 +462,13 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
                     ui.switchRow("Call Alerts", "Incoming and missed calls on the dash, phone and WhatsApp", prefs.callAlerts) {
                         prefs.callAlerts = it
                     },
+                    ui.switchRow(
+                        "Missed Calls From Saved Contacts Only",
+                        "Numbers you haven't saved still ring on the dash, but their missed calls stay on the phone",
+                        prefs.missedSavedOnly,
+                    ) {
+                        prefs.missedSavedOnly = it
+                    },
                 ),
                 ui.sectionHeader(R.drawable.ic_set_dialer, "Unknown Callers"),
                 ui.listCard(
@@ -530,6 +537,13 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
                 ui.listCard(
                     ui.switchRow("Message Alerts", "New WhatsApp and SMS messages on the dash", prefs.messageAlerts) {
                         prefs.messageAlerts = it
+                    },
+                    ui.switchRow(
+                        "Unread From Saved Contacts Only",
+                        "Messages from numbers you haven't saved pop up, but don't stay as unread. Group messages never do",
+                        prefs.messagesSavedOnly,
+                    ) {
+                        prefs.messagesSavedOnly = it
                     },
                     ui.switchRow("Skip Business SMS", "Bank, OTP, government and promo senders, like AD-HPGOVT", prefs.skipBusinessSms) {
                         prefs.skipBusinessSms = it
