@@ -765,14 +765,32 @@ class MainActivity : Activity() {
     private var fileCallback: ((android.net.Uri?) -> Unit)? = null
     private var wakeCallback: ((Boolean) -> Unit)? = null
 
+    /** A Wake On Ignition setup is under way: Android's list is open or about to be. */
+    private var wakeBusy = false
+
     /** Wake On Ignition: Android's one-time prompt to register the bike. */
     fun setUpWake(onDone: (Boolean) -> Unit) {
+        // A second tap while Android is still looking used to fail the first
+        // setup too, and the app took the dash back while Android's list was
+        // open, so the bike never showed up in it.
+        if (wakeBusy) {
+            toast("Still looking for your bike")
+            return
+        }
+        wakeBusy = true
+        // Never stuck, whatever happens to Android's prompt.
+        content.postDelayed({ wakeBusy = false }, 2 * 60_000L)
         val service = com.th4rv4.zukinav.service.DashService
         // While connected the dash stops advertising and Android can't list it.
         service.holdForSetup(true)
+        var done = false
         val finish: (Boolean) -> Unit = { ok ->
-            service.holdForSetup(false)
-            onDone(ok)
+            if (!done) {
+                done = true
+                wakeBusy = false
+                service.holdForSetup(false)
+                onDone(ok)
+            }
         }
         wakeCallback = finish
         content.postDelayed({
