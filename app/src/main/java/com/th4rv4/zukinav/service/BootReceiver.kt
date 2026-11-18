@@ -14,6 +14,8 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED && intent.action != Intent.ACTION_MY_PACKAGE_REPLACED) return
         MaintNotifier.schedule(context)
+        // Android can forget to watch for the bike after an update or reboot.
+        Wake.rewatch(context)
         val prefs = Prefs(context)
         if (prefs.startOnBoot && prefs.clusterAddress != null && DashService.hasConnectPermission(context)) {
             DashService.start(context)

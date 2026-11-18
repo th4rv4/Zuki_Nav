@@ -146,6 +146,7 @@ class DashService : Service(), ClusterLink.Listener {
         NavRepository.addListener(navListener)
         TripLog.addListener(tripListener)
         TripLog.finishIfIdle(this)
+        Wake.rewatch(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

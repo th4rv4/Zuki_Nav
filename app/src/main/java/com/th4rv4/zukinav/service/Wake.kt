@@ -118,6 +118,16 @@ object Wake {
         }
     }
 
+    /**
+     * Asks Android again to watch for the bike, if Wake On Ignition is set up.
+     * Android can stop watching when the app is updated or reinstalled, which
+     * left the app asleep with nothing to wake it when the key went on.
+     */
+    fun rewatch(ctx: Context) {
+        if (!isSetUp(ctx)) return
+        startWatching(ctx)
+    }
+
     /** Turns Wake On Ignition off: Android forgets the bike as a companion. */
     @Suppress("DEPRECATION")
     fun turnOff(ctx: Context) {
