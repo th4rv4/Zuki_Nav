@@ -27,6 +27,8 @@ data class Notice(
     val isGroup: Boolean = false,
     /** Chat apps: the sender's phone number, when the notification carries it. */
     val senderNumber: String? = null,
+    /** Chat apps: the latest message in the chat is your own, e.g. an auto-reply. */
+    val fromMe: Boolean = false,
 ) {
     /**
      * Who Reject Unknown Callers judges the call by. With the contacts read,
@@ -337,6 +339,9 @@ class AlertTracker(
     }
 
     private fun onMessage(n: Notice, out: MutableList<Alert>) {
+        // A reply of yours added to the chat (an auto-reply, or one sent from
+        // the notification): not a new message, and not from "You".
+        if (n.fromMe || senderName(n)?.let { ME_NAMES.matches(it) } == true) return
         val name = senderName(n) ?: return
         // WhatsApp's own "new messages" notice, not a person.
         if (isWhatsApp(n.pkg) && APP_TITLES.matches(name)) return
@@ -499,6 +504,8 @@ class AlertTracker(
 
         /** True if the dash can show something of [name]: at least one plain letter or digit. */
         fun readable(name: String): Boolean = name.any { it.code < 0x7F && it.isLetterOrDigit() }
+
+        private val ME_NAMES = Regex("""(?i)you|me""")
 
         private val APP_TITLES = Regex("""(?i)whatsapp( business)?""")
 

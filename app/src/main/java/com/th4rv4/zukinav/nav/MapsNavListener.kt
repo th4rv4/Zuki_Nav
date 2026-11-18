@@ -156,6 +156,17 @@ class MapsNavListener : NotificationListenerService() {
         val messages = e.getParcelableArray(Notification.EXTRA_MESSAGES)
         val last = messages?.let { Notification.MessagingStyle.Message.getMessagesFromBundleArray(it) }?.lastOrNull()
         val person = last?.senderPerson
+        // The last message is your own, e.g. an auto-reply WhatsApp added to the chat.
+        val me = if (android.os.Build.VERSION.SDK_INT >= 33) {
+            e.getParcelable(Notification.EXTRA_MESSAGING_PERSON, android.app.Person::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            e.getParcelable<android.app.Person>(Notification.EXTRA_MESSAGING_PERSON)
+        }
+        val fromMe = last != null && (
+            (person == null && last.sender == null) ||
+                (person != null && me != null && person.name?.toString() == me.name?.toString() && person.key == me.key)
+            )
         val ids = listOfNotNull(person?.key, person?.uri)
         val number = ids.firstNotNullOfOrNull { phoneFromChatId(it) }
         // For the log: what kind of sender id WhatsApp gave, never the id itself.
@@ -169,7 +180,7 @@ class MapsNavListener : NotificationListenerService() {
             if (chatLogged.size > 50) chatLogged.clear()
             AppLog.d("Messages", "WhatsApp ${if (group) "group" else "chat"}: sender id is $kind")
         }
-        base.copy(groupName = title, isGroup = group, senderNumber = number)
+        base.copy(groupName = title, isGroup = group, senderNumber = number, fromMe = fromMe)
     } catch (_: Exception) {
         base
     }

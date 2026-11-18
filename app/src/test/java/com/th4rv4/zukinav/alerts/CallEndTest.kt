@@ -87,4 +87,14 @@ class CallEndTest {
         val t = AlertTracker(messagesSavedOnly = { false })
         assertEquals(listOf(Alert.Message("62300 40764", 1, true)), t.posted(msg("b", "+91 62300 40764", "hello"), 0))
     }
+
+    @Test fun yourOwnReplyIsNotANewMessage() {
+        val t = AlertTracker()
+        assertEquals(listOf(Alert.Message("Mummy", 1, true)), t.posted(msg("m", "Mummy", "khana"), 0))
+        // The auto-reply lands in the same chat notification.
+        assertTrue(t.posted(msg("m", "Mummy", "Riding, will reply soon").copy(fromMe = true), 500).isEmpty())
+        assertTrue(t.posted(msg("m", "You", "Riding, will reply soon"), 600).isEmpty())
+        // Her next message still counts.
+        assertEquals(listOf(Alert.Message("Mummy", 2, true)), t.posted(msg("m", "Mummy", "ok"), 9_000))
+    }
 }
