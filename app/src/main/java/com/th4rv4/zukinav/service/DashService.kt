@@ -712,8 +712,19 @@ class DashService : Service(), ClusterLink.Listener {
             }
             else -> Unit
         }
+        var after = 0L
+        if (alert is Alert.Missed) {
+            // A missed call frame doesn't close the dash's ringing screen; it
+            // stays up until its own timeout, up to 15 s after the call
+            // ended. Closing the call first, the way an answered call does,
+            // takes it down straight away.
+            val close = SuzukiFrames.call(alert.caller, ringing = false, whatsapp = alert.whatsapp, mode = mode)
+            AppLog.d("Dash", "-> ${SuzukiFrames.hex(close)} (call ended)")
+            repeat(3) { i -> main.postDelayed({ link.send(close) }, i * 200L) }
+            after = 600L
+        }
         AppLog.d("Dash", "-> ${SuzukiFrames.hex(frame)} (alert)")
-        repeat(3) { i -> main.postDelayed({ link.send(frame) }, i * 200L) }
+        repeat(3) { i -> main.postDelayed({ link.send(frame) }, after + i * 200L) }
     }
 
     private fun navFrame(nav: NavSnapshot, model: ClusterModel): ByteArray =
