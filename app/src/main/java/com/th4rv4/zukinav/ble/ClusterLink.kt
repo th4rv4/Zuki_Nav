@@ -50,6 +50,17 @@ class ClusterLink(private val context: Context, private val listener: Listener) 
     private class Pending(val frame: ByteArray, val coalesceKey: String?)
     private val queue = ArrayDeque<Pending>()
     private var inFlight = false
+    private var lastAddress: String? = null
+    private var restarts = 0
+
+    /** This connection has been set up already (see onConnectionStateChange). */
+    private var setUpStarted = false
+
+    /** Already threw away Android's saved copy of the services on this connect. */
+    private var rereadServices = false
+
+    /** Writes Android refused in a row; see [pump]. */
+    private var rejected = 0
     private val writeTimeout = Runnable {
         AppLog.d("BLE", "Write timed out, moving on")
         inFlight = false
@@ -57,19 +68,49 @@ class ClusterLink(private val context: Context, private val listener: Listener) 
     }
 
     fun connect(address: String, background: Boolean) = h.post {
+        restarts = 0
+        open(address, background)
+    }
+
+    /**
+     * Throws this connection away and opens a new one, at most twice per
+     * [connect]; after that the link is left down for the app to retry.
+     */
+    private fun startOver(why: String) {
+        val address = lastAddress
         closeGatt()
+        if (address == null || restarts >= 2) {
+            AppLog.d("BLE", "$why, giving up on this try")
+            setState(State.DISCONNECTED)
+            return
+        }
+        restarts++
+        AppLog.d("BLE", "$why, starting the link over")
+        setState(State.CONNECTING)
+        h.postDelayed({ if (gatt == null && state == State.CONNECTING) open(address, false) }, 500)
+    }
+
+    /** The link connected but never got as far as READY. */
+    private val setupCheck = Runnable {
+        if (gatt != null && state != State.READY) startOver("Dash didn't finish setting up in ${SETUP_WAIT_MS / 1000} s")
+    }
+
+    private fun open(address: String, background: Boolean) {
+        closeGatt()
+        lastAddress = address
+        rereadServices = false
         val adapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
         if (adapter == null || !adapter.isEnabled) {
             AppLog.d("BLE", "Bluetooth is off")
             setState(State.DISCONNECTED)
-            return@post
+            return
         }
         val device = try {
             adapter.getRemoteDevice(address)
         } catch (e: IllegalArgumentException) {
             AppLog.d("BLE", "Bad address $address")
             setState(State.DISCONNECTED)
-            return@post
+            return
         }
         deviceName = device.name
         AppLog.d("BLE", "Connecting to ${device.name ?: "?"} ($address)${if (background) ", waiting for it to appear" else ""}")
@@ -125,10 +166,20 @@ class ClusterLink(private val context: Context, private val listener: Listener) 
             g.writeCharacteristic(c)
         }
         if (ok) {
+            rejected = 0
             inFlight = true
             h.postDelayed(writeTimeout, 1_000)
         } else {
-            AppLog.d("BLE", "Write rejected, retrying shortly")
+            rejected++
+            if (rejected == 1) AppLog.d("BLE", "Write rejected, retrying shortly")
+            if (rejected >= MAX_REJECTED) {
+                // The link looks up but takes nothing: start it over instead of retrying forever.
+                AppLog.d("BLE", "Dash took no messages for ${MAX_REJECTED * 50 / 1000} s, reconnecting")
+                rejected = 0
+                closeGatt()
+                setState(State.DISCONNECTED)
+                return
+            }
             queue.addFirst(next)
             h.postDelayed({ pump() }, 50)
         }
@@ -141,7 +192,10 @@ class ClusterLink(private val context: Context, private val listener: Listener) 
     }
 
     private fun closeGatt() {
+        setUpStarted = false
+        h.removeCallbacks(setupCheck)
         h.removeCallbacks(writeTimeout)
+        rejected = 0
         queue.clear()
         inFlight = false
         lastIncoming = null
@@ -159,6 +213,18 @@ class ClusterLink(private val context: Context, private val listener: Listener) 
         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
             if (g != gatt) return
             if (newState == BluetoothProfile.STATE_CONNECTED) {
+                // Android can report the same connection as connected twice (seen
+                // with a paired dash). Setting up again on top of the first set-up
+                // jams the link, so only the first one counts.
+                if (setUpStarted) {
+                    // A second time means the first was a link Android still
+                    // thought was up; set up on both and nothing gets through.
+                    startOver("Connected again on the same link")
+                    return
+                }
+                setUpStarted = true
+                h.removeCallbacks(setupCheck)
+                h.postDelayed(setupCheck, SETUP_WAIT_MS)
                 AppLog.d("BLE", "Connected (status $status), requesting MTU 250")
                 g.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH)
                 if (!g.requestMtu(250)) g.discoverServices()
@@ -170,11 +236,13 @@ class ClusterLink(private val context: Context, private val listener: Listener) 
         }
 
         override fun onMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) {
+            if (g != gatt) return
             AppLog.d("BLE", "MTU $mtu (status $status)")
             g.discoverServices()
         }
 
         override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
+            if (g != gatt) return
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 AppLog.d("BLE", "Service discovery failed ($status)")
                 g.disconnect()
@@ -183,6 +251,15 @@ class ClusterLink(private val context: Context, private val listener: Listener) 
             logServices(g.services)
             val svc = pickService(g.services)
             if (svc == null) {
+                // Android keeps a copy of a paired device's services and may
+                // show an old one, taken while the dash wasn't ready. Throw
+                // the copy away and read the services again, once.
+                if (!rereadServices && forgetServices(g)) {
+                    rereadServices = true
+                    AppLog.d("BLE", "No dash service in Android's saved copy, reading the services again")
+                    h.postDelayed({ if (gatt == g) g.discoverServices() }, 500)
+                    return
+                }
                 AppLog.d("BLE", "No usable service found on this device")
                 g.disconnect()
                 return
@@ -194,12 +271,14 @@ class ClusterLink(private val context: Context, private val listener: Listener) 
         }
 
         override fun onDescriptorWrite(g: BluetoothGatt, d: BluetoothGattDescriptor, status: Int) {
+            if (g != gatt) return
             AppLog.d("BLE", "Notifications enabled (status $status)")
             setState(State.READY)
             pump()
         }
 
         override fun onCharacteristicWrite(g: BluetoothGatt, c: BluetoothGattCharacteristic, status: Int) {
+            if (g != gatt) return
             h.removeCallbacks(writeTimeout)
             if (status != BluetoothGatt.GATT_SUCCESS) AppLog.d("BLE", "Write status $status")
             inFlight = false
@@ -207,12 +286,14 @@ class ClusterLink(private val context: Context, private val listener: Listener) 
         }
 
         override fun onCharacteristicChanged(g: BluetoothGatt, c: BluetoothGattCharacteristic, value: ByteArray) {
+            if (g != gatt) return
             onIncoming(value)
         }
 
         @Deprecated("Pre-Android 13 variant")
         @Suppress("DEPRECATION")
         override fun onCharacteristicChanged(g: BluetoothGatt, c: BluetoothGattCharacteristic) {
+            if (g != gatt) return
             if (Build.VERSION.SDK_INT < 33) onIncoming(c.value ?: return)
         }
     }
@@ -227,6 +308,16 @@ class ClusterLink(private val context: Context, private val listener: Listener) 
             lastIncoming = hex
         }
         listener.onNotification(value)
+    }
+
+    /**
+     * Android's hidden BluetoothGatt.refresh(): forgets the saved copy of the
+     * device's services. Widely used by Bluetooth apps; false if unavailable.
+     */
+    private fun forgetServices(g: BluetoothGatt): Boolean = try {
+        g.javaClass.getMethod("refresh").invoke(g) as? Boolean ?: false
+    } catch (e: Exception) {
+        false
     }
 
     private fun enableNotify(g: BluetoothGatt, c: BluetoothGattCharacteristic): Boolean {
@@ -280,6 +371,11 @@ class ClusterLink(private val context: Context, private val listener: Listener) 
     }
 
     private companion object {
+        /** From connected to ready: a dash takes well under a second. */
+        const val SETUP_WAIT_MS = 8_000L
+
+        /** 3 s of refused writes, 50 ms apart. */
+        const val MAX_REJECTED = 60
         val CCCD: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
     }
 }
