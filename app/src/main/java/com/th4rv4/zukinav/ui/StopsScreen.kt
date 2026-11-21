@@ -66,7 +66,13 @@ class StopsScreen(host: MainActivity, val tripId: Long) : Screen(host) {
         val t = trip() ?: run { host.showTab(MainActivity.Tab.TRIPS); return }
         subtitle.text = TripFormat.title(t) + (TripFormat.stops(t)?.let { " · $it" } ?: "")
         timeline.removeAllViews()
-        if (t.legs.isEmpty()) {
+        // A ride with a warm-up but no stops: one part, start to end.
+        val legs = if (t.legs.isEmpty() && t.stops == 0) {
+            listOf(Leg(t.movedAt ?: t.rideStart, t.end, t.distanceKm, t.movingSeconds, t.topSpeedKmh))
+        } else {
+            t.legs
+        }
+        if (legs.isEmpty()) {
             rebuildFromRoute(t)
             timeline.addView(ui.text(
                 if (rebuilding) "Working out the stops from the route…"
@@ -78,8 +84,9 @@ class StopsScreen(host: MainActivity, val tripId: Long) : Screen(host) {
         }
         lookUpPlaces(t)
         val is24 = DateFormat.is24HourFormat(host)
-        addPoint(Palette.OK, t.startPlace ?: "Start", "Start", TripFormat.time(t.start, is24), null)
-        t.legs.forEachIndexed { i, leg ->
+        addPoint(Palette.OK, t.startPlace ?: "Start", "Start", TripFormat.time(t.rideStart, is24), null)
+        if (t.warmUp) addWarmUp(t, is24)
+        legs.forEachIndexed { i, leg ->
             addLeg(leg)
             val stop = t.stopList.getOrNull(i)
             if (stop != null) addStop(t, stop, i, is24)
@@ -139,10 +146,40 @@ class StopsScreen(host: MainActivity, val tripId: Long) : Screen(host) {
         timeline.addView(row(rail(null), wrap))
     }
 
+    /** Engine Warm Up: from switch-on to moving off, when the engine heated up. Not a stop. */
+    private fun addWarmUp(t: Trip, is24: Boolean) {
+        val moved = t.movedAt ?: return
+        val time = TripFormat.time(t.start, is24) + " – " + TripFormat.time(moved, is24)
+        val temps = if (t.warmFromC != null && t.warmToC != null) " · ${t.warmFromC} → ${t.warmToC} °C" else ""
+        val pill = ui.text(TripFormat.shortDuration(t.warmUpSeconds) + temps, 11f, Palette.ACCENT_SOFT, Ui.Weight.MEDIUM).apply {
+            background = ui.rounded(Palette.INSET, 8)
+            setPadding(ui.dp(8), ui.dp(2), ui.dp(8), ui.dp(2))
+        }
+        val card = ui.vstack(
+            4,
+            LinearLayout(ui.ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                addView(ui.text("Engine Warm Up", 15f, Palette.TEXT, Ui.Weight.MEDIUM),
+                    LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+                addView(ui.text(time, 13f, Palette.TEXT_SOFT))
+            },
+            LinearLayout(ui.ctx).apply { addView(pill) },
+        ).apply {
+            background = ui.rounded(Palette.SURFACE, 14)
+            setPadding(ui.dp(12), ui.dp(10), ui.dp(12), ui.dp(10))
+        }
+        val wrap = LinearLayout(ui.ctx).apply {
+            setPadding(0, ui.dp(4), 0, ui.dp(4))
+            addView(card, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        }
+        timeline.addView(row(rail(Palette.ACCENT_SOFT), wrap))
+    }
+
     private fun addStop(t: Trip, s: Stop, index: Int, is24: Boolean) {
         val label = s.label?.takeIf { it.isNotBlank() }
         val time = TripFormat.time(s.arrive, is24) + " – " + TripFormat.time(s.depart, is24)
-        val pill = ui.text("Stopped ${TripFormat.shortDuration(s.seconds)}", 11f, Palette.WARN, Ui.Weight.MEDIUM).apply {
+        val warm = if (s.warmUpSeconds >= 60) " · incl. ${TripFormat.shortDuration(s.warmUpSeconds)} warm-up" else ""
+        val pill = ui.text("Stopped ${TripFormat.shortDuration(s.seconds)}$warm", 11f, Palette.WARN, Ui.Weight.MEDIUM).apply {
             background = ui.rounded(Palette.WARN_BG, 8)
             setPadding(ui.dp(8), ui.dp(2), ui.dp(8), ui.dp(2))
         }

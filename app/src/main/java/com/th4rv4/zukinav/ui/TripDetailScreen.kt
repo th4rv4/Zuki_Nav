@@ -216,9 +216,10 @@ class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) 
         star.setTextColor(if (t.starred) Palette.WARN else Palette.MUTED)
         star.contentDescription = if (t.starred) "Unstar" else "Star"
         span.text = TripFormat.span(t, is24)
-        stopsCard.visibility = if (t.stops > 0) View.VISIBLE else View.GONE
+        stopsCard.visibility = if (t.stops > 0 || t.warmUp) View.VISIBLE else View.GONE
         stopsDetail.text = listOfNotNull(
             TripFormat.stops(t),
+            if (t.warmUp) "Engine Warm Up ${TripFormat.shortDuration(t.warmUpSeconds)}" else null,
             t.stopList.mapIndexed { i, s -> TripFormat.stopName(s, i) }.takeIf { it.isNotEmpty() }?.joinToString(", "),
         ).joinToString(" · ")
         val next = com.th4rv4.zukinav.trips.TripMerge.next(t, TripStore.all(host))
@@ -239,7 +240,7 @@ class TripDetailScreen(host: MainActivity, private val id: Long) : Screen(host) 
         grid.removeAllViews()
         val cells = listOf(
             "Moving Time" to TripFormat.duration(t.movingSeconds),
-            "Stopped" to TripFormat.duration(t.ridingSeconds - t.movingSeconds),
+            "Signals & Traffic" to TripFormat.duration(t.trafficSeconds),
             "Average Speed" to (t.averageKmh?.let { "${it.toInt()} km/h" } ?: "-"),
             "Top Speed" to "${t.topSpeedKmh} km/h",
         )

@@ -214,7 +214,7 @@ class TripsScreen(host: MainActivity) : Screen(host) {
                     ellipsize = android.text.TextUtils.TruncateAt.END
                 },
                 ui.text(
-                    TripFormat.time(t.start, is24) + " – " + TripFormat.time(t.end, is24) +
+                    TripFormat.time(t.rideStart, is24) + " – " + TripFormat.time(t.end, is24) +
                         (TripFormat.stops(t)?.let { " · $it" } ?: ""),
                     12f, Palette.MUTED,
                 ),

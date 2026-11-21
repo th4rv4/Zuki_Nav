@@ -252,7 +252,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
             val trip = ride.toTrip()
             rideValue.text = TripFormat.distance(ride.distanceKm) + " · " + TripFormat.duration(trip.durationSeconds)
             rideTop.text = "Top ${ride.topSpeed} km/h"
-            val still = trip.ridingSeconds - trip.movingSeconds
+            val still = trip.trafficSeconds
             rideTime.text = "Riding ${TripFormat.duration(trip.movingSeconds)}" +
                 (if (still >= 60) " · Stationary ${TripFormat.duration(still)}" else "") +
                 (if (trip.stops > 0) " · ${trip.stops} " + (if (trip.stops == 1) "stop" else "stops") else "")

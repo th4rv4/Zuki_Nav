@@ -71,7 +71,7 @@ object TripFormat {
 
     /** "Today, 6:12 – 8:21 AM" style range for the details screen. */
     fun span(t: Trip, is24h: Boolean, zone: ZoneId = ZoneId.systemDefault(), today: LocalDate = LocalDate.now(zone)): String =
-        day(t.start, zone, today) + ", " + time(t.start, is24h, zone) + " – " + time(t.end, is24h, zone)
+        day(t.rideStart, zone, today) + ", " + time(t.rideStart, is24h, zone) + " – " + time(t.end, is24h, zone)
 
     fun day(ms: Long, zone: ZoneId = ZoneId.systemDefault(), today: LocalDate = LocalDate.now(zone)): String {
         val d = date(ms, zone)

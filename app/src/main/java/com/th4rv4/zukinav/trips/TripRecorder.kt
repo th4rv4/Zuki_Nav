@@ -13,7 +13,12 @@ import com.th4rv4.zukinav.protocol.BikeData
  *  - [HALT_STOP_MS] or more at 0 km/h with the key on (a long jam, a wait),
  *  - [KEY_OFF_STOP_MS] or more with the key off (fuel, tea, photos).
  * Shorter halts (signals, traffic) only count as time not moving. A stop
- * starts when the bike came to rest, not when the key went off.
+ * runs from when the bike came to rest until it moves again, so switching
+ * off, on and idling is one stop.
+ *
+ * Nothing before the bike first moves is a stop. If the engine warmed up in
+ * that time (at least [WARM_UP_MIN_MS] and [WARM_UP_RISE_C] hotter), it is
+ * shown as Engine Warm Up; otherwise the ride starts with the first move.
  *
  * Distance comes from Trip A (0.1 km steps). If Trip A is reset during the
  * ride, the ODO covers that stretch instead.
@@ -53,9 +58,29 @@ class TripRecorder {
         /** Finished parts and the stops between them. */
         val legs: List<Leg> = emptyList(),
         val stops: List<Stop> = emptyList(),
+        /** When the bike first moved, and the engine temperature at switch-on and then. */
+        val movedAt: Long? = null,
+        val tempStart: Int? = null,
+        val tempAtMove: Int? = null,
+        /** The key went off during the current rest: it becomes a stop once the bike moves. */
+        val keyOffStop: Boolean = false,
+        /** Switched back on during that rest: when, and the engine temperature then and since, all at rest. */
+        val keyOnAt: Long? = null,
+        val keyOnTemp: Int? = null,
+        val restTemp: Int? = null,
     ) {
+        /** Warmed up before moving off: long enough, and the engine got hotter. */
+        val warmedUp: Boolean
+            get() = movedAt != null && movedAt - start >= WARM_UP_MIN_MS &&
+                tempStart != null && tempAtMove != null && tempAtMove - tempStart >= WARM_UP_RISE_C
+
         fun toTrip(): Trip {
-            val allLegs = if (stops.isEmpty()) emptyList() else legs + currentLeg(lastAt)
+            val moved = movedAt
+            val allLegs = (if (stops.isEmpty()) emptyList() else legs + currentLeg(lastAt)).mapIndexed { i, l ->
+                // The first part starts when the bike moved, not at switch-on.
+                if (i == 0 && moved != null) l.copy(start = maxOf(l.start, moved)) else l
+            }
+            val warm = warmedUp
             return Trip(
                 start = start,
                 end = lastAt,
@@ -74,6 +99,10 @@ class TripRecorder {
                 stopSeconds = stops.sumOf { it.seconds },
                 legs = allLegs,
                 stopList = stops,
+                movedAt = moved,
+                warmUp = warm,
+                warmFromC = if (warm) tempStart else null,
+                warmToC = if (warm) tempAtMove else null,
             )
         }
 
@@ -92,14 +121,16 @@ class TripRecorder {
             restSince ?: "", restLat ?: "", restLng ?: "",
             legStart, legStartKm, legStartMovingMs, legTop,
             legs.joinToString("|") { "${it.start},${it.end},${it.distanceKm},${it.movingSeconds},${it.topSpeedKmh}" },
-            stops.joinToString("|") { "${it.arrive},${it.depart},${it.lat ?: ""},${it.lng ?: ""}" },
+            stops.joinToString("|") { "${it.arrive},${it.depart},${it.lat ?: ""},${it.lng ?: ""},${it.warmUpSeconds}" },
+            movedAt ?: "", tempStart ?: "", tempAtMove ?: "", keyOffStop,
+            keyOnAt ?: "", keyOnTemp ?: "", restTemp ?: "",
         ).joinToString(";")
 
         companion object {
             fun decode(s: String?): Active? {
                 val p = s?.split(';') ?: return null
-                // 13 fields at first, 16 with engine temperature, 25 with stops.
-                if (p.size != 13 && p.size != 16 && p.size != 25) return null
+                // 13 fields at first, 16 with engine temperature, 25 with stops, 32 with warm-ups.
+                if (p.size != 13 && p.size != 16 && p.size != 25 && p.size != 32) return null
                 return try {
                     val start = p[0].toLong()
                     Active(
@@ -122,8 +153,19 @@ class TripRecorder {
                         },
                         stops = p.getOrNull(24).orEmpty().split('|').filter { it.isNotBlank() }.map { l ->
                             val f = l.split(',')
-                            Stop(f[0].toLong(), f[1].toLong(), f.getOrNull(2)?.toDoubleOrNull(), f.getOrNull(3)?.toDoubleOrNull())
+                            Stop(
+                                f[0].toLong(), f[1].toLong(), f.getOrNull(2)?.toDoubleOrNull(), f.getOrNull(3)?.toDoubleOrNull(),
+                                warmUpSeconds = f.getOrNull(4)?.toLongOrNull() ?: 0,
+                            )
                         },
+                        // Rides in progress from before: treated as already moving.
+                        movedAt = if (p.size >= 32) p[25].toLongOrNull() else start,
+                        tempStart = p.getOrNull(26)?.toIntOrNull(),
+                        tempAtMove = p.getOrNull(27)?.toIntOrNull(),
+                        keyOffStop = p.getOrNull(28) == "true",
+                        keyOnAt = p.getOrNull(29)?.toLongOrNull(),
+                        keyOnTemp = p.getOrNull(30)?.toIntOrNull(),
+                        restTemp = p.getOrNull(31)?.toIntOrNull(),
                     )
                 } catch (_: RuntimeException) {
                     null
@@ -163,20 +205,51 @@ class TripRecorder {
                 legTop = d.speedKmh,
                 restSince = if (d.speedKmh == 0) now else null,
                 restLat = here?.first, restLng = here?.second,
+                movedAt = if (d.speedKmh > 0) now else null,
+                tempStart = e,
+                tempAtMove = if (d.speedKmh > 0) e else null,
             )
             return finished
         }
 
         val stepMs = now - a.lastAt
-        // The key was off for a while: a stop, from when the bike came to rest.
-        if (gapWasRiding) {
+        if (a.movedAt == null) {
+            // Not moved yet: nothing here is a stop.
+            if (d.speedKmh > 0) a = a.copy(movedAt = now, tempAtMove = d.engineTempC ?: a.tempAtMove)
+            else if (d.engineTempC != null) a = a.copy(tempAtMove = d.engineTempC, tempStart = a.tempStart ?: d.engineTempC)
+        } else if (gapWasRiding) {
             // Not a stop: the dash dropped out while riding.
-        } else if (stepMs >= KEY_OFF_STOP_MS) {
-            val arrive = a.restSince ?: a.lastAt
-            a = addStop(a, arrive, now, a.restLat ?: a.endLat ?: here?.first, a.restLng ?: a.endLng ?: here?.second)
-        } else if (d.speedKmh > 0 && a.restSince != null && now - a.restSince >= HALT_STOP_MS) {
-            // Moving again after a long wait with the key on.
-            a = addStop(a, a.restSince, now, a.restLat ?: here?.first, a.restLng ?: here?.second)
+        } else {
+            if (stepMs >= KEY_OFF_STOP_MS) {
+                // The key was off a while: a stop from when the bike came to
+                // rest, until it moves again.
+                a = a.copy(
+                    restSince = a.restSince ?: a.lastAt,
+                    restLat = a.restLat ?: a.endLat ?: here?.first,
+                    restLng = a.restLng ?: a.endLng ?: here?.second,
+                    keyOffStop = true,
+                    // Back on: a warm-up, if any, is measured from here, only while at rest.
+                    keyOnAt = if (d.speedKmh == 0) now else null,
+                    keyOnTemp = if (d.speedKmh == 0) d.engineTempC else null,
+                    restTemp = if (d.speedKmh == 0) d.engineTempC else null,
+                )
+            } else if (d.speedKmh == 0 && a.keyOnAt != null && d.engineTempC != null) {
+                a = a.copy(keyOnTemp = a.keyOnTemp ?: d.engineTempC, restTemp = d.engineTempC)
+            }
+            val rest = a.restSince
+            if (d.speedKmh > 0 && rest != null && (a.keyOffStop || now - rest >= HALT_STOP_MS)) {
+                // Warmed up again after the key was off: at rest the whole time
+                // (any movement would have ended the stop), long enough, hotter.
+                val on = a.keyOnAt
+                val from = a.keyOnTemp
+                val to = a.restTemp
+                val warm = if (on != null && from != null && to != null && now - on >= WARM_UP_MIN_MS && to - from >= WARM_UP_RISE_C) {
+                    (now - on) / 1000
+                } else {
+                    0L
+                }
+                a = addStop(a, rest, now, a.restLat ?: here?.first, a.restLng ?: here?.second, warm)
+            }
         }
 
         val moving = gapWasRiding || ((d.speedKmh > 0 || a.lastSpeed > 0) && stepMs <= MAX_STEP_MS)
@@ -221,11 +294,11 @@ class TripRecorder {
         active = active?.copy(endLat = lat, endLng = lng)
     }
 
-    private fun addStop(a: Active, arrive: Long, depart: Long, lat: Double?, lng: Double?): Active {
+    private fun addStop(a: Active, arrive: Long, depart: Long, lat: Double?, lng: Double?, warmUpSeconds: Long = 0): Active {
         val legEnd = arrive.coerceIn(a.legStart, a.lastAt)
         return a.copy(
             legs = a.legs + a.currentLeg(legEnd),
-            stops = a.stops + Stop(arrive = arrive, depart = depart, lat = lat, lng = lng),
+            stops = a.stops + Stop(arrive = arrive, depart = depart, lat = lat, lng = lng, warmUpSeconds = warmUpSeconds),
             legStart = depart,
             legStartKm = a.distanceKm,
             legStartMovingMs = a.movingMs,
@@ -233,6 +306,10 @@ class TripRecorder {
             restSince = null,
             restLat = null,
             restLng = null,
+            keyOffStop = false,
+            keyOnAt = null,
+            keyOnTemp = null,
+            restTemp = null,
         )
     }
 
@@ -256,6 +333,14 @@ class TripRecorder {
 
         /** At 0 km/h with the key on at least this long is listed as a stop. */
         const val HALT_STOP_MS = 5 * 60_000L
+
+        /**
+         * Engine Warm Up: idling at least this long before moving off, and
+         * the engine this much hotter. A running engine gains about 20 °C a
+         * minute from cold; a dash that is only switched on stays flat.
+         */
+        const val WARM_UP_MIN_MS = 60_000L
+        const val WARM_UP_RISE_C = 10
 
         fun offLimit(routeOpen: Boolean) = if (routeOpen) ROUTE_OFF_LIMIT_MS else OFF_LIMIT_MS
 

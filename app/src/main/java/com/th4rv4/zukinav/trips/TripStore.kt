@@ -79,7 +79,8 @@ object TripStore {
             val f = file(ctx)
             if (f.exists()) {
                 val arr = JSONArray(f.readText())
-                for (i in 0 until arr.length()) fromJson(arr.getJSONObject(i))?.let { list += it }
+                // Tidied as they load, so rides saved earlier read the same way.
+                for (i in 0 until arr.length()) fromJson(arr.getJSONObject(i))?.let { list += it.tidy() }
             }
         } catch (e: Exception) {
             AppLog.d("Trips", "Could not read saved trips: $e")
@@ -119,6 +120,10 @@ object TripStore {
         t.startPlace?.let { put("place0", it) }
         t.endPlace?.let { put("place1", it) }
         t.maxEngineC?.let { put("engMax", it) }
+        t.movedAt?.let { put("moved", it) }
+        if (t.warmUp) put("warmUp", true)
+        t.warmFromC?.let { put("warm0", it) }
+        t.warmToC?.let { put("warm1", it) }
         t.avgEngineC?.let { put("engAvg", it) }
         if (t.stops > 0) {
             put("stops", t.stops)
@@ -138,6 +143,7 @@ object TripStore {
                         st.lat?.let { put("lat", it) }
                         st.lng?.let { put("lng", it) }
                         st.place?.let { put("place", it) }
+                        if (st.warmUpSeconds > 0) put("warm", st.warmUpSeconds)
                         st.label?.let { put("label", it) }
                     })
                 }
@@ -166,6 +172,10 @@ object TripStore {
             endPlace = s("place1"),
             maxEngineC = if (o.has("engMax")) o.getInt("engMax") else null,
             avgEngineC = if (o.has("engAvg")) o.getInt("engAvg") else null,
+            movedAt = if (o.has("moved")) o.getLong("moved") else null,
+            warmUp = o.optBoolean("warmUp"),
+            warmFromC = if (o.has("warm0")) o.getInt("warm0") else null,
+            warmToC = if (o.has("warm1")) o.getInt("warm1") else null,
             stops = o.optInt("stops", 0),
             stopSeconds = o.optLong("stopSecs", 0L),
             legs = o.optJSONArray("legs")?.let { a ->
@@ -184,6 +194,7 @@ object TripStore {
                         lng = if (st.has("lng")) st.getDouble("lng") else null,
                         place = if (st.has("place")) st.getString("place") else null,
                         label = if (st.has("label")) st.getString("label") else null,
+                        warmUpSeconds = st.optLong("warm", 0L),
                     )
                 }
             } ?: emptyList(),
