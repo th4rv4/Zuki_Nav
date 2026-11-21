@@ -193,6 +193,8 @@ class TripRecorder {
         here: Pair<Double, Double>? = null,
         /** The dash was lost while riding since the last reading: the gap was riding, not a stop. */
         gapWasRiding: Boolean = false,
+        /** Longest step between readings that still counts as riding (longer in Zuki Sim at fast-forward). */
+        maxStepMs: Long = MAX_STEP_MS,
     ): Trip? {
         val finished = finishIfIdle(now, routeOpen)
         var a = active
@@ -252,7 +254,7 @@ class TripRecorder {
             }
         }
 
-        val moving = gapWasRiding || ((d.speedKmh > 0 || a.lastSpeed > 0) && stepMs <= MAX_STEP_MS)
+        val moving = gapWasRiding || ((d.speedKmh > 0 || a.lastSpeed > 0) && stepMs <= maxStepMs)
         val atRest = d.speedKmh == 0
         active = a.copy(
             lastAt = now,
@@ -345,7 +347,7 @@ class TripRecorder {
         fun offLimit(routeOpen: Boolean) = if (routeOpen) ROUTE_OFF_LIMIT_MS else OFF_LIMIT_MS
 
         /** Readings come every 5 s; a longer step is a dropout and does not count as moving. */
-        private const val MAX_STEP_MS = 15_000L
+        const val MAX_STEP_MS = 15_000L
 
         /** Farther than this between two readings is not real riding. */
         private const val MAX_STEP_KM = 5.0

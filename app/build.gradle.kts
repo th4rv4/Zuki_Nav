@@ -53,6 +53,15 @@ android {
     }
 
     buildTypes {
+        // "Zuki Sim": a test build of the same app, installed next to the real
+        // one, for testing against Zuki Dash Sim (a phone pretending to be the
+        // dash). Its own name, settings, rides and log. Built locally only:
+        //   ./gradlew assembleSim
+        create("sim") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".sim"
+            versionNameSuffix = "-sim"
+        }
         release {
             // Kept readable (no shrinking or renaming): the app is small, and
             // plain code is easier for Play Protect to check.

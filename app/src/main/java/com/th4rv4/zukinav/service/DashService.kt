@@ -1,6 +1,5 @@
 package com.th4rv4.zukinav.service
 
-import com.th4rv4.zukinav.widget.RangeWidget
 import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
@@ -19,6 +18,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.SystemClock
 import android.text.format.DateFormat
 import com.th4rv4.zukinav.R
 import com.th4rv4.zukinav.alerts.Alert
@@ -28,8 +28,8 @@ import com.th4rv4.zukinav.fuel.Refill
 import com.th4rv4.zukinav.maint.MaintNotifier
 import com.th4rv4.zukinav.maint.MaintStore
 import com.th4rv4.zukinav.nav.NavRepository
-import com.th4rv4.zukinav.nav.RouteWatch
 import com.th4rv4.zukinav.nav.NavSnapshot
+import com.th4rv4.zukinav.nav.RouteWatch
 import com.th4rv4.zukinav.protocol.BikeData
 import com.th4rv4.zukinav.protocol.ClusterIcon
 import com.th4rv4.zukinav.protocol.ClusterModel
@@ -43,7 +43,10 @@ import com.th4rv4.zukinav.trips.DropWatch
 import com.th4rv4.zukinav.trips.TripLog
 import com.th4rv4.zukinav.ui.MainActivity
 import com.th4rv4.zukinav.util.AppLog
+import com.th4rv4.zukinav.util.Clock
 import com.th4rv4.zukinav.util.Prefs
+import com.th4rv4.zukinav.util.SimHooks
+import com.th4rv4.zukinav.widget.RangeWidget
 import java.time.LocalTime
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -217,7 +220,8 @@ class DashService : Service(), ClusterLink.Listener {
     private fun connectIfNeeded() {
         if (link.state != ClusterLink.State.DISCONNECTED) return
         if (bluetoothOff || setupHold) return
-        if (isBikeBonded(this) && !bondLogged) {
+        // Zuki Sim pairs with the phone playing the dash on purpose (see SimChecks).
+        if (isBikeBonded(this) && !bondLogged && !SimHooks.isSim) {
             AppLog.d("Dash", "The bike is paired in Android's Bluetooth settings; the dash refuses the app while it is. Forget it there.")
             bondLogged = true
         }
@@ -256,6 +260,26 @@ class DashService : Service(), ClusterLink.Listener {
             AppLog.d("Dash", "No bike for ${DEEP_SLEEP_MS / 60_000} min, deep sleep: low-power wait only")
             deepLogged = true
         }
+        // Zuki Sim: the simulated dash moves address, so find it by name first.
+        SimHooks.findDash?.let { find ->
+            if (simSearching) return
+            simSearching = true
+            find { found ->
+                main.post {
+                    simSearching = false
+                    if (link.state != ClusterLink.State.DISCONNECTED || instance == null) return@post
+                    if (found != null && !found.equals(prefs.clusterAddress, ignoreCase = true)) {
+                        AppLog.d("Sim", "Zuki Dash Sim is now at $found")
+                        prefs.clusterAddress = found
+                    }
+                    lastConnectWasBackground = false
+                    link.connect(found ?: addr, background = false)
+                    main.removeCallbacks(connectTimeout)
+                    main.postDelayed(connectTimeout, CONNECT_TIMEOUT_MS)
+                }
+            }
+            return
+        }
         val background = slow && (deep || !directTurn)
         if (slow) directTurn = !directTurn
         lastConnectWasBackground = background
@@ -263,6 +287,9 @@ class DashService : Service(), ClusterLink.Listener {
         main.removeCallbacks(connectTimeout)
         main.postDelayed(connectTimeout, if (background) SLOW_WAIT_MS else CONNECT_TIMEOUT_MS)
     }
+
+    /** Zuki Sim is looking for the simulated dash (see [SimHooks.findDash]). */
+    private var simSearching = false
 
     private fun isSaving(): Boolean =
         lostAt > 0 && System.currentTimeMillis() - lostAt > FAST_WINDOW_MS
@@ -279,7 +306,7 @@ class DashService : Service(), ClusterLink.Listener {
                     DropWatch.cancel()
                     main.removeCallbacks(lostGiveUp)
                     if (TripLog.dashLost) AppLog.d("Dash", "Dash is back, the ride carries on")
-                    lastReadingAt = System.currentTimeMillis()
+                    lastReadingAt = SystemClock.elapsedRealtime()
                     main.removeCallbacks(silentCheck)
                     main.postDelayed(silentCheck, SILENT_CHECK_MS)
                     retries = 0
@@ -301,7 +328,7 @@ class DashService : Service(), ClusterLink.Listener {
                     val last = bike
                     if (last != null) {
                         TripLog.onDisconnected(this)
-                        val fresh = System.currentTimeMillis() - lastReadingAt < DropJudge.FRESH_READING_MS
+                        val fresh = SystemClock.elapsedRealtime() - lastReadingAt < DropJudge.FRESH_READING_MS
                         DropWatch.start(this, last.speedKmh.takeIf { fresh }) { onDropJudged(it) }
                     }
                     bike = null
@@ -355,7 +382,7 @@ class DashService : Service(), ClusterLink.Listener {
     private val silentCheck = object : Runnable {
         override fun run() {
             if (link.state != ClusterLink.State.READY) return
-            val quiet = System.currentTimeMillis() - lastReadingAt
+            val quiet = SystemClock.elapsedRealtime() - lastReadingAt
             if (quiet >= SILENT_MS) {
                 AppLog.d("Dash", "Dash silent for ${quiet / 1000} s, reconnecting")
                 link.disconnect()
@@ -377,7 +404,7 @@ class DashService : Service(), ClusterLink.Listener {
                 // Back to quick retries, whatever the backoff had reached.
                 lostAt = System.currentTimeMillis()
                 main.removeCallbacks(lostGiveUp)
-                main.postDelayed(lostGiveUp, DropJudge.LOST_LIMIT_MS)
+                main.postDelayed(lostGiveUp, Clock.scaled(DropJudge.LOST_LIMIT_MS))
             }
             else -> {
                 AppLog.d("Dash", "Bike switched off (${j.reason})")
@@ -402,17 +429,24 @@ class DashService : Service(), ClusterLink.Listener {
     // ---- from the dash ------------------------------------------------------
 
     override fun onNotification(value: ByteArray) {
+        // The test build's simulated dash also sends its ride time and a
+        // made-up position; the real dash never does.
+        if (value.size == SuzukiFrames.FRAME_SIZE && value[1] == 'Z'.code.toByte()) {
+            SimHooks.onSimFrame?.invoke(value)
+            return
+        }
         val data = BikeData.parse(value) ?: return
         main.post { onBikeData(data) }
     }
 
     private fun onBikeData(data: BikeData) {
-        lastReadingAt = System.currentTimeMillis()
+        // Link health runs on real time, not ride time (which Zuki Sim can skip ahead).
+        lastReadingAt = SystemClock.elapsedRealtime()
         TripLog.onReading(this, data)
         data.fuelBars?.let { bars -> FuelStore.onReading(this, data.odoKm, bars)?.let { askAboutRefill(it) } }
         if (data.odoKm > 0) MaintNotifier.show(this, MaintStore.onOdo(this, data.odoKm))
         data.engineTempC?.let { c ->
-            val events = Thermals.onReading(c, System.currentTimeMillis(), prefs.engineWarmC, prefs.engineHotC)
+            val events = Thermals.onReading(c, Clock.now(), prefs.engineWarmC, prefs.engineHotC)
             if (ThermalSession.Event.OVERHEAT in events && prefs.overheatDashAlert) {
                 AppLog.d("Thermals", "Engine $c°C: overheat alert")
                 showDashMessage(OVERHEAT_TEXT)

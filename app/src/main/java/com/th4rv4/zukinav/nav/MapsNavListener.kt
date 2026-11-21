@@ -2,11 +2,11 @@ package com.th4rv4.zukinav.nav
 
 import android.app.Notification
 import android.app.Person
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.os.Handler
 import android.os.Looper
 import android.provider.Telephony
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import com.th4rv4.zukinav.alerts.Alert
@@ -15,10 +15,11 @@ import com.th4rv4.zukinav.alerts.AutoReply
 import com.th4rv4.zukinav.alerts.CallFilter
 import com.th4rv4.zukinav.alerts.ContactNames
 import com.th4rv4.zukinav.alerts.Notice
-import com.th4rv4.zukinav.protocol.ClusterIcon
 import com.th4rv4.zukinav.ble.ClusterLink
+import com.th4rv4.zukinav.protocol.ClusterIcon
 import com.th4rv4.zukinav.service.DashService
 import com.th4rv4.zukinav.util.AppLog
+import com.th4rv4.zukinav.util.Clock
 import com.th4rv4.zukinav.util.Prefs
 import java.time.LocalTime
 
@@ -58,7 +59,7 @@ class MapsNavListener : NotificationListenerService() {
 
     private val alertTick = object : Runnable {
         override fun run() {
-            deliver(alerts.tick(System.currentTimeMillis()))
+            deliver(alerts.tick(Clock.now()))
             // Quick checks so the dash hears soon after the phone stops ringing.
             if (alerts.hasPending) main.postDelayed(this, 250)
         }
@@ -86,7 +87,7 @@ class MapsNavListener : NotificationListenerService() {
             val n = notice(sbn)
             if (declineIfUnknown(sbn, n)) return
             autoReply.onNotification(sbn, DashService.linkState == ClusterLink.State.READY)
-            deliver(alerts.posted(n, System.currentTimeMillis()))
+            deliver(alerts.posted(n, Clock.now()))
         }
     }
 
@@ -112,7 +113,7 @@ class MapsNavListener : NotificationListenerService() {
             }
             callerLookups.remove(sbn.key)
             if (screenedCalls.remove(sbn.key) == true) return
-            deliver(alerts.removed(n, System.currentTimeMillis()))
+            deliver(alerts.removed(n, Clock.now()))
         }
     }
 
@@ -278,7 +279,7 @@ class MapsNavListener : NotificationListenerService() {
         if (!incoming) return false
         if (!prefs.rejectAlways && DashService.linkState != ClusterLink.State.READY) return false
         val caller = n.screenName()
-        val decline = callFilter.shouldDecline(caller, prefs.rejectAllowRepeat, System.currentTimeMillis())
+        val decline = callFilter.shouldDecline(caller, prefs.rejectAllowRepeat, Clock.now())
         screenedCalls[sbn.key] = decline
         if (!decline) {
             if (CallFilter.isUnknown(caller)) AppLog.d("Calls", "Unknown caller rang again, let through")
@@ -324,7 +325,7 @@ class MapsNavListener : NotificationListenerService() {
         }
         for (a in list) {
             // The phone app's own missed-call notice for a call we declined.
-            if (a is Alert.Missed && !a.whatsapp && callFilter.recentlyDeclined(a.caller, System.currentTimeMillis())) continue
+            if (a is Alert.Missed && !a.whatsapp && callFilter.recentlyDeclined(a.caller, Clock.now())) continue
             val wanted = when (a) {
                 is Alert.Ringing, is Alert.Answered, is Alert.Missed, Alert.ClearMissed -> prefs.callAlerts
                 is Alert.Message, Alert.ClearMessages -> prefs.messageAlerts

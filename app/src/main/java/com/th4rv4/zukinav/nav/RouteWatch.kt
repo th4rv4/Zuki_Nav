@@ -3,6 +3,7 @@ package com.th4rv4.zukinav.nav
 import android.content.Context
 import com.th4rv4.zukinav.trips.TripLog
 import com.th4rv4.zukinav.util.AppLog
+import com.th4rv4.zukinav.util.Clock
 import com.th4rv4.zukinav.util.Prefs
 
 /**
@@ -17,10 +18,10 @@ object RouteWatch {
     private fun state(ctx: Context): RouteState =
         state ?: RouteState.decode(Prefs(ctx).routeState).also { state = it }
 
-    fun isOpen(ctx: Context, now: Long = System.currentTimeMillis()) = state(ctx).isOpen(now)
+    fun isOpen(ctx: Context, now: Long = Clock.now()) = state(ctx).isOpen(now)
 
     /** When an open route will count as closed if Maps stays quiet; null if not counting down. */
-    fun closesAt(ctx: Context, now: Long = System.currentTimeMillis()) = state(ctx).closesAt(now)
+    fun closesAt(ctx: Context, now: Long = Clock.now()) = state(ctx).closesAt(now)
 
     fun onPosted(ctx: Context, title: String?) = change(ctx) { s, now -> s.onPosted(title, now) }
 
@@ -30,7 +31,7 @@ object RouteWatch {
 
     private fun change(ctx: Context, block: (RouteState, Long) -> Unit) {
         val s = state(ctx)
-        val now = System.currentTimeMillis()
+        val now = Clock.now()
         val before = s.encode()
         val wasOpen = s.isOpen(now)
         block(s, now)

@@ -7,6 +7,7 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Handler
 import android.os.Looper
+import com.th4rv4.zukinav.util.Clock
 import com.th4rv4.zukinav.util.Places
 
 /**
@@ -26,7 +27,7 @@ object DropWatch {
     private val timer = object : Runnable {
         override fun run() {
             val j = judge ?: return
-            if (j.onTime(System.currentTimeMillis(), hasGps) != DropJudge.Verdict.WAITING) finish()
+            if (j.onTime(Clock.now(), hasGps) != DropJudge.Verdict.WAITING) finish()
             else main.postDelayed(this, CHECK_MS)
         }
     }
@@ -37,7 +38,7 @@ object DropWatch {
     /** Starts judging a drop that just happened; [onVerdict] gets the answer once. */
     fun start(ctx: Context, lastDashKmh: Int?, onVerdict: (DropJudge) -> Unit) {
         cancel()
-        val now = System.currentTimeMillis()
+        val now = Clock.now()
         val j = DropJudge(now, lastDashKmh)
         RouteRecorder.lastPoint?.takeIf { now - it.at < 60_000L }?.let { j.setDropPoint(it.lat, it.lng) }
         appContext = ctx.applicationContext
@@ -84,7 +85,7 @@ object DropWatch {
         val j = judge ?: return
         if (loc.hasAccuracy() && loc.accuracy > 50f) return
         val kmh = if (loc.hasSpeed()) loc.speed * 3.6f else null
-        if (j.onFix(System.currentTimeMillis(), loc.latitude, loc.longitude, kmh) != DropJudge.Verdict.WAITING) finish()
+        if (j.onFix(Clock.now(), loc.latitude, loc.longitude, kmh) != DropJudge.Verdict.WAITING) finish()
     }
 
     private fun finish() {

@@ -10,14 +10,15 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.th4rv4.zukinav.ble.ClusterLink
 import com.th4rv4.zukinav.fuel.FuelStore
-import com.th4rv4.zukinav.protocol.EngineState
+import com.th4rv4.zukinav.maint.MaintStore
 import com.th4rv4.zukinav.nav.NavRepository
 import com.th4rv4.zukinav.nav.NavSnapshot
+import com.th4rv4.zukinav.protocol.EngineState
 import com.th4rv4.zukinav.service.DashService
 import com.th4rv4.zukinav.trips.TripFormat
 import com.th4rv4.zukinav.trips.TripLog
 import com.th4rv4.zukinav.trips.TripStore
-import com.th4rv4.zukinav.maint.MaintStore
+import com.th4rv4.zukinav.util.Clock
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -259,7 +260,7 @@ class RideScreen(host: MainActivity) : Screen(host) {
             val endsAt = TripLog.endsAt(host)
             rideOffRow.visibility = if (endsAt != null) View.VISIBLE else View.GONE
             if (endsAt != null) {
-                val left = ((endsAt - System.currentTimeMillis() + 59_999) / 60_000).coerceAtLeast(1)
+                val left = ((endsAt - Clock.now() + 59_999) / 60_000).coerceAtLeast(1)
                 rideHint.text = when {
                     com.th4rv4.zukinav.nav.RouteWatch.isOpen(host) -> "Route open · ride continues"
                     else -> "Ends by itself in $left min"

@@ -64,6 +64,11 @@ object Updater {
     /** Looks for a newer release than [installed]. */
     fun check(installed: String) {
         if (busy) return
+        // The Zuki Sim test build is built locally and isn't on GitHub.
+        if (com.th4rv4.zukinav.util.SimHooks.isSim) {
+            set(State.Failed("Zuki Sim is a test build; it doesn't update from GitHub"))
+            return
+        }
         set(State.Checking)
         Thread {
             try {

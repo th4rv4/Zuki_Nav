@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Lets Zuki Sim be picked as the mock location app, for the made-up GPS from Zuki Dash Sim. -->
+    <uses-permission android:name="android.permission.ACCESS_MOCK_LOCATION"
+        tools:ignore="MockLocation,ProtectedPermissions" />
+
+    <application>
+        <!-- Starts with the app and plugs the test hooks in. -->
+        <provider
+            android:name="com.th4rv4.zukinav.sim.SimInit"
+            android:authorities="${applicationId}.siminit"
+            android:exported="false" />
+    </application>
+</manifest>

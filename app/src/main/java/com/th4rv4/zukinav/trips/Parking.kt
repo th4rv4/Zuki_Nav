@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import com.th4rv4.zukinav.util.AppLog
+import com.th4rv4.zukinav.util.Clock
 import com.th4rv4.zukinav.util.Places
 import com.th4rv4.zukinav.util.Prefs
 import java.util.Locale
@@ -33,7 +34,7 @@ object Parking {
     fun onBikeOff(ctx: Context, atLat: Double? = null, atLng: Double? = null) {
         val app = ctx.applicationContext
         if (!Places.hasForeground(app)) return
-        val now = System.currentTimeMillis()
+        val now = Clock.now()
         val p = RouteRecorder.lastPoint?.takeIf { now - it.at < FRESH_MS }
         if (atLat != null && atLng != null) {
             // Where the dash dropped, not where the phone is now.
@@ -64,7 +65,7 @@ object Parking {
         val app = ctx.applicationContext
         val p = get(app) ?: return
         if (p.place != null) return
-        val now = System.currentTimeMillis()
+        val now = Clock.now()
         if (now - lastNameTry < 5 * 60_000L) return
         lastNameTry = now
         Thread {

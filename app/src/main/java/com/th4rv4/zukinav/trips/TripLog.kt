@@ -6,6 +6,7 @@ import android.os.Looper
 import com.th4rv4.zukinav.nav.RouteWatch
 import com.th4rv4.zukinav.protocol.BikeData
 import com.th4rv4.zukinav.util.AppLog
+import com.th4rv4.zukinav.util.Clock
 import com.th4rv4.zukinav.util.Places
 import com.th4rv4.zukinav.util.Prefs
 
@@ -89,11 +90,13 @@ object TripLog {
         bikeOff = false
         dashLost = false
         if (!prefs.recordTrips) return
-        val now = System.currentTimeMillis()
+        val now = Clock.now()
         val routeOpen = RouteWatch.isOpen(ctx, now)
         val here = RouteRecorder.lastPoint?.takeIf { now - it.at < 60_000L }?.let { it.lat to it.lng }
         val stopsBefore = recorder.active?.stops?.size ?: 0
-        recorder.onReading(d, now, routeOpen, here, gapWasRiding)?.let { save(ctx, it) }
+        // Fast-forwarded in Zuki Sim, readings land further apart in ride time.
+        val maxStep = (TripRecorder.MAX_STEP_MS * maxOf(1.0, Clock.speed / 5)).toLong()
+        recorder.onReading(d, now, routeOpen, here, gapWasRiding, maxStep)?.let { save(ctx, it) }
         if (recorder.justStarted) {
             AppLog.d("Trips", "Ride started at ODO ${d.odoKm}")
             if (prefs.tripPlaces) Places.locate(ctx) { lat, lng -> main.post { recorder.setStartPlace(lat, lng); persist(ctx) } }
@@ -120,7 +123,7 @@ object TripLog {
         if (recorder.active == null) return
         if (Prefs(ctx).tripPlaces) Places.locate(ctx) { lat, lng -> main.post { recorder.setEndPlace(lat, lng); persist(ctx) } }
         main.removeCallbacks(idleCheck)
-        main.postDelayed(idleCheck, 60_000L)
+        main.postDelayed(idleCheck, Clock.scaled(60_000L))
     }
 
     /** A Maps route opened or closed: that changes when a parked ride ends. */
@@ -133,8 +136,8 @@ object TripLog {
             main.removeCallbacks(idleCheck)
             // Just after the route counts as closed, or within the minute.
             val closes = RouteWatch.closesAt(ctx)
-            val wait = closes?.let { (it - System.currentTimeMillis() + 1_000L).coerceIn(1_000L, 60_000L) } ?: 1_000L
-            main.postDelayed(idleCheck, wait)
+            val wait = closes?.let { (it - Clock.now() + 1_000L).coerceIn(1_000L, 60_000L) } ?: 1_000L
+            main.postDelayed(idleCheck, Clock.scaled(wait))
         }
         changed()
     }
@@ -174,7 +177,7 @@ object TripLog {
         AppLog.d("Trips", "End Ride undone")
         persist(ctx)
         main.removeCallbacks(idleCheck)
-        if (!keyOn) main.postDelayed(idleCheck, 60_000L)
+        if (!keyOn) main.postDelayed(idleCheck, Clock.scaled(60_000L))
         changed()
     }
 
@@ -183,7 +186,7 @@ object TripLog {
         restore(ctx)
         if (keyOn) return
         val had = recorder.active != null
-        recorder.finishIfIdle(System.currentTimeMillis(), RouteWatch.isOpen(ctx))?.let {
+        recorder.finishIfIdle(Clock.now(), RouteWatch.isOpen(ctx))?.let {
             AppLog.d("Trips", "Bike off long enough, ride ended")
             save(ctx, it)
         }
@@ -191,7 +194,7 @@ object TripLog {
         if (had && recorder.active == null) changed()
         // Check again in a minute while the key stays off.
         main.removeCallbacks(idleCheck)
-        if (recorder.active != null) main.postDelayed(idleCheck, 60_000L)
+        if (recorder.active != null) main.postDelayed(idleCheck, Clock.scaled(60_000L))
     }
 
     private fun restore(ctx: Context) {
@@ -200,7 +203,7 @@ object TripLog {
         restored = true
         recorder.active = TripRecorder.Active.decode(Prefs(ctx).activeTrip)
         // Started with a ride open and no word from the dash for a while: the bike is off.
-        bikeOff = !keyOn && recorder.active?.let { System.currentTimeMillis() - it.lastAt > 45_000L } == true
+        bikeOff = !keyOn && recorder.active?.let { Clock.now() - it.lastAt > 45_000L } == true
     }
 
     private fun persist(ctx: Context) {
@@ -244,7 +247,7 @@ object TripLog {
      * get another try, a few at a time and at most every 10 minutes.
      */
     fun retryPlaces(ctx: Context) {
-        val now = System.currentTimeMillis()
+        val now = Clock.now()
         if (now - lastPlaceRetry < 10 * 60_000L) return
         lastPlaceRetry = now
         val app = ctx.applicationContext

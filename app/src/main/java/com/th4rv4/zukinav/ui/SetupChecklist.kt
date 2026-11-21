@@ -19,13 +19,18 @@ object SetupChecklist {
         val ok: Boolean,
         val needed: Boolean,
         val fixLabel: String,
+        /** Only in the Zuki Sim test build: shown in its own Test Build section. */
+        val test: Boolean = false,
         val fix: () -> Unit,
     )
+
+    /** Extra checks the Zuki Sim test build adds; null in the real app. */
+    @Volatile var testChecks: ((MainActivity) -> List<Item>)? = null
 
     fun items(host: MainActivity, onWake: () -> Unit): List<Item> {
         val prefs = Prefs(host)
         val bike = prefs.clusterName
-        return listOfNotNull(
+        return testChecks?.invoke(host).orEmpty() + listOfNotNull(
             Item(
                 "Bluetooth", if (host.bluetoothOn()) "On" else "Off, so the dash can't connect",
                 host.bluetoothOn(), true, "Turn On",
@@ -69,7 +74,7 @@ object SetupChecklist {
             if (Wake.supported(host)) {
                 Item(
                     "Wake On Ignition", "Nothing runs while you're parked",
-                    Wake.isSetUp(host), false, "Set Up", onWake,
+                    Wake.isSetUp(host), false, "Set Up", fix = onWake,
                 )
             } else {
                 null
@@ -83,15 +88,21 @@ object SetupChecklist {
     /** The Setup Checklist page; it refreshes each time it is shown, e.g. back from Android's settings. */
     fun page(host: MainActivity, onWake: () -> Unit): SettingsPage {
         val ui = host.ui
+        val test = ui.listCard()
         val needed = ui.listCard()
         val optional = ui.listCard()
+        val testCount = ui.text("", 11f, Palette.OK, Ui.Weight.BOLD).apply { letterSpacing = 0.08f }
         val neededCount = ui.text("", 11f, Palette.OK, Ui.Weight.BOLD).apply { letterSpacing = 0.08f }
         val optionalCount = ui.text("", 11f, Palette.ACCENT_SOFT, Ui.Weight.BOLD).apply { letterSpacing = 0.08f }
         fun fill() {
+            test.removeAllViews()
             needed.removeAllViews()
             optional.removeAllViews()
             val all = items(host, onWake)
-            val toFix = all.count { it.needed && !it.ok }
+            val testToFix = all.count { it.test && !it.ok }
+            testCount.text = if (testToFix == 0) "ALL DONE" else "$testToFix TO FIX"
+            testCount.setTextColor(if (testToFix == 0) Palette.OK else Palette.WARN)
+            val toFix = all.count { it.needed && !it.test && !it.ok }
             neededCount.text = if (toFix == 0) "ALL DONE" else "$toFix TO FIX"
             neededCount.setTextColor(if (toFix == 0) Palette.OK else Palette.WARN)
             val left = all.count { !it.needed && !it.ok }
@@ -107,7 +118,7 @@ object SetupChecklist {
                     }
                 }
                 val row = ui.row(item.title, item.detail, trailing)
-                (if (item.needed) needed else optional).addView(
+                (if (item.test) test else if (item.needed) needed else optional).addView(
                     row,
                     LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT),
                 )
@@ -116,7 +127,7 @@ object SetupChecklist {
         fill()
         return SettingsPage(
             host, "Setup Checklist",
-            listOf(
+            (if (testChecks != null) listOf(header(host, "TEST BUILD", testCount), test) else emptyList<View>()) + listOf(
                 header(host, "NEEDED", neededCount),
                 needed,
                 header(host, "OPTIONAL", optionalCount),

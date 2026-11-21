@@ -8,6 +8,7 @@ import android.location.LocationManager
 import android.os.Looper
 import com.th4rv4.zukinav.service.DashService
 import com.th4rv4.zukinav.util.AppLog
+import com.th4rv4.zukinav.util.Clock
 import com.th4rv4.zukinav.util.Places
 import java.io.File
 
@@ -111,7 +112,7 @@ object RouteRecorder {
             AppLog.d("Route", "Recording the route of ride $id")
         }
         speedKmh?.let { plan.onReading(it) }
-        if (plan.update(System.currentTimeMillis(), keyOn, routeOpen)) listen(ctx, plan.mode)
+        if (plan.update(Clock.now(), keyOn, routeOpen)) listen(ctx, plan.mode)
     }
 
     /** Stops recording and saves what is left. Main thread. */
@@ -119,7 +120,7 @@ object RouteRecorder {
         val ctx = appContext ?: return
         val id = tripId
         listen(ctx, GpsPlan.Mode.OFF)
-        plan.update(System.currentTimeMillis(), keyOn = false, routeOpen = false)
+        plan.update(Clock.now(), keyOn = false, routeOpen = false)
         if (id != null) flush(ctx, id)
         tripId = null
         last = null
@@ -164,7 +165,7 @@ object RouteRecorder {
         val ctx = appContext ?: return
         val id = tripId ?: return
         if (loc.hasAccuracy() && loc.accuracy > 40f) return
-        val now = System.currentTimeMillis()
+        val now = Clock.now()
         plan.onFix(now, if (loc.hasSpeed()) loc.speed * 3.6f else null)
         val bike = DashService.liveBike
         val p = RoutePoint(
