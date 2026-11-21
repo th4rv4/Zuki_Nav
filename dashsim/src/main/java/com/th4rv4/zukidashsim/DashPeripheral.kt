@@ -280,8 +280,8 @@ class DashPeripheral(context: Context, private val events: Events) {
                     // Not yet "the phone": Android also reports links for other
                     // things (Android Auto, calls). It becomes the phone once
                     // it asks for the dash's readings (onDescriptorWriteRequest).
-                    // connect() lets cancelConnection() drop it later.
-                    server?.connect(d, false)
+                    // No server connect() back to it: the phone sees that as
+                    // connecting a second time, as a real dash never does.
                     if (device == null) events.log("Link from ${d.address}")
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED && d == device) {
                     forget()

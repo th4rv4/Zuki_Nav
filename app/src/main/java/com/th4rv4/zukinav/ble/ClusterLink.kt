@@ -216,6 +216,12 @@ class ClusterLink(private val context: Context, private val listener: Listener) 
                 // Android can report the same connection as connected twice (seen
                 // with a paired dash). Setting up again on top of the first set-up
                 // jams the link, so only the first one counts.
+                if (setUpStarted && state == State.READY && lastIncoming != null) {
+                    // Set up and the dash is talking: the link works, so
+                    // there's nothing to start over.
+                    AppLog.d("BLE", "Connected again, but the dash is talking: carrying on")
+                    return
+                }
                 if (setUpStarted) {
                     // A second time means the first was a link Android still
                     // thought was up; set up on both and nothing gets through.
