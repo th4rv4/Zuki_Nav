@@ -64,6 +64,7 @@ class MainActivity : Activity() {
     private var resumed = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppLog.attach(this)
         prefs = Prefs(this)
         val mode = themeMode()
         val light = mode == Palette.Mode.LIGHT
@@ -680,7 +681,8 @@ class MainActivity : Activity() {
         try {
             val dir = java.io.File(cacheDir, "share").apply { mkdirs() }
             dir.listFiles { f -> f.name.startsWith("zuki-nav-log-") }?.forEach { it.delete() }
-            java.io.File(dir, name).writeText(AppLog.snapshot().joinToString("\n"))
+            // Everything kept, up to the last few days, not only what's on screen.
+            java.io.File(dir, name).writeText(AppLog.full())
             val uri = android.net.Uri.parse("content://${ShareFileProvider.authority(this)}/$name")
             val send = Intent(Intent.ACTION_SEND)
                 .setType("text/plain")

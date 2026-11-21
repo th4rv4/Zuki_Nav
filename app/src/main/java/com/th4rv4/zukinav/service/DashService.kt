@@ -135,6 +135,7 @@ class DashService : Service(), ClusterLink.Listener {
 
     override fun onCreate() {
         super.onCreate()
+        AppLog.attach(this)
         prefs = Prefs(this)
         link = ClusterLink(this, this)
         instance = this

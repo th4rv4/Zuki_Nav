@@ -66,6 +66,7 @@ class MapsNavListener : NotificationListenerService() {
 
     override fun onCreate() {
         super.onCreate()
+        AppLog.attach(this)
         prefs = Prefs(this)
     }
 

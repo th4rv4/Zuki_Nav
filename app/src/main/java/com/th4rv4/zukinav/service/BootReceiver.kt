@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.th4rv4.zukinav.maint.MaintNotifier
+import com.th4rv4.zukinav.util.AppLog
 import com.th4rv4.zukinav.util.Prefs
 
 /**
@@ -13,6 +14,8 @@ import com.th4rv4.zukinav.util.Prefs
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED && intent.action != Intent.ACTION_MY_PACKAGE_REPLACED) return
+        AppLog.attach(context)
+        AppLog.d("App", if (intent.action == Intent.ACTION_BOOT_COMPLETED) "Phone restarted" else "App updated")
         MaintNotifier.schedule(context)
         // Android can forget to watch for the bike after an update or reboot.
         Wake.rewatch(context)
