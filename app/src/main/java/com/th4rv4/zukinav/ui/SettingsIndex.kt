@@ -41,6 +41,7 @@ object SettingsIndex {
         // Calls
         Entry("Missed Calls From Saved Contacts Only", "Missed calls from unsaved numbers stay on the phone", "Settings › Calls", page(SettingsKeys.CALLS), "unknown unsaved number stranger missed contacts only"),
         Entry("Call Alerts", "Incoming and missed calls on the dash", "Settings › Calls", page(SettingsKeys.CALLS), "phone ring caller whatsapp missed incoming"),
+        Entry("Missed While Parked", "Missed calls and messages from while the bike was off", "Settings › Calls", page(SettingsKeys.CALLS), "parked off away later next ride old expire messages unread"),
         Entry("Reject Unknown Callers", "Decline numbers not in your contacts", "Settings › Calls", page(SettingsKeys.CALLS), "block spam decline unknown numbers telemarketing contacts"),
         Entry("Allow Repeat Callers", "A second call within 5 min rings through", "Settings › Calls", page(SettingsKeys.CALLS), "urgent emergency again twice"),
         Entry("Show Rejected On Dash", "REJECTED on the dash's message screen", "Settings › Calls", page(SettingsKeys.CALLS), "rejected declined"),

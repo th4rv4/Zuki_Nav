@@ -2,6 +2,7 @@ package com.th4rv4.zukinav.util
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.th4rv4.zukinav.alerts.ParkedAlerts
 import com.th4rv4.zukinav.protocol.BikeData
 
 /** All user settings, in one SharedPreferences file. */
@@ -60,6 +61,14 @@ class Prefs(context: Context) {
     var missedSavedOnly: Boolean
         get() = sp.getBoolean(K_MISSED_SAVED_ONLY, true)
         set(v) = sp.edit().putBoolean(K_MISSED_SAVED_ONLY, v).apply()
+
+    /**
+     * Missed While Parked: missed calls and unread messages from while the
+     * bike was off show on the next ride ([ParkedAlerts]: Never, 30 Min, 1 Hr, Always).
+     */
+    var parkedAlerts: Int
+        get() = sp.getInt(K_PARKED_ALERTS, ParkedAlerts.NEVER).coerceIn(ParkedAlerts.NEVER, ParkedAlerts.ALWAYS)
+        set(v) = sp.edit().putInt(K_PARKED_ALERTS, v).apply()
 
     /** Chats and SMS from numbers you haven't saved pop up on the dash, but aren't kept as unread. */
     var messagesSavedOnly: Boolean
@@ -393,6 +402,7 @@ class Prefs(context: Context) {
         private const val K_SPLASH = "startup_animation"
         private const val K_SKIP_BIZ_SMS = "skip_business_sms"
         private const val K_MISSED_SAVED_ONLY = "missed_saved_only"
+        private const val K_PARKED_ALERTS = "parked_alerts"
         private const val K_MESSAGES_SAVED_ONLY = "messages_saved_only"
         private const val K_GREETING = "startup_greeting"
 

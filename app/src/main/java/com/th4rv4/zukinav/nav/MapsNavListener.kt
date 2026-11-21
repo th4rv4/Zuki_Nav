@@ -344,7 +344,7 @@ class MapsNavListener : NotificationListenerService() {
             }
             if (!wanted) continue
             AppLog.d("Alert", a.toString())
-            DashService.sendAlert(a)
+            DashService.sendAlert(a, prefs.parkedAlerts)
         }
     }
 

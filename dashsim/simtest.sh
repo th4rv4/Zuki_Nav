@@ -7,8 +7,9 @@
 #
 # Each wait is just past the app's own limit for that thing, so it's quick
 # but still a real test. Step 7 stops the search (as Stop Searching For
-# Bike does) so the app is asleep when alerts come in, and step 8 taps
-# Connect. Wake On Ignition itself is tested on the real bike: Android
+# Bike does) and step 8 taps Connect. Calls and messages from a mid-ride
+# dropout (step 5) show once the dash is back; from lunch (step 7, with
+# Missed While Parked on 30 Min) they're too old after 2 h. Wake On Ignition itself is tested on the real bike: Android
 # doesn't pick up a phone playing the dash the way it does the dash.
 #
 # Both phones on adb, both test apps installed and set up (paired, bike
@@ -31,12 +32,12 @@ NOTES=$OUT/steps.txt
 NAMES=("" "Warm up" "Ride off" "Long ride at 60x" "Traffic stops" "Drop Link"
        "Calls and messages" "Lunch break" "Back on the bike" "Run out of fuel" "Park, off and on")
 # Rough length of each step in seconds, for the overall bar.
-WEIGHT=(0 20 10 32 22 35 50 35 40 10 25)
+WEIGHT=(0 20 10 32 22 50 50 35 40 10 25)
 TOTAL_W=0; for w in "${WEIGHT[@]}"; do TOTAL_W=$((TOTAL_W + w)); done
 CUR=0; STEP_START=$(date +%s); RUN_START=$(date +%s); WAITING=""
 
 draw() {
-    [ -t 1 ] || return
+    [ -t 1 ] && [ -z "$FINISHED" ] || return
     local now done=0 i in_step pct filled bar elapsed
     now=$(date +%s)
     for ((i = 1; i < CUR; i++)); do done=$((done + WEIGHT[i])); done
@@ -71,14 +72,19 @@ die() { say "STOPPED: $*"; collect; exit 1; }
 dash() { # dash <cmd> [value]
     local r
     r=$(adb -s "$REALME" shell am broadcast -n $DASH/.DashControl --es cmd "$1" ${2:+--es value "$2"} 2>&1 | tr -d '\r' | sed -n 's/.*data="\([^"]*\)".*/\1/p')
-    [ "$r" = "ok" ] || say "  dash $*: ${r:-no answer}"
+    [ "$r" = "ok" ] && return
+    gone "$REALME" && die "Realme dropped off adb (cable pulled?)"
+    say "  dash $*: ${r:-no answer}"
 }
+gone() { [ "$(adb -s "$1" get-state 2>/dev/null)" != "device" ]; }
 
 sim() { # sim <cmd> [--es key value ...]
     local cmd=$1; shift
     local r
     r=$(adb -s "$POCO" shell am broadcast -n $SIM/com.th4rv4.zukinav.sim.SimControl --es cmd "$cmd" "$@" 2>&1 | tr -d '\r' | sed -n 's/.*data="\([^"]*\)".*/\1/p')
-    [ "$r" = "ok" ] || say "  sim $cmd $*: ${r:-no answer}"
+    [ "$r" = "ok" ] && return
+    gone "$POCO" && die "POCO dropped off adb (cable pulled?)"
+    say "  sim $cmd $*: ${r:-no answer}"
 }
 
 call()    { sim call --es caller "$1" --es end "$2" --ei secs "$3"; }
@@ -122,6 +128,20 @@ simask() { # simask <cmd>: Zuki Sim's answer
 sim_says() { simlog | awk -v m="${RUN}_1" 'index($0, m) {f=1} f' | grep -q "$1"; }
 sim_says_since() { simlog | awk -v m="${RUN}_$1" 'index($0, m) {f=1} f' | grep -q "$2"; }
 
+# expect <step> yes|no <pattern> <what>: checked against Zuki Sim's log at
+# the end, once it has all been written out.
+EXPECT=()
+expect() { EXPECT+=("$1|$2|$3|$4"); }
+checks() {
+    local e n want pat what seen
+    for e in "${EXPECT[@]}"; do
+        IFS='|' read -r n want pat what <<< "$e"
+        if awk -v m="${RUN}_$n" -v x="${RUN}_$((n + 1))" 'index($0, x) {f=0} index($0, m) {f=1} f' \
+            "$OUT/zuki-sim-log.txt" | grep -q "$pat"; then seen=yes; else seen=no; fi
+        if [ "$seen" = "$want" ]; then say "  OK, step $n: $what"; else say "  CHECK, step $n: $what"; fi
+    done
+}
+
 collect() {
     say "Collecting logs into $OUT"
     pause 6 "saving logs" # Zuki Sim writes its log in batches
@@ -129,7 +149,8 @@ collect() {
     adb -s "$POCO" shell run-as $SIM cat files/trips.json 2>/dev/null | tr -d '\r' > "$OUT/zuki-sim-trips.json"
     adb -s "$REALME" shell run-as $DASH cat files/dash-log.txt 2>/dev/null | tr -d '\r' > "$OUT/dash-sim-log.txt"
     state > "$OUT/dash-sim-state.txt"
-    draw end; echo
+    checks
+    draw end; echo; FINISHED=1
     say "Done. Tell Claude the folder: $OUT"
 }
 
@@ -189,8 +210,14 @@ if step 5; then
     mark 5
     dash timex 1; pause 2
     dash drop
-    wait_until 60 "link back after Drop Link" connected
-    pause 3
+    # While the dash is out: held, then shown when it's back.
+    message saved
+    call saved missed 1
+    # Zuki Sim's own word that it's back: the dash can see the phone again
+    # before the link is fully set up.
+    wait_until 90 "link back after Drop Link" sim_says_since 5 "Dash is back"
+    pause 14 "alerts from the dropout" # they show 12 s after connecting
+    expect 5 yes "Showing what came in while the dash was away" "missed call and message from the dropout shown"
 fi
 
 # ---- 6. Calls and messages while riding (1x) -------------------------------
@@ -209,7 +236,7 @@ if step 6; then
     sim clear;                 pause 2
 fi
 
-# ---- 7. Lunch: switch off, alerts while away, stop searching, skip 2 h -------
+# ---- 7. Lunch: switch off, alerts while parked, stop searching, skip 2 h ------
 if step 7; then
     mark 7
     # At 10x the app decides "switched off, not dropped" in a few seconds.
@@ -217,10 +244,12 @@ if step 7; then
     dash engine off; dash ignition off
     wait_until 30 "dash gone" disconnected
     pause 8 "bike off"
-    call saved missed 4; pause 6 "missed call while away"
+    # Parked, with Missed While Parked on 30 Min: kept, but 2 h later
+    # too old for the dash.
+    sim parked --es value 30
+    call saved missed 4; pause 6 "missed call while parked"
     # As tapping Stop Searching For Bike: the app stops looking.
     sim stopsearch; pause 3
-    # Comes in while the link isn't running at all.
     message saved; pause 2
     dash timex 1
     dash skip
@@ -235,7 +264,11 @@ if step 8; then
     # So tap Connect, as after Stop Searching For Bike.
     sim connect
     wait_until 60 "connected again" connected || die "Zuki Sim didn't come back"
-    pause 14 "alerts from while away" # they show 12 s after connecting
+    pause 14 "nothing from lunch" # held ones would show 12 s after connecting
+    expect 7 yes "Bike off, keeping it for the next ride" "lunch call and message kept"
+    expect 8 yes "too old for the dash" "lunch call and message too old after 2 h"
+    expect 8 no "Showing what came in" "nothing from lunch shown"
+    sim parked --es value never
     dash engine on
     dash speed 60; dash timex 60
     pause 15 riding

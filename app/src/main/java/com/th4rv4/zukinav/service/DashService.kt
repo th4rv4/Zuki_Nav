@@ -22,6 +22,7 @@ import android.os.SystemClock
 import android.text.format.DateFormat
 import com.th4rv4.zukinav.R
 import com.th4rv4.zukinav.alerts.Alert
+import com.th4rv4.zukinav.alerts.ParkedAlerts
 import com.th4rv4.zukinav.ble.ClusterLink
 import com.th4rv4.zukinav.fuel.FuelStore
 import com.th4rv4.zukinav.fuel.Refill
@@ -167,6 +168,7 @@ class DashService : Service(), ClusterLink.Listener {
 
     override fun onDestroy() {
         DropWatch.cancel()
+        bikeOffForAlerts()
         if (bike != null) {
             TripLog.onDisconnected(this)
             com.th4rv4.zukinav.trips.Parking.onBikeOff(this)
@@ -300,6 +302,7 @@ class DashService : Service(), ClusterLink.Listener {
             when (state) {
                 ClusterLink.State.READY -> {
                     main.removeCallbacks(connectTimeout)
+                    onBike = true
                     // After the welcome and greeting have had their turn.
                     main.removeCallbacks(showOwed)
                     main.postDelayed(showOwed, OWED_DELAY_MS)
@@ -324,6 +327,7 @@ class DashService : Service(), ClusterLink.Listener {
                 }
                 ClusterLink.State.DISCONNECTED -> {
                     if (lostAt == 0L) lostAt = System.currentTimeMillis()
+                    holdUnseen()
                     main.removeCallbacks(silentCheck)
                     val last = bike
                     if (last != null) {
@@ -355,15 +359,61 @@ class DashService : Service(), ClusterLink.Listener {
 
     // ---- alerts that came while the dash was away ----------------------------
 
+    /** The dash was connected and hasn't been judged switched off since. */
+    private var onBike = false
+
+    /**
+     * The bike is off: anything held from a dropout now counts as from a
+     * parked bike, and with Missed While Parked on Never stays on the phone.
+     */
+    private fun bikeOffForAlerts() {
+        onBike = false
+        owedMissed?.riding = false
+        owedMessage?.riding = false
+        if (prefs.parkedAlerts == ParkedAlerts.NEVER) forgetHeld()
+    }
+
+    /** The last missed call and message sent to the dash, and when. */
+    private var sentMissed: Pair<Alert.Missed, Long>? = null
+    private var sentMessage: Pair<Alert.Message, Long>? = null
+
+    /**
+     * The link just dropped. The dash can go quiet a few seconds before the
+     * link is seen to drop, and what was sent after it last spoke may never
+     * have reached it: keep that for when it's back.
+     */
+    private fun holdUnseen() {
+        val missed = sentMissed?.takeIf { it.second > lastReadingAt }?.first
+        val message = sentMessage?.takeIf { it.second > lastReadingAt }?.first
+        sentMissed = null
+        sentMessage = null
+        if (missed == null && message == null) return
+        if (missed != null && owedMissed == null) hold(missed, onBike, prefs.parkedAlerts)
+        if (message != null && owedMessage == null) hold(message, onBike, prefs.parkedAlerts)
+        AppLog.d("Dash", "Dash went quiet just after a missed call or message, showing it again when it's back")
+    }
+
     private val showOwed = Runnable {
         if (link.state != ClusterLink.State.READY) return@Runnable
-        val missed = owedMissed
-        val message = owedMessage
+        // From a dropout mid-ride it always shows; from a parked bike only
+        // as long as Missed While Parked allows.
+        val choice = prefs.parkedAlerts
+        val now = Clock.now()
+        if (owedMissed?.let { it.riding || ParkedAlerts.keeps(choice, it.at, now) } == false) {
+            AppLog.d("Dash", "Missed call from while parked is too old for the dash")
+            owedMissed = null
+        }
+        if (owedMessage?.let { it.riding || ParkedAlerts.keeps(choice, it.at, now) } == false) {
+            AppLog.d("Dash", "Message from while parked is too old for the dash")
+            owedMessage = null
+        }
+        val missed = owedMissed?.alert
+        val message = owedMessage?.alert
         if (missed == null && message == null) return@Runnable
         AppLog.d("Dash", "Showing what came in while the dash was away")
         missed?.let { showAlert(it) }
         // One after the other, so each gets its moment on screen.
-        message?.let { m -> main.postDelayed({ if (owedMessage === m) showAlert(m) }, if (missed != null) 5_000L else 0L) }
+        message?.let { m -> main.postDelayed({ if (owedMessage?.alert === m) showAlert(m) }, if (missed != null) 5_000L else 0L) }
     }
 
     // ---- dash dropping out --------------------------------------------------
@@ -408,6 +458,7 @@ class DashService : Service(), ClusterLink.Listener {
             }
             else -> {
                 AppLog.d("Dash", "Bike switched off (${j.reason})")
+                bikeOffForAlerts()
                 TripLog.confirmBikeOff(this)
                 com.th4rv4.zukinav.trips.Parking.onBikeOff(this, j.dropLat, j.dropLng)
             }
@@ -422,6 +473,7 @@ class DashService : Service(), ClusterLink.Listener {
         AppLog.d("Dash", "Dash not back in ${DropJudge.LOST_LIMIT_MS / 60_000} min: counting it as the bike off where it dropped")
         TripLog.confirmBikeOff(this)
         com.th4rv4.zukinav.trips.Parking.onBikeOff(this, dropLat, dropLng)
+        bikeOffForAlerts()
         updateNotification()
         notifyState()
     }
@@ -735,26 +787,27 @@ class DashService : Service(), ClusterLink.Listener {
         // after reconnecting carry it, so an indicator lit before the bike
         // was switched off doesn't stay on.
         when (alert) {
-            Alert.ClearMissed -> { owedMissed = null; clearMissedLeft = CLEAR_REPEATS; wake(); return }
-            Alert.ClearMessages -> { owedMessage = null; clearSmsLeft = CLEAR_REPEATS; wake(); return }
+            Alert.ClearMissed -> { owedMissed = null; sentMissed = null; clearMissedLeft = CLEAR_REPEATS; wake(); return }
+            Alert.ClearMessages -> { owedMessage = null; sentMessage = null; clearSmsLeft = CLEAR_REPEATS; wake(); return }
             else -> Unit
         }
         if (link.state != ClusterLink.State.READY) {
             // A missed call or unread message that stays is shown once the
-            // dash is back; a call ringing now, or a passing one, is past.
+            // dash is back (from a parked bike, as Missed While Parked says);
+            // a call ringing now, or a passing one, is past.
             when {
-                alert is Alert.Missed && !alert.fleeting -> owedMissed = alert
-                alert is Alert.Message && !alert.fleeting -> owedMessage = alert
-                else -> {
-                    AppLog.d("Dash", "Not connected, alert dropped")
-                    return
-                }
+                !hold(alert, onBike, prefs.parkedAlerts) -> AppLog.d("Dash", "Not connected, alert dropped")
+                onBike -> AppLog.d("Dash", "Not connected, showing it when the dash is back")
+                else -> AppLog.d("Dash", "Bike off, keeping it for the next ride")
             }
-            AppLog.d("Dash", "Not connected, showing it when the dash is back")
             return
         }
         if (alert is Alert.Missed) owedMissed = null
         if (alert is Alert.Message) owedMessage = null
+        // Until the dash speaks again, it may have gone quiet and missed it.
+        val sentAt = SystemClock.elapsedRealtime()
+        if (alert is Alert.Missed && !alert.fleeting) sentMissed = alert to sentAt
+        if (alert is Alert.Message && !alert.fleeting) sentMessage = alert to sentAt
         val mode = ClusterModels.fromBleName(link.deviceName ?: prefs.clusterName).checksum
         val frame = when (alert) {
             is Alert.Ringing -> SuzukiFrames.call(alert.caller, ringing = true, whatsapp = alert.whatsapp, mode = mode)
@@ -1055,29 +1108,43 @@ class DashService : Service(), ClusterLink.Listener {
             }
         }
 
-        /** Shows a call or message alert on the dash, if it is connected. */
         /**
          * The latest missed call and unread message that couldn't reach the
-         * dash. Kept here rather than in the link itself, so they survive the
-         * link sleeping for Wake On Ignition (or being stopped) and still show
-         * when the bike is back.
+         * dash. Kept here rather than in the link itself, so with Missed While
+         * Parked on they survive the link sleeping for Wake On Ignition (or
+         * being stopped). Only in memory, never saved.
          */
-        private var owedMissed: Alert.Missed? = null
-        private var owedMessage: Alert.Message? = null
+        private var owedMissed: Owed<Alert.Missed>? = null
+        private var owedMessage: Owed<Alert.Message>? = null
 
-        fun sendAlert(alert: Alert) {
+        private fun forgetHeld() {
+            if (owedMissed != null || owedMessage != null) {
+                AppLog.d("Dash", "Bike off, leaving the missed call or message on the phone")
+            }
+            owedMissed = null
+            owedMessage = null
+        }
+
+        /** Keeps a missed call or unread message for when the dash is back; false if it isn't one to keep. */
+        private fun hold(alert: Alert, riding: Boolean, parked: Int): Boolean {
+            if (!riding && parked == ParkedAlerts.NEVER) return false
+            when {
+                alert is Alert.Missed && !alert.fleeting -> owedMissed = Owed(alert, Clock.now(), riding)
+                alert is Alert.Message && !alert.fleeting -> owedMessage = Owed(alert, Clock.now(), riding)
+                else -> return false
+            }
+            return true
+        }
+
+        /** Shows a call or message alert on the dash, if it is connected. */
+        fun sendAlert(alert: Alert, parked: Int = ParkedAlerts.NEVER) {
             val s = instance
             if (s == null) {
-                // Link not running (asleep until the bike is seen): keep what stays.
+                // Link not running: the bike is off.
                 when {
                     alert == Alert.ClearMissed -> owedMissed = null
                     alert == Alert.ClearMessages -> owedMessage = null
-                    alert is Alert.Missed && !alert.fleeting -> owedMissed = alert
-                    alert is Alert.Message && !alert.fleeting -> owedMessage = alert
-                    else -> return
-                }
-                if (alert is Alert.Missed || alert is Alert.Message) {
-                    AppLog.d("Dash", "Dash link asleep, showing it when the bike is back")
+                    hold(alert, riding = false, parked) -> AppLog.d("Dash", "Bike off, keeping it for the next ride")
                 }
                 return
             }
@@ -1120,3 +1187,6 @@ class DashService : Service(), ClusterLink.Listener {
         }
     }
 }
+
+/** A missed call or message held for the dash: when it came, and whether mid-ride. */
+private class Owed<A : Alert>(val alert: A, val at: Long, var riding: Boolean)

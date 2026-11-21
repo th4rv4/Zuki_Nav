@@ -3,10 +3,12 @@ package com.th4rv4.zukinav.sim
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.th4rv4.zukinav.alerts.ParkedAlerts
 import com.th4rv4.zukinav.nav.MapsNavListener
 import com.th4rv4.zukinav.service.DashService
 import com.th4rv4.zukinav.service.Wake
 import com.th4rv4.zukinav.util.AppLog
+import com.th4rv4.zukinav.util.Prefs
 
 /**
  * Lets the test script drive Zuki Sim over adb, e.g.
@@ -15,7 +17,9 @@ import com.th4rv4.zukinav.util.AppLog
  * Commands: call (caller saved|unknown|cnap|whatsapp, end missed|answered|rejected, secs),
  * hangup, message (from saved|unknown|group|own, app whatsapp|sms), clear,
  * mark (text: a line in the log, to find each test step later),
- * stopsearch (as tapping Stop Searching For Bike), connect (as tapping Connect), status (answers wake=on|off notifications=on|off).
+ * stopsearch (as tapping Stop Searching For Bike), connect (as tapping Connect),
+ * parked (value never|30|60|always: Missed While Parked),
+ * status (answers wake=on|off notifications=on|off parked=<choice>).
  * Only the shell can send these (the receiver needs the DUMP permission).
  */
 class SimControl : BroadcastReceiver() {
@@ -46,9 +50,19 @@ class SimControl : BroadcastReceiver() {
                 DashService.start(app)
                 null
             }
+            "parked" -> when (val v = intent.getStringExtra("value")) {
+                "never" -> 0; "30" -> 1; "60" -> 2; "always" -> 3
+                else -> -1
+            }.let { choice ->
+                if (choice < 0) return@let "Unknown Missed While Parked choice"
+                Prefs(app).parkedAlerts = choice
+                AppLog.d("Test", "Missed While Parked: ${ParkedAlerts.LABELS[choice]}")
+                null
+            }
             "status" -> {
                 resultData = "wake=${if (Wake.isSetUp(app)) "on" else "off"} " +
-                    "notifications=${if (MapsNavListener.instance != null) "on" else "off"}"
+                    "notifications=${if (MapsNavListener.instance != null) "on" else "off"} " +
+                    "parked=${ParkedAlerts.LABELS[Prefs(app).parkedAlerts].replace(" ", "")}"
                 return
             }
             else -> "Unknown command: $cmd"
