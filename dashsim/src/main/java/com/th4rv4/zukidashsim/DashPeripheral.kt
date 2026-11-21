@@ -122,16 +122,16 @@ class DashPeripheral(context: Context, private val events: Events) {
     }
 
     /** The link drops but the dash stays on, as when the dash loses the phone for a moment. */
+    /**
+     * Drops the link as losing the signal would: Bluetooth off and on. Just
+     * closing the link isn't enough on Android 10, which can keep it half
+     * open underneath, so the phone reconnects into a link that never works.
+     */
     fun dropLink() {
-        val d = device ?: return events.log("Nothing connected to drop")
-        dropping = d
-        server?.cancelConnection(d)
-        events.log("Dropping the link")
-        makeSureDropped()
+        if (device == null) return events.log("Nothing connected to drop")
+        events.log("Dropping the link: Bluetooth off and on")
+        resetBluetooth()
     }
-
-    /** The link Drop Link is waiting to see go down; null once it has. */
-    private var dropping: BluetoothDevice? = null
 
     fun send(frame: ByteArray) {
         if (!subscribed || device == null) return
@@ -168,23 +168,6 @@ class DashPeripheral(context: Context, private val events: Events) {
         queue.clear()
         sending = false
         main.removeCallbacks(sendTimeout)
-    }
-
-    /**
-     * Android doesn't always let go of a link the phone started. If it hasn't
-     * gone down after 3 s, switch Bluetooth off and on, which always drops it.
-     * (The phone reconnecting by itself straight after is fine: that's a new link.)
-     */
-    private fun makeSureDropped() {
-        main.postDelayed({
-            if (dropping == null) {
-                events.log("Dropped: link down")
-                return@postDelayed
-            }
-            dropping = null
-            events.log("Dropped: link still up, switching Bluetooth off and on")
-            resetBluetooth()
-        }, 3000)
     }
 
     private fun resetBluetooth() {
@@ -301,7 +284,6 @@ class DashPeripheral(context: Context, private val events: Events) {
                     server?.connect(d, false)
                     if (device == null) events.log("Link from ${d.address}")
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED && d == device) {
-                    dropping = null
                     forget()
                     events.log("Phone disconnected (status $status)")
                     startAdvertising()

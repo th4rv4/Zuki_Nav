@@ -27,7 +27,7 @@ installs next to the real app and keeps its own settings, rides and log.
   smoothly.
 - **Time 1× / 10× / 60×**: the ride clock on both phones runs that much
   faster. **Skip 2 h** jumps ahead, for a lunch break (engine off).
-- **Drop Link**: the link drops but the dash stays on.
+- **Drop Link**: the link drops but the dash stays on (its Bluetooth goes off and on, as when the signal is lost).
 - **Go Silent**: still connected, but nothing is sent.
 - **Fuel**, **Reset Trip A / B**: set the tank and trip meters.
 

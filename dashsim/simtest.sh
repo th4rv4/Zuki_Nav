@@ -169,6 +169,16 @@ say "Zuki Sim: ${STATUS:-no answer}"
 case "$STATUS" in *notifications=off*) say "  Zuki Sim has no notification access: the fake calls and messages won't work";; esac
 mark 1
 
+# Starting partway: fill up, switch the bike on and ride off first, as the earlier
+# steps would have left it. Off and on, so Bluetooth starts clean.
+if [ "$FROM" -gt 1 ]; then
+    say "  Getting the bike riding for step $FROM"
+    dash timex 1; dash fuel 12; dash ignition off; pause 3 "bike off"
+    dash ignition on; dash engine on
+    wait_until 90 "connected" connected || die "Zuki Sim didn't connect"
+    dash speed 60; pause 5 riding
+fi
+
 # ---- 1. Warm up standing still (60+ ride s and +10 °C, at 10x) --------------
 if step 1; then
     dash timex 1; dash speed 0; dash fuel 12
@@ -213,9 +223,9 @@ if step 5; then
     # While the dash is out: held, then shown when it's back.
     message saved
     call saved missed 1
-    # Zuki Sim's own word that it's back: the dash can see the phone again
+    # Zuki Sim's own word that the link is ready: the dash can see the phone
     # before the link is fully set up.
-    wait_until 90 "link back after Drop Link" sim_says_since 5 "Dash is back"
+    wait_until 90 "link back after Drop Link" sim_says_since 5 "Link READY"
     pause 14 "alerts from the dropout" # they show 12 s after connecting
     expect 5 yes "Showing what came in while the dash was away" "missed call and message from the dropout shown"
 fi
