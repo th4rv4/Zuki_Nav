@@ -53,7 +53,7 @@ object SimChecks {
         )
     }
 
-    private fun mockLocationAllowed(ctx: Context): Boolean = try {
+    fun mockLocationAllowed(ctx: Context): Boolean = try {
         val ops = ctx.getSystemService(AppOpsManager::class.java)
         ops.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_MOCK_LOCATION, Process.myUid(), ctx.packageName) ==
             AppOpsManager.MODE_ALLOWED

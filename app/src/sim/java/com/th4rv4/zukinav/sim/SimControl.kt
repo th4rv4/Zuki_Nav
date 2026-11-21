@@ -20,7 +20,7 @@ import com.th4rv4.zukinav.util.Prefs
  * stopsearch (as tapping Stop Searching For Bike), connect (as tapping Connect),
  * parked (value never|30|60|always, for calls|messages, both if left out:
  * Missed and Unread While Parked),
- * status (answers wake=on|off notifications=on|off calls=<choice> messages=<choice>).
+ * status (answers wake=on|off notifications=on|off mock=on|off calls=<choice> messages=<choice>).
  * Only the shell can send these (the receiver needs the DUMP permission).
  */
 class SimControl : BroadcastReceiver() {
@@ -66,6 +66,7 @@ class SimControl : BroadcastReceiver() {
             "status" -> {
                 resultData = "wake=${if (Wake.isSetUp(app)) "on" else "off"} " +
                     "notifications=${if (MapsNavListener.instance != null) "on" else "off"} " +
+                    "mock=${if (SimChecks.mockLocationAllowed(app)) "on" else "off"} " +
                     "calls=${ParkedAlerts.LABELS[Prefs(app).parkedCalls].replace(" ", "")} " +
                     "messages=${ParkedAlerts.LABELS[Prefs(app).parkedMessages].replace(" ", "")}"
                 return

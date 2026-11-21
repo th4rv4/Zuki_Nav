@@ -39,14 +39,15 @@ after Ignition off, still moving at the last speed after Drop Link.
 With both phones on adb and everything set up (paired, Zuki Dash Sim chosen
 in Zuki Sim):
 
-    bash dashsim/simtest.sh        # the whole ride, about 5 minutes
+    bash dashsim/simtest.sh        # the whole ride, about 6 minutes
     bash dashsim/simtest.sh 7      # from step 7 on
 
 It drives both apps over adb: warm-up, a long ride at 60×, traffic stops,
-Drop Link, fake calls and messages, a lunch break with alerts while the
-app has stopped looking,
-running out of fuel, and switching off and on. Logs and saved trips from
-both phones go into `simtest/<date-time>/`.
+Drop Link, fake calls and messages, a tea stop and a lunch break with
+alerts while parked, running out of fuel, and switching off and on. Logs,
+saved trips and any crashes from both phones go into `simtest/<date-time>/`.
+At the end it checks each step against both logs and the saved ride, and
+prints OK or CHECK for each, then a count.
 
 The adb controls can also be used by hand:
 
@@ -58,7 +59,8 @@ Zuki Dash Sim: `ignition on|off`, `engine on|off`, `speed <km/h>`,
 `timex 1|10|60`, `skip`, `drop`, `silent on|off`, `fuel <litres>`.
 Zuki Sim: `call` (caller saved|unknown|cnap|whatsapp, end
 missed|answered|rejected, secs), `hangup`, `message` (from
-saved|unknown|group|own, app whatsapp|sms), `clear`, `status`, and
+saved|unknown|group|own, app whatsapp|sms), `clear`, `parked` (value
+never|30|60|always, for calls|messages), `status`, and
 `stopsearch` (as tapping Stop Searching For Bike), `connect` (as tapping Connect).
 
 Zuki Sim also has the same calls and messages under Settings › Fake Alerts.
