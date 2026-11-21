@@ -62,12 +62,12 @@ jobs:
           if [ -n "$RELEASE_KEYSTORE_BASE64" ]; then
             echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
             export RELEASE_STORE_FILE="$RUNNER_TEMP/release.jks"
-            ./gradlew --no-daemon testReleaseUnitTest assembleRelease $VERSION_ARGS
+            ./gradlew --no-daemon :app:testReleaseUnitTest :app:assembleRelease $VERSION_ARGS
             cp app/build/outputs/apk/release/app-release.apk "dist/zuki-nav-${{ github.ref_name }}.apk"
             rm -f "$RUNNER_TEMP/release.jks"
           else
             echo "::warning::No release key set: building the debug APK"
-            ./gradlew --no-daemon testDebugUnitTest assembleDebug $VERSION_ARGS
+            ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug $VERSION_ARGS
             cp app/build/outputs/apk/debug/app-debug.apk "dist/zuki-nav-${{ github.ref_name }}.apk"
           fi
 

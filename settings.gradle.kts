@@ -14,3 +14,5 @@ dependencyResolutionManagement {
 }
 rootProject.name = "ZukiNav"
 include(":app")
+// Zuki Dash Sim: a spare phone pretending to be the dash, for testing at home.
+include(":dashsim")
