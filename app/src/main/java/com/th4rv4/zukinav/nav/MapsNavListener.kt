@@ -21,6 +21,7 @@ import com.th4rv4.zukinav.service.DashService
 import com.th4rv4.zukinav.util.AppLog
 import com.th4rv4.zukinav.util.Clock
 import com.th4rv4.zukinav.util.Prefs
+import com.th4rv4.zukinav.util.SimHooks
 import java.time.LocalTime
 
 /**
@@ -69,7 +70,17 @@ class MapsNavListener : NotificationListenerService() {
         super.onCreate()
         AppLog.attach(this)
         prefs = Prefs(this)
+        instance = this
     }
+
+    /**
+     * Zuki Sim's Fake Alerts: a made-up call or message notice, taken the
+     * same way as a real one from here on (auto-reply and Reject Unknown
+     * Callers aside, which need a real notification to act on).
+     */
+    fun fakePosted(n: Notice) = main.post { deliver(alerts.posted(n, Clock.now())) }
+
+    fun fakeRemoved(n: Notice) = main.post { deliver(alerts.removed(n, Clock.now())) }
 
     override fun onListenerConnected() {
         AppLog.d("Maps", "Notification access active")
@@ -118,6 +129,7 @@ class MapsNavListener : NotificationListenerService() {
     }
 
     override fun onDestroy() {
+        if (instance == this) instance = null
         main.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
@@ -235,7 +247,7 @@ class MapsNavListener : NotificationListenerService() {
     } catch (_: Exception) { emptyList() }
 
     /** Ringing or on a call, from Android's audio mode; needs no permission. */
-    private fun phoneState(): AlertTracker.PhoneState = try {
+    private fun phoneState(): AlertTracker.PhoneState = SimHooks.fakePhoneState ?: try {
         when (getSystemService(android.media.AudioManager::class.java)?.mode) {
             android.media.AudioManager.MODE_RINGTONE -> AlertTracker.PhoneState.RINGING
             android.media.AudioManager.MODE_IN_CALL,
@@ -486,6 +498,10 @@ class MapsNavListener : NotificationListenerService() {
     }
 
     companion object {
+        /** The running listener, while notification access is on. */
+        @Volatile var instance: MapsNavListener? = null
+            private set
+
         /** Notification.Builder.setShortCriticalText (Android 16). */
         const val EXTRA_SHORT_CRITICAL_TEXT = "android.shortCriticalText"
 

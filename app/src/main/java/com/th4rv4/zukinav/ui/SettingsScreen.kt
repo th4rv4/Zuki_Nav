@@ -109,6 +109,10 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
                 menuRow(PAGE_BACKUP, R.drawable.ic_set_backup, "Backup & Restore"),
                 menuRow(PAGE_UPDATES, R.drawable.ic_sec_download, "Updates"),
             ),
+            *listOfNotNull(
+                // Zuki Sim only.
+                fakeAlertsPage?.let { ui.listCard(menuRow(PAGE_FAKE_ALERTS, R.drawable.ic_sec_phone, "Fake Alerts")) },
+            ).toTypedArray(),
             ui.listCard(
                 menuRow(PAGE_CHECKLIST, R.drawable.ic_sec_wrench, "Setup Checklist"),
                 menuRow(PAGE_TROUBLESHOOTING, R.drawable.ic_sec_wrench, "Troubleshooting"),
@@ -202,6 +206,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         summaries[PAGE_UPDATES]?.text = "Installed v${host.versionName()}"
         summaries[PAGE_BACKUP]?.text = if (prefs.backupLastAt > 0) "Last backup " + whenText(prefs.backupLastAt) else "No backup yet"
         summaries[PAGE_TROUBLESHOOTING]?.text = "Dash Test, arrows, logs"
+        summaries[PAGE_FAKE_ALERTS]?.text = "Calls and messages, without anyone calling"
         val items = SetupChecklist.items(host) {}
         val problems = items.filter { it.needed && !it.ok }
         val total = items.count { it.needed }
@@ -342,6 +347,7 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         PAGE_UPDATES -> updatesPage()
         PAGE_BACKUP -> backupPage()
         PAGE_CHECKLIST -> SetupChecklist.page(host) { onWakeTap() }
+        PAGE_FAKE_ALERTS -> fakeAlertsPage?.invoke(host) ?: troubleshootingPage()
         else -> troubleshootingPage()
     }
 
@@ -775,6 +781,10 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         const val PAGE_BACKUP = SettingsKeys.BACKUP
         const val PAGE_TROUBLESHOOTING = SettingsKeys.TROUBLESHOOTING
         const val PAGE_CHECKLIST = "checklist"
+        const val PAGE_FAKE_ALERTS = "fake_alerts"
+
+        /** Zuki Sim's Fake Alerts page; null in the real app. */
+        @Volatile var fakeAlertsPage: ((MainActivity) -> SettingsPage)? = null
     }
 }
 

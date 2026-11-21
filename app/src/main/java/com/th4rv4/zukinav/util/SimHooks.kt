@@ -17,6 +17,9 @@ object SimHooks {
      */
     @Volatile var findDash: (((String?) -> Unit) -> Unit)? = null
 
+    /** Zuki Sim's Fake Alerts: the phone's call state while a made-up call rings or is answered. */
+    @Volatile var fakePhoneState: com.th4rv4.zukinav.alerts.AlertTracker.PhoneState? = null
+
     /** True in the test build. */
     val isSim: Boolean get() = onSimFrame != null
 }

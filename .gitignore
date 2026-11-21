@@ -9,3 +9,4 @@ captures/
 *.keystore
 !app/debug.keystore
 *.jks
+/simtest/

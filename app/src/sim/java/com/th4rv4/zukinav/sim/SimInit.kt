@@ -3,6 +3,7 @@ package com.th4rv4.zukinav.sim
 import android.content.ContentProvider
 import android.content.ContentValues
 import android.net.Uri
+import com.th4rv4.zukinav.ui.SettingsScreen
 import com.th4rv4.zukinav.ui.SetupChecklist
 import com.th4rv4.zukinav.util.SimHooks
 
@@ -13,6 +14,7 @@ class SimInit : ContentProvider() {
         SimHooks.onSimFrame = { SimLink.onFrame(ctx, it) }
         SetupChecklist.testChecks = { SimChecks.items(it) }
         SimHooks.findDash = { done -> SimFinder.find(ctx, done) }
+        SettingsScreen.fakeAlertsPage = { FakeAlertsPage.build(it) }
         return true
     }
 

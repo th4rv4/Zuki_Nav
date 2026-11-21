@@ -47,6 +47,7 @@ class MainActivity : Activity(), DashPeripheral.Events {
     private var lastReading = 0L
     private var lastSave = 0L
     private var lastUi = 0L
+    private var lastState = 0L
 
     private val logLines = ArrayDeque<String>()
     private val shown = LinkedHashMap<String, String>()
@@ -71,14 +72,18 @@ class MainActivity : Activity(), DashPeripheral.Events {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         dash = DashPeripheral(this, this)
+        // Keep the test log from growing without end.
+        java.io.File(filesDir, LOG_FILE).takeIf { it.length() > 4_000_000 }?.delete()
         load()
         setContentView(build())
         askPermissions()
         lastTick = SystemClock.elapsedRealtime()
         main.post(tick)
+        instance = this
     }
 
     override fun onDestroy() {
+        if (instance == this) instance = null
         main.removeCallbacks(tick)
         save()
         if (bike.ignitionOn) dash.powerOff()
@@ -115,6 +120,10 @@ class MainActivity : Activity(), DashPeripheral.Events {
             if (now - lastSave >= 5000) {
                 save()
                 lastSave = now
+            }
+            if (now - lastState >= 1000) {
+                writeState()
+                lastState = now
             }
             main.postDelayed(this, 100)
         }
@@ -181,6 +190,58 @@ class MainActivity : Activity(), DashPeripheral.Events {
         refresh()
     }
 
+    // ---- The test script (adb) ------------------------------------------------
+
+    /** One command from [DashControl]; returns what happened, for the script. */
+    fun command(cmd: String, value: String?): String {
+        val on = value == null || value == "on" || value == "1" || value == "true"
+        when (cmd) {
+            "ignition" -> if (bike.ignitionOn != on) toggleIgnition()
+            "engine" -> if (bike.engineOn != on) toggleEngine()
+            "speed" -> {
+                val kmh = value?.toIntOrNull() ?: return "speed needs a number"
+                speedBar.progress = kmh.coerceIn(0, speedBar.max)
+                bike.targetKmh = speedBar.progress
+            }
+            "timex" -> setSpeedUp((value?.toDoubleOrNull() ?: return "timex needs 1, 10 or 60").coerceIn(1.0, 60.0))
+            "skip" -> skip2h()
+            "drop" -> dash.dropLink()
+            "silent" -> if (silent != on) toggleSilent()
+            "fuel" -> {
+                val l = value?.toDoubleOrNull() ?: return "fuel needs litres"
+                bike.fuelL = l.coerceIn(0.0, Bike.TANK_L)
+                fuelBar.progress = (bike.fuelL * 10).toInt()
+            }
+            "mark" -> log("==== ${value.orEmpty()} ====")
+            else -> return "unknown command $cmd"
+        }
+        refresh()
+        writeState()
+        return "ok"
+    }
+
+    /** What the script polls: one key=value per line. */
+    private fun writeState() {
+        val lines = listOf(
+            "ignition=${bike.ignitionOn}",
+            "engine=${bike.engineOn}",
+            "speed=${bike.speedKmh.toInt()}",
+            "throttle=${bike.targetKmh}",
+            "timex=${speedUp.toInt()}",
+            "connected=${dash.subscribed}",
+            "bluetooth=${if (dash.resetting) "changing" else "steady"}",
+            "engineC=${Math.round(bike.engineC)}",
+            "fuelL=${"%.1f".format(Locale.US, bike.fuelL)}",
+            "odo=${bike.odoKm.toLong()}",
+            "rideTime=$rideTime",
+            "shown=${shown.entries.joinToString(" | ") { "${it.key}: ${it.value}" }}",
+        )
+        try {
+            java.io.File(filesDir, STATE_FILE).writeText(lines.joinToString("\n") + "\n")
+        } catch (_: Exception) {
+        }
+    }
+
     // ---- What the phone sends ---------------------------------------------
 
     override fun onFrame(frame: ByteArray) {
@@ -195,6 +256,12 @@ class MainActivity : Activity(), DashPeripheral.Events {
         val t = SimpleDateFormat("HH:mm:ss", Locale.US).format(Date(rideTime))
         logLines.addFirst("$t  $line")
         while (logLines.size > 150) logLines.removeLast()
+        // Also to a file, for the test script (real time, then ride time).
+        try {
+            val real = SimpleDateFormat("HH:mm:ss.SSS", Locale.US).format(Date())
+            java.io.File(filesDir, LOG_FILE).appendText("$real [ride $t] $line\n")
+        } catch (_: Exception) {
+        }
         if (::logView.isInitialized) logView.text = logLines.joinToString("\n")
     }
 
@@ -430,9 +497,15 @@ class MainActivity : Activity(), DashPeripheral.Events {
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
-    private companion object {
-        const val READING_MS = 5000.0
-        const val MIN_READING_MS = 250L
-        const val FAR_M = 150_000f
+    companion object {
+        /** The running screen, for [DashControl]. */
+        @Volatile var instance: MainActivity? = null
+            private set
+
+        const val LOG_FILE = "dash-log.txt"
+        const val STATE_FILE = "state.txt"
+        private const val READING_MS = 5000.0
+        private const val MIN_READING_MS = 250L
+        private const val FAR_M = 150_000f
     }
 }

@@ -12,5 +12,10 @@
             android:name="com.th4rv4.zukinav.sim.SimInit"
             android:authorities="${applicationId}.siminit"
             android:exported="false" />
+        <!-- The test script's controls over adb; only the shell may send them (DUMP). -->
+        <receiver
+            android:name="com.th4rv4.zukinav.sim.SimControl"
+            android:exported="true"
+            android:permission="android.permission.DUMP" />
     </application>
 </manifest>
