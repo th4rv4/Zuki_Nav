@@ -8,8 +8,9 @@
 # Each wait is just past the app's own limit for that thing, so it's quick
 # but still a real test. Step 7 stops the search (as Stop Searching For
 # Bike does) and step 8 taps Connect. Calls and messages from a mid-ride
-# dropout (step 5) show once the dash is back; from lunch (step 7, with
-# Missed While Parked on 30 Min) they're too old after 2 h. Wake On Ignition itself is tested on the real bike: Android
+# dropout (step 5) show once the dash is back. At lunch (step 7) calls are
+# on 30 Min, so the missed call is kept but too old after 2 h, and messages
+# on Never, so the message stays on the phone. Wake On Ignition itself is tested on the real bike: Android
 # doesn't pick up a phone playing the dash the way it does the dash.
 #
 # Both phones on adb, both test apps installed and set up (paired, bike
@@ -254,9 +255,10 @@ if step 7; then
     dash engine off; dash ignition off
     wait_until 30 "dash gone" disconnected
     pause 8 "bike off"
-    # Parked, with Missed While Parked on 30 Min: kept, but 2 h later
-    # too old for the dash.
-    sim parked --es value 30
+    # Parked: calls on 30 Min (kept, but 2 h later too old for the dash),
+    # messages on Never (left on the phone).
+    sim parked --es value 30 --es for calls
+    sim parked --es value never --es for messages
     call saved missed 4; pause 6 "missed call while parked"
     # As tapping Stop Searching For Bike: the app stops looking.
     sim stopsearch; pause 3
@@ -275,8 +277,9 @@ if step 8; then
     sim connect
     wait_until 60 "connected again" connected || die "Zuki Sim didn't come back"
     pause 14 "nothing from lunch" # held ones would show 12 s after connecting
-    expect 7 yes "Bike off, keeping it for the next ride" "lunch call and message kept"
-    expect 8 yes "too old for the dash" "lunch call and message too old after 2 h"
+    expect 7 yes "Bike off, keeping it for the next ride" "lunch missed call kept (calls on 30 Min)"
+    expect 8 yes "Missed call from while parked is too old" "lunch missed call too old after 2 h"
+    expect 8 no "Message from while parked" "lunch message left on the phone (messages on Never)"
     expect 8 no "Showing what came in" "nothing from lunch shown"
     sim parked --es value never
     dash engine on

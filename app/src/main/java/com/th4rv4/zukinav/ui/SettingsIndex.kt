@@ -41,11 +41,12 @@ object SettingsIndex {
         // Calls
         Entry("Missed Calls From Saved Contacts Only", "Missed calls from unsaved numbers stay on the phone", "Settings › Calls", page(SettingsKeys.CALLS), "unknown unsaved number stranger missed contacts only"),
         Entry("Call Alerts", "Incoming and missed calls on the dash", "Settings › Calls", page(SettingsKeys.CALLS), "phone ring caller whatsapp missed incoming"),
-        Entry("Missed While Parked", "Missed calls and messages from while the bike was off", "Settings › Calls", page(SettingsKeys.CALLS), "parked off away later next ride old expire messages unread"),
+        Entry("Missed While Parked", "Missed calls from while the bike was off", "Settings › Calls", page(SettingsKeys.CALLS), "parked off away later next ride old expire"),
         Entry("Reject Unknown Callers", "Decline numbers not in your contacts", "Settings › Calls", page(SettingsKeys.CALLS), "block spam decline unknown numbers telemarketing contacts"),
         Entry("Allow Repeat Callers", "A second call within 5 min rings through", "Settings › Calls", page(SettingsKeys.CALLS), "urgent emergency again twice"),
         Entry("Show Rejected On Dash", "REJECTED on the dash's message screen", "Settings › Calls", page(SettingsKeys.CALLS), "rejected declined"),
         // Messages
+        Entry("Unread While Parked", "Unread messages from while the bike was off", "Settings › Messages", page(SettingsKeys.MESSAGES), "parked off away later next ride old expire whatsapp sms"),
         Entry("Message Alerts", "New WhatsApp and SMS on the dash", "Settings › Messages", page(SettingsKeys.MESSAGES), "sms text whatsapp chat notification envelope"),
         Entry("Unread From Saved Contacts Only", "Messages from unsaved numbers pop up, but don't stay as unread", "Settings › Messages", page(SettingsKeys.MESSAGES), "unknown unsaved number stranger contacts only filter"),
         Entry("Skip Business SMS", "Keep bank, OTP and promo SMS off the dash", "Settings › Messages", page(SettingsKeys.MESSAGES), "otp bank spam promo ads offers government"),

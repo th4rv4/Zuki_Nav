@@ -417,6 +417,15 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
         )
     }
 
+    /** Show On The Next Ride: Never, 30 Min, 1 Hr or Always, for Missed or Unread While Parked. */
+    private fun parkedRow(selected: Int, hint: String, onPick: (Int) -> Unit): View =
+        ui.vstack(
+            8,
+            ui.text("Show On The Next Ride", 15f, Palette.TEXT, Ui.Weight.MEDIUM),
+            ui.segmented(ParkedAlerts.LABELS, selected, padDp = 8, fill = true, onPick = onPick),
+            ui.text(hint, 12f, Palette.MUTED),
+        ).apply { setPadding(0, ui.dp(10), 0, ui.dp(12)) }
+
     private fun callsPage(): SettingsPage {
         val extras = ArrayList<View>()
         fun showExtras(on: Boolean) = extras.forEach { it.visibility = if (on) View.VISIBLE else View.GONE }
@@ -479,18 +488,11 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
                 ),
                 ui.sectionHeader(R.drawable.ic_sec_bike, "Missed While Parked"),
                 ui.listCard(
-                    ui.vstack(
-                        8,
-                        ui.text("Show On The Next Ride", 15f, Palette.TEXT, Ui.Weight.MEDIUM),
-                        ui.segmented(ParkedAlerts.LABELS, prefs.parkedAlerts, padDp = 8, fill = true) {
-                            prefs.parkedAlerts = it
-                        },
-                        ui.text(
-                            "Missed calls and messages from while the bike was off. Never leaves them on the phone. " +
-                                "Ones from a dash dropout mid-ride always show. Also applies to messages.",
-                            12f, Palette.MUTED,
-                        ),
-                    ).apply { setPadding(0, ui.dp(10), 0, ui.dp(12)) },
+                    parkedRow(
+                        prefs.parkedCalls,
+                        "Missed calls from while the bike was off. Never leaves them on the phone. " +
+                            "Ones from a dash dropout mid-ride always show.",
+                    ) { prefs.parkedCalls = it },
                 ),
                 ui.sectionHeader(R.drawable.ic_set_dialer, "Unknown Callers"),
                 ui.listCard(
@@ -571,10 +573,14 @@ class SettingsScreen(host: MainActivity) : Screen(host) {
                         prefs.skipBusinessSms = it
                     },
                 ),
-                ui.text(
-                    "Messages from while the bike was off follow Missed While Parked, on the Calls page.",
-                    12f, Palette.MUTED,
-                ).apply { setPadding(ui.dp(4), 0, ui.dp(4), ui.dp(6)) },
+                ui.sectionHeader(R.drawable.ic_sec_message, "Unread While Parked"),
+                ui.listCard(
+                    parkedRow(
+                        prefs.parkedMessages,
+                        "Unread messages from while the bike was off. Never leaves them on the phone. " +
+                            "Ones from a dash dropout mid-ride always show.",
+                    ) { prefs.parkedMessages = it },
+                ),
                 ui.sectionHeader(R.drawable.ic_sec_message, "Auto-Reply"),
                 ui.listCard(
                     ui.switchRow("Auto-Reply While Riding", "WhatsApp chats, while the bike is connected", prefs.autoReply) {

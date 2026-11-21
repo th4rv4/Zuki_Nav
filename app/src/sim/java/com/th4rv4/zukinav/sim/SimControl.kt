@@ -18,8 +18,9 @@ import com.th4rv4.zukinav.util.Prefs
  * hangup, message (from saved|unknown|group|own, app whatsapp|sms), clear,
  * mark (text: a line in the log, to find each test step later),
  * stopsearch (as tapping Stop Searching For Bike), connect (as tapping Connect),
- * parked (value never|30|60|always: Missed While Parked),
- * status (answers wake=on|off notifications=on|off parked=<choice>).
+ * parked (value never|30|60|always, for calls|messages, both if left out:
+ * Missed and Unread While Parked),
+ * status (answers wake=on|off notifications=on|off calls=<choice> messages=<choice>).
  * Only the shell can send these (the receiver needs the DUMP permission).
  */
 class SimControl : BroadcastReceiver() {
@@ -54,15 +55,19 @@ class SimControl : BroadcastReceiver() {
                 "never" -> 0; "30" -> 1; "60" -> 2; "always" -> 3
                 else -> -1
             }.let { choice ->
-                if (choice < 0) return@let "Unknown Missed While Parked choice"
-                Prefs(app).parkedAlerts = choice
-                AppLog.d("Test", "Missed While Parked: ${ParkedAlerts.LABELS[choice]}")
+                if (choice < 0) return@let "Unknown parked choice"
+                val p = Prefs(app)
+                val kind = intent.getStringExtra("for")
+                if (kind != "messages") p.parkedCalls = choice
+                if (kind != "calls") p.parkedMessages = choice
+                AppLog.d("Test", "While parked, ${kind ?: "calls and messages"}: ${ParkedAlerts.LABELS[choice]}")
                 null
             }
             "status" -> {
                 resultData = "wake=${if (Wake.isSetUp(app)) "on" else "off"} " +
                     "notifications=${if (MapsNavListener.instance != null) "on" else "off"} " +
-                    "parked=${ParkedAlerts.LABELS[Prefs(app).parkedAlerts].replace(" ", "")}"
+                    "calls=${ParkedAlerts.LABELS[Prefs(app).parkedCalls].replace(" ", "")} " +
+                    "messages=${ParkedAlerts.LABELS[Prefs(app).parkedMessages].replace(" ", "")}"
                 return
             }
             else -> "Unknown command: $cmd"
