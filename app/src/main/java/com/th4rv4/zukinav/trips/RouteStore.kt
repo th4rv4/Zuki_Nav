@@ -93,6 +93,11 @@ object RouteRecorder {
 
     private val listener = LocationListener { loc: Location -> onLocation(loc) }
 
+    /** Fixes since GPS was last switched on: all of them, too rough, kept. */
+    private var fixes = 0
+    private var rough = 0
+    private var kept = 0
+
     val recordingId: Long? get() = tripId
 
     /** The newest point kept for the ride being recorded, if any. */
@@ -137,7 +142,8 @@ object RouteRecorder {
         listening = GpsPlan.Mode.OFF
         if (mode == GpsPlan.Mode.OFF) {
             tripId?.let { flush(ctx, it) }
-            AppLog.d("Route", "GPS off")
+            AppLog.d("Route", "GPS off: $fixes fixes, $kept kept, $rough too rough")
+            fixes = 0; rough = 0; kept = 0
             return
         }
         if (!Places.hasForeground(ctx)) return
@@ -164,7 +170,15 @@ object RouteRecorder {
     private fun onLocation(loc: Location) {
         val ctx = appContext ?: return
         val id = tripId ?: return
-        if (loc.hasAccuracy() && loc.accuracy > 40f) return
+        fixes++
+        if (fixes == 1) {
+            val made = if (isMock(loc)) " (made up by a mock location app)" else ""
+            AppLog.d("Route", "First GPS fix, ±${loc.accuracy.toInt()} m$made")
+        }
+        if (loc.hasAccuracy() && loc.accuracy > 40f) {
+            rough++
+            return
+        }
         val now = Clock.now()
         plan.onFix(now, if (loc.hasSpeed()) loc.speed * 3.6f else null)
         val bike = DashService.liveBike
@@ -177,9 +191,14 @@ object RouteRecorder {
         )
         if (!Route.worthKeeping(last, p)) return
         last = p
+        kept++
         pending += p
         if (pending.size >= FLUSH_EVERY) flush(ctx, id)
     }
+
+    @Suppress("DEPRECATION")
+    private fun isMock(loc: Location): Boolean =
+        if (android.os.Build.VERSION.SDK_INT >= 31) loc.isMock else loc.isFromMockProvider
 
     private fun flush(ctx: Context, id: Long) {
         if (pending.isEmpty()) return
