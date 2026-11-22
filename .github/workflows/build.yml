@@ -98,9 +98,10 @@ jobs:
             HEADER="Changes"
           fi
           # Commits for the test tools (Zuki Sim, Zuki Dash Sim, the test
-          # script) go in their own section, as "+" bullets: GitHub shows
-          # them, the app's What's New only reads the "-" ones.
-          TOOLS='^(Zuki Sim|Zuki Dash Sim|Test )'
+          # script) and the release notes themselves go in their own
+          # section, as "+" bullets: GitHub shows them, the app's What's
+          # New only reads the "-" ones.
+          TOOLS='^(Zuki Sim|Zuki Dash Sim|Test |Release notes)'
           git log --no-merges --reverse --pretty=tformat:'%s (%h)' "$RANGE" > commits.txt
           {
             echo "## ${HEADER}"
