@@ -97,11 +97,23 @@ jobs:
             RANGE="${TAG}"
             HEADER="Changes"
           fi
+          # Commits for the test tools (Zuki Sim, Zuki Dash Sim, the test
+          # script) go in their own section, as "+" bullets: GitHub shows
+          # them, the app's What's New only reads the "-" ones.
+          TOOLS='^(Zuki Sim|Zuki Dash Sim|Test )'
+          git log --no-merges --reverse --pretty=tformat:'%s (%h)' "$RANGE" > commits.txt
           {
             echo "## ${HEADER}"
             echo
-            git log --no-merges --reverse --pretty=format:'- %s (%h)' "$RANGE"
-            echo
+            grep -Ev "$TOOLS" commits.txt | sed 's/^/- /' || true
+            if grep -Eq "$TOOLS" commits.txt; then
+              echo
+              echo "### Test Tools"
+              echo
+              echo "For testing without the bike. Not part of Zuki Nav."
+              echo
+              grep -E "$TOOLS" commits.txt | sed 's/^/+ /'
+            fi
             if [ -n "$PREV" ]; then
               echo
               echo "**Full diff:** ${{ github.server_url }}/${{ github.repository }}/compare/${PREV}...${TAG}"
