@@ -122,6 +122,19 @@ jobs:
           } > release-notes.md
           cat release-notes.md
 
+      # Re-tagging a version: start from a clean release, so the notes and
+      # APK are this build's. (Publishing only updates the files of a release
+      # that's already there, its notes stay as they were.)
+      - name: Remove an earlier release of this version
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" > /dev/null 2>&1; then
+            gh release delete "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --yes
+            echo "Removed the earlier ${GITHUB_REF_NAME} release"
+          fi
+
       - name: Publish release
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
