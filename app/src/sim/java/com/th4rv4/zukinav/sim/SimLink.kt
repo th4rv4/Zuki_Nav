@@ -25,7 +25,7 @@ object SimLink {
 
     /** A fix every 2 s of ride time, as the phone's GPS would give (faster in real time when fast-forwarded). */
     private const val GPS_EVERY_MS = 2_000L
-    private const val GIVE_BACK_MS = 10 * 60_000L
+    private const val GIVE_BACK_MS = 2 * 60_000L
 
     private val main = Handler(Looper.getMainLooper())
     private var appCtx: Context? = null
@@ -62,7 +62,7 @@ object SimLink {
             val f = last ?: return
             val quiet = SystemClock.elapsedRealtime() - lastFrameReal
             if (quiet >= GIVE_BACK_MS) {
-                giveBack()
+                appCtx?.let { giveBack(it) }
                 return
             }
             // Riding when the link went: keep moving. Switched off or stopped: stay put.
@@ -80,19 +80,24 @@ object SimLink {
         }
     }
 
-    private fun giveBack() {
+    /**
+     * Gives the phone its real GPS back: Zuki Dash Sim quiet for 2 min, the
+     * dash link stopped, or Zuki Sim starting up after being stopped. Android
+     * keeps a made-up GPS until it's removed, for every app on the phone.
+     */
+    fun giveBack(ctx: Context) {
+        main.removeCallbacks(keepUp)
         // Keep the ride clock where it got to (never back in time), just at real speed.
         Clock.sync(Clock.now(), 1.0)
         lastSpeedUp = 1.0
         last = null
-        val ctx = appCtx ?: return
-        if (mockReady != true) return
+        mockReady = null
         try {
             ctx.getSystemService(LocationManager::class.java)?.removeTestProvider(LocationManager.GPS_PROVIDER)
-            AppLog.d("Sim", "Zuki Dash Sim quiet for 10 min: the phone's real GPS is back")
+            AppLog.d("Sim", "The phone's real GPS is back")
         } catch (_: Exception) {
+            // No made-up GPS in place, or Zuki Sim isn't the mock location app.
         }
-        mockReady = null
     }
 
     /** The made-up position, as the phone's GPS. Needs Zuki Sim picked as the mock location app. */

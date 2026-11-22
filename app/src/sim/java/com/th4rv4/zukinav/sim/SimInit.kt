@@ -11,7 +11,11 @@ import com.th4rv4.zukinav.util.SimHooks
 class SimInit : ContentProvider() {
     override fun onCreate(): Boolean {
         val ctx = context?.applicationContext ?: return false
+        // A made-up GPS left behind by an earlier run that was stopped
+        // before it could give the real one back.
+        SimLink.giveBack(ctx)
         SimHooks.onSimFrame = { SimLink.onFrame(ctx, it) }
+        SimHooks.onDashGone = { SimLink.giveBack(ctx) }
         SetupChecklist.testChecks = { SimChecks.items(it) }
         SimHooks.findDash = { done -> SimFinder.find(ctx, done) }
         SettingsScreen.fakeAlertsPage = { FakeAlertsPage.build(it) }

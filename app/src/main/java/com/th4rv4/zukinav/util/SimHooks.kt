@@ -9,6 +9,9 @@ object SimHooks {
     /** A simulated dash's own frame (type 'Z'): ride time, speed-up and a made-up GPS position. */
     @Volatile var onSimFrame: ((ByteArray) -> Unit)? = null
 
+    /** The dash link has stopped (bike off for 5 min, Stop Searching): Zuki Sim gives the GPS back. */
+    @Volatile var onDashGone: (() -> Unit)? = null
+
     /**
      * Finds the simulated dash by its name and hands back its current
      * address, or null if it isn't there. A phone playing the dash changes

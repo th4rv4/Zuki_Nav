@@ -168,6 +168,7 @@ class DashService : Service(), ClusterLink.Listener {
 
     override fun onDestroy() {
         DropWatch.cancel()
+        SimHooks.onDashGone?.invoke()
         bikeOffForAlerts()
         if (bike != null) {
             TripLog.onDisconnected(this)
